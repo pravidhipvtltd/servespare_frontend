@@ -7,7 +7,7 @@ import {
   Server, HardDrive, Zap, Code, CreditCard, Calendar, Mail, Phone, MapPin,
   Filter, Plus, Check, Clock, Archive, GitBranch, Percent, Wallet, Tag,
   Copy, Save, Loader, Award, Star, TrendingDown, PieChart, ArrowUpCircle,
-  ArrowDownCircle, Briefcase, Tool, Image, Trash, Upload, ExternalLink
+  ArrowDownCircle, Briefcase, Tool, Image, Trash, Upload, ExternalLink, Store
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { User, Workspace, Bill, InventoryItem, Party, BankAccount } from '../types';
@@ -29,6 +29,8 @@ import { SystemSettingsFixed } from './SystemSettingsFixed';
 import { AuditLogDetailed } from './AuditLogDetailed';
 import { MaintenanceCRM } from './MaintenanceCRM';
 import { CRMSystem } from './CRMSystem';
+import { MultiVendorPanel } from './panels/MultiVendorPanel';
+import { AccessControlPanel } from './panels/AccessControlPanel';
 
 type MenuItem = {
   id: string;
@@ -41,6 +43,8 @@ type MenuItem = {
 const menuItems: MenuItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3, panel: 'dashboard' },
   { id: 'users', label: 'User Management', icon: Users, panel: 'users' },
+  { id: 'vendors', label: 'Multi-Vendor', icon: Store, panel: 'vendors' },
+  { id: 'access_control', label: 'Access Control', icon: Key, panel: 'access_control' },
   { id: 'branches', label: 'Branch Management', icon: Building2, panel: 'branches' },
   { id: 'finance', label: 'Finance Oversight', icon: DollarSign, panel: 'finance' },
   { id: 'inventory', label: 'Inventory Master', icon: Package, panel: 'inventory' },
@@ -103,6 +107,10 @@ export const SuperAdminDashboard: React.FC = () => {
         />;
       case 'users':
         return <UserManagementView users={users} workspaces={workspaces} onUpdate={loadData} />;
+      case 'vendors':
+        return <MultiVendorPanel />;
+      case 'access_control':
+        return <AccessControlPanel />;
       case 'branches':
         return <BranchManagementViewFixed workspaces={workspaces} users={users} bills={bills} onUpdate={loadData} />;
       case 'finance':
