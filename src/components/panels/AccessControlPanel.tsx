@@ -233,8 +233,84 @@ export const AccessControlPanel: React.FC = () => {
     setTimeout(() => setShowSuccess(false), 3000);
   };
 
+  const handleActivateSuperAdmin = async () => {
+    if (!confirm('🔄 ROLLBACK & ACTIVATE SUPERADMIN\n\nThis will:\n✓ Grant SuperAdmin ALL 27 permissions\n✓ Activate both SuperAdmin accounts\n✓ Reset all role permissions to defaults\n✓ Save changes immediately\n✓ Sync across all users\n\nProceed?')) {
+      return;
+    }
+
+    setSyncInProgress(true);
+
+    // Grant all permissions to SuperAdmin
+    const defaultPermissions = AVAILABLE_PERMISSIONS.map(p => p.id);
+    setSuperadminPermissions(defaultPermissions);
+
+    // Reset all role permissions to defaults
+    const newRolePermissions = {
+      admin: AVAILABLE_PERMISSIONS.filter(p => p.category !== 'advanced').map(p => p.id),
+      inventory_manager: AVAILABLE_PERMISSIONS.filter(p => p.category === 'inventory').map(p => p.id),
+      cashier: AVAILABLE_PERMISSIONS.filter(p => ['inventory.view', 'finance.bills'].includes(p.id)).map(p => p.id),
+      finance: AVAILABLE_PERMISSIONS.filter(p => p.category === 'finance').map(p => p.id),
+    };
+    setRolePermissions(newRolePermissions);
+
+    // Save SuperAdmin permissions
+    saveToStorage('superadmin_permissions', defaultPermissions);
+
+    // Save role permissions
+    saveToStorage('admin_permissions', newRolePermissions.admin);
+    saveToStorage('inventory_manager_permissions', newRolePermissions.inventory_manager);
+    saveToStorage('cashier_permissions', newRolePermissions.cashier);
+    saveToStorage('finance_permissions', newRolePermissions.finance);
+
+    // Ensure SuperAdmin accounts are active
+    const users = getFromStorage('users', []);
+    const updatedUsers = users.map((user: any) => {
+      if (user.role === 'super_admin') {
+        return { ...user, isActive: true };
+      }
+      return user;
+    });
+    saveToStorage('users', updatedUsers);
+
+    // Update sync timestamp
+    const syncTimestamp = Date.now();
+    saveToStorage('permission_sync_timestamp', syncTimestamp);
+
+    // Create audit log
+    const auditLog = getFromStorage('auditLog', []);
+    auditLog.unshift({
+      id: `AUDIT-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      userId: 'superadmin',
+      userName: 'Super Admin',
+      action: 'SuperAdmin Rollback & Activation',
+      details: 'Rolled back all permissions to defaults and activated SuperAdmin accounts',
+      ipAddress: '127.0.0.1',
+      category: 'security',
+    });
+    saveToStorage('auditLog', auditLog);
+
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    setSyncInProgress(false);
+    setHasChanges(false);
+    setShowSuccess(true);
+
+    // Trigger permission refresh
+    refreshPermissions();
+
+    // Hide success message after 3 seconds
+    setTimeout(() => setShowSuccess(false), 3000);
+
+    // Show completion alert
+    setTimeout(() => {
+      alert('✅ SUPERADMIN ACTIVATED!\n\n✓ All 27 permissions granted to SuperAdmin\n✓ Both SuperAdmin accounts are now active\n✓ All role permissions reset to defaults\n✓ Changes synchronized across all users\n\nYou can now login with either SuperAdmin account!');
+    }, 1500);
+  };
+
   const handleResetToDefaults = () => {
-    if (!confirm('Reset all permissions to default values? This cannot be undone.')) {
+    if (!confirm('🔄 Reset all permissions to default values?\n\nThis will:\n✓ Grant SuperAdmin ALL permissions\n✓ Reset Admin to all permissions except advanced\n✓ Reset Inventory Manager to inventory-only permissions\n✓ Reset Cashier to view-only permissions\n✓ Reset Finance to finance-only permissions\n\nThis action cannot be undone!')) {
       return;
     }
 
@@ -322,11 +398,19 @@ export const AccessControlPanel: React.FC = () => {
         </div>
         <div className="flex items-center space-x-3">
           <button
+            onClick={handleActivateSuperAdmin}
+            disabled={syncInProgress}
+            className="px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all flex items-center space-x-2 shadow-lg hover:shadow-xl font-bold"
+          >
+            <Zap className="w-5 h-5" />
+            <span>🔄 Activate SuperAdmin</span>
+          </button>
+          <button
             onClick={handleResetToDefaults}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center space-x-2"
+            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors flex items-center space-x-2 shadow-md hover:shadow-lg"
           >
             <RefreshCw className="w-4 h-4" />
-            <span>Reset to Defaults</span>
+            <span>Rollback Only</span>
           </button>
           <button
             onClick={handleSaveChanges}
@@ -354,7 +438,7 @@ export const AccessControlPanel: React.FC = () => {
 
       {/* Success Message */}
       {showSuccess && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center space-x-3">
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center space-x-3 animate-pulse">
           <CheckCircle className="w-5 h-5 text-green-600" />
           <div>
             <p className="text-green-900 font-medium">Changes Saved Successfully!</p>
@@ -364,6 +448,64 @@ export const AccessControlPanel: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Rollback & Activation Instructions */}
+      <div className="bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 border-2 border-green-400 rounded-xl p-5 shadow-lg">
+        <div className="flex items-start space-x-4">
+          <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0 animate-pulse">
+            <Zap className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-bold text-green-900 text-lg mb-2 flex items-center">
+              ⚡ Activate SuperAdmin - One-Click Solution!
+            </h3>
+            <p className="text-green-800 text-sm mb-3">
+              Click the <strong className="text-green-600">🔄 "Activate SuperAdmin"</strong> button above to instantly rollback permissions, activate both SuperAdmin accounts, and save all changes automatically!
+            </p>
+            <div className="bg-white/60 rounded-lg p-3 space-y-2 text-sm">
+              <div className="flex items-start space-x-2">
+                <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <strong className="text-gray-900">SuperAdmin:</strong>
+                  <span className="text-gray-700"> Gets ALL permissions (Full Access)</span>
+                </div>
+              </div>
+              <div className="flex items-start space-x-2">
+                <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <strong className="text-gray-900">Admin:</strong>
+                  <span className="text-gray-700"> Gets all permissions except advanced</span>
+                </div>
+              </div>
+              <div className="flex items-start space-x-2">
+                <CheckCircle className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <strong className="text-gray-900">Inventory Manager:</strong>
+                  <span className="text-gray-700"> Gets inventory-only permissions</span>
+                </div>
+              </div>
+              <div className="flex items-start space-x-2">
+                <CheckCircle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <strong className="text-gray-900">Cashier:</strong>
+                  <span className="text-gray-700"> Gets view inventory + billing only</span>
+                </div>
+              </div>
+              <div className="flex items-start space-x-2">
+                <CheckCircle className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <strong className="text-gray-900">Finance:</strong>
+                  <span className="text-gray-700"> Gets finance-only permissions</span>
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 flex items-center space-x-2 text-orange-900">
+              <AlertTriangle className="w-4 h-4" />
+              <span className="text-xs font-medium">Warning: This action cannot be undone. A confirmation dialog will appear.</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

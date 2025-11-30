@@ -3,15 +3,21 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { SyncProvider } from './contexts/SyncContext';
 import { PermissionProvider } from './contexts/PermissionContext';
-import { LoginPage } from './components/LoginPage';
+import { LandingPage } from './components/LandingPage';
 import { SuperAdminDashboard } from './components/SuperAdminDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { InventoryManagerDashboard } from './components/InventoryManagerDashboard';
 import { CashierDashboard } from './components/CashierDashboard';
 import { FinanceDashboard } from './components/FinanceDashboard';
+import './utils/debugHelpers';
 
 const AppContent: React.FC = () => {
   const { currentUser, isLoading } = useAuth();
+
+  // Set document title
+  React.useEffect(() => {
+    document.title = 'Serve Spares - Inventory System';
+  }, []);
 
   if (isLoading) {
     return (
@@ -25,7 +31,7 @@ const AppContent: React.FC = () => {
   }
 
   if (!currentUser) {
-    return <LoginPage />;
+    return <LandingPage />;
   }
 
   // Role-based dashboard routing
@@ -41,7 +47,7 @@ const AppContent: React.FC = () => {
     case 'finance':
       return <FinanceDashboard />;
     default:
-      return <LoginPage />;
+      return <LandingPage />;
   }
 };
 

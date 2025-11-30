@@ -9,6 +9,17 @@ export const MOCK_USERS: User[] = [
     name: 'Super Administrator',
     phone: '+977 9801234567',
     createdAt: '2024-01-01T00:00:00Z',
+    isActive: true,
+  },
+  {
+    id: '10',
+    email: 'admin.chief@servespares.com',
+    password: 'ChiefAdmin@2024',
+    role: 'super_admin',
+    name: 'Chief Administrator',
+    phone: '+977 9851234567',
+    createdAt: '2024-01-01T00:00:00Z',
+    isActive: true,
   },
   {
     id: '2',
@@ -20,6 +31,7 @@ export const MOCK_USERS: User[] = [
     workspaceId: 'ws1',
     createdAt: '2024-01-15T00:00:00Z',
     createdBy: '1',
+    isActive: true,
   },
   {
     id: '3',
@@ -31,6 +43,7 @@ export const MOCK_USERS: User[] = [
     workspaceId: 'ws1',
     createdAt: '2024-01-20T00:00:00Z',
     createdBy: '2',
+    isActive: true,
   },
   {
     id: '4',
@@ -42,6 +55,7 @@ export const MOCK_USERS: User[] = [
     workspaceId: 'ws1',
     createdAt: '2024-01-25T00:00:00Z',
     createdBy: '2',
+    isActive: true,
   },
   {
     id: '5',
@@ -53,6 +67,7 @@ export const MOCK_USERS: User[] = [
     workspaceId: 'ws1',
     createdAt: '2024-01-30T00:00:00Z',
     createdBy: '2',
+    isActive: true,
   },
 ];
 
@@ -362,9 +377,19 @@ export const getFromStorage = (key: string, defaultValue: any = null) => {
 };
 
 export const initializeStorage = () => {
-  if (!localStorage.getItem('users')) {
+  // Always update users to ensure isActive field is present
+  const existingUsers = getFromStorage('users', []);
+  if (existingUsers.length === 0) {
     saveToStorage('users', MOCK_USERS);
+  } else {
+    // Update existing users to ensure they have isActive field
+    const updatedUsers = existingUsers.map((user: User) => ({
+      ...user,
+      isActive: user.isActive !== undefined ? user.isActive : true
+    }));
+    saveToStorage('users', updatedUsers);
   }
+  
   if (!localStorage.getItem('workspaces')) {
     saveToStorage('workspaces', MOCK_WORKSPACES);
   }

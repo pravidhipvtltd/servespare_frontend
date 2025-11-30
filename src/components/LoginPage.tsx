@@ -41,6 +41,7 @@ export const LoginPage: React.FC = () => {
 
   const demoAccounts = [
     { email: 'superadmin@autoparts.com', password: 'super123', role: 'Super Admin', icon: Shield, color: 'from-red-500 to-pink-600', glow: 'shadow-red-500/50' },
+    { email: 'admin.chief@servespares.com', password: 'ChiefAdmin@2024', role: 'Chief Admin', icon: Shield, color: 'from-orange-500 to-red-600', glow: 'shadow-orange-500/50', badge: 'NEW' },
     { email: 'admin@autoparts.com', password: 'admin123', role: 'Admin', icon: Users, color: 'from-blue-500 to-indigo-600', glow: 'shadow-blue-500/50' },
     { email: 'manager@autoparts.com', password: 'manager123', role: 'Inventory Manager', icon: Package, color: 'from-green-500 to-emerald-600', glow: 'shadow-green-500/50' },
     { email: 'cashier@autoparts.com', password: 'cashier123', role: 'Cashier', icon: Zap, color: 'from-yellow-500 to-orange-600', glow: 'shadow-yellow-500/50' },
@@ -431,7 +432,14 @@ export const LoginPage: React.FC = () => {
                           <account.icon className="w-5 h-5" />
                         </div>
                         <div className="text-left">
-                          <div className="font-bold">{account.role}</div>
+                          <div className="font-bold flex items-center gap-2">
+                            {account.role}
+                            {account.badge && (
+                              <span className="px-2 py-0.5 bg-yellow-400 text-slate-900 text-xs rounded-full font-bold animate-pulse">
+                                {account.badge}
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs opacity-80">{account.email}</div>
                         </div>
                       </div>

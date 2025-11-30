@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Users, Tag, UserCircle, ShoppingBag, Package, FileText, 
   History, BookOpen, TrendingDown, Undo, FileEdit, Building2, Wallet, DollarSign, ShoppingCart, RotateCcw,
-  LogOut, ChevronDown, ChevronRight, Menu, X, Search, Settings, Wrench, Upload
+  LogOut, ChevronDown, ChevronRight, Menu, X, Search, Settings, Wrench, Upload, Scan
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -34,6 +34,7 @@ import { OrderManagementPanel } from './panels/OrderManagementPanel';
 import { BankAccountsPanel } from './panels/BankAccountsPanel';
 import { CashInHandPanel } from './panels/CashInHandPanel';
 import { BulkImportPanel } from './panels/BulkImportPanel';
+import { BulkBarcodePanel } from './panels/BulkBarcodePanel';
 
 type MenuItem = {
   id: string;
@@ -60,6 +61,7 @@ const menuStructure: MenuItem[] = [
     children: [
       { id: 'parties', label: 'Parties', icon: Users, panel: 'parties' },
       { id: 'total-inventory', label: 'Total Inventory', icon: Package, panel: 'total-inventory' },
+      { id: 'barcode-scanner', label: 'Barcode Scanner', icon: Scan, panel: 'barcode-scanner' },
       { id: 'bulk-import', label: 'Bulk Import', icon: Upload, panel: 'bulk-import' },
       { id: 'pricing-control', label: 'Pricing Control', icon: DollarSign, panel: 'pricing-control' },
       { id: 'order-management', label: 'Order Management', icon: ShoppingCart, panel: 'order-management' },
@@ -206,37 +208,29 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const renderPanel = () => {
-    const panelContent = (() => {
-      switch (activePanel) {
-        case 'dashboard': return <DashboardPanel />;
-        case 'user-roles': return <UserRolesPanel />;
-        case 'parties': return <PartiesPanel />;
-        case 'total-inventory': return <TotalInventoryPanel filter={inventoryFilter} />;
-        case 'bills': return <BillsPanel />;
-        case 'daybook': return <DayBookPanel />;
-        case 'ledger': return <LedgerPanel />;
-        case 'return': return <ReturnPanel />;
-        case 'bill-creation': return <BillCreationPanel />;
-        case 'pricing-control': return <PricingControlPanel />;
-        case 'purchase-orders': return <PurchaseOrderPanel />;
-        case 'return-refund': return <ReturnRefundPanel />;
-        case 'petty-cash': return <ExpensePettyCashPanel />;
-        case 'financial-reports': return <FinancialReportsPanel />;
-        case 'order-management': return <OrderManagementPanel />;
-        case 'bank-accounts': return <BankAccountsPanel />;
-        case 'cash-in-hand': return <CashInHandPanel />;
-        case 'bulk-import': return <BulkImportPanel />;
-        default: return <DashboardPanel />;
-      }
-    })();
-
-    const permissionKey = getPermissionForPanel(activePanel);
-    
-    return (
-      <PermissionGuard permission={permissionKey}>
-        {panelContent}
-      </PermissionGuard>
-    );
+    // Admin has full access to all panels - no permission checks
+    switch (activePanel) {
+      case 'dashboard': return <DashboardPanel />;
+      case 'user-roles': return <UserRolesPanel />;
+      case 'parties': return <PartiesPanel />;
+      case 'total-inventory': return <TotalInventoryPanel filter={inventoryFilter} />;
+      case 'bills': return <BillsPanel />;
+      case 'daybook': return <DayBookPanel />;
+      case 'ledger': return <LedgerPanel />;
+      case 'return': return <ReturnPanel />;
+      case 'bill-creation': return <BillCreationPanel />;
+      case 'pricing-control': return <PricingControlPanel />;
+      case 'purchase-orders': return <PurchaseOrderPanel />;
+      case 'return-refund': return <ReturnRefundPanel />;
+      case 'petty-cash': return <ExpensePettyCashPanel />;
+      case 'financial-reports': return <FinancialReportsPanel />;
+      case 'order-management': return <OrderManagementPanel />;
+      case 'bank-accounts': return <BankAccountsPanel />;
+      case 'cash-in-hand': return <CashInHandPanel />;
+      case 'barcode-scanner': return <BulkBarcodePanel />;
+      case 'bulk-import': return <BulkImportPanel />;
+      default: return <DashboardPanel />;
+    }
   };
 
   return (

@@ -31,6 +31,8 @@ import { MaintenanceCRM } from './MaintenanceCRM';
 import { CRMSystem } from './CRMSystem';
 import { MultiVendorPanel } from './panels/MultiVendorPanel';
 import { AccessControlPanel } from './panels/AccessControlPanel';
+import { BranchVendorManagement } from './panels/BranchVendorManagement';
+import { IntegratedBranchManagement } from './panels/IntegratedBranchManagement';
 
 type MenuItem = {
   id: string;
@@ -112,7 +114,7 @@ export const SuperAdminDashboard: React.FC = () => {
       case 'access_control':
         return <AccessControlPanel />;
       case 'branches':
-        return <BranchManagementViewFixed workspaces={workspaces} users={users} bills={bills} onUpdate={loadData} />;
+        return <IntegratedBranchManagement users={users} bills={bills} onUpdate={loadData} />;
       case 'finance':
         return <FinanceOversightView bills={bills} parties={parties} bankAccounts={bankAccounts} expenses={expenses} inventory={inventory} />;
       case 'inventory':
@@ -364,14 +366,35 @@ const DashboardView: React.FC<any> = ({ users, workspaces, bills, inventory, par
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-br from-orange-500 via-red-500 to-pink-600 rounded-2xl p-8 text-white">
-        <div className="flex items-center space-x-4 mb-4">
-          <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
-            <Shield className="w-8 h-8" />
+      <div className="relative bg-gradient-to-br from-orange-500 via-red-500 to-pink-600 rounded-2xl p-8 text-white overflow-hidden">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 left-0 w-64 h-64 bg-white rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-yellow-300 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+        </div>
+        
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+              <Shield className="w-8 h-8 animate-pulse" />
+            </div>
+            <div>
+              <h2 className="text-3xl font-bold mb-1">Super Admin Dashboard</h2>
+              <p className="text-orange-100 flex items-center space-x-2">
+                <span>Complete system control and monitoring</span>
+                <span className="text-white">•</span>
+                <span className="flex items-center space-x-1">
+                  <CheckCircle className="w-4 h-4" />
+                  <span>All access granted</span>
+                </span>
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-3xl font-bold">Super Admin Dashboard</h2>
-            <p className="text-orange-100">Complete system control and monitoring • All access granted</p>
+          
+          {/* Real-time indicator */}
+          <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl">
+            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+            <span className="text-sm font-semibold">System Online</span>
           </div>
         </div>
       </div>
@@ -379,13 +402,20 @@ const DashboardView: React.FC<any> = ({ users, workspaces, bills, inventory, par
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, idx) => (
-          <div key={idx} className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 hover:shadow-lg transition-all cursor-pointer">
+          <div 
+            key={idx} 
+            className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 hover:shadow-xl hover:border-gray-300 transition-all cursor-pointer group hover:-translate-y-1"
+            style={{ animationDelay: `${idx * 50}ms` }}
+          >
             <div className="flex items-center justify-between mb-4">
-              <div className={`${stat.bgColor} w-12 h-12 rounded-xl flex items-center justify-center`}>
+              <div className={`${stat.bgColor} w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
                 <stat.icon className={`w-6 h-6 ${stat.textColor}`} />
               </div>
               {stat.change && (
-                <span className="text-green-600 text-sm font-semibold">{stat.change}</span>
+                <span className="text-green-600 text-sm font-semibold flex items-center">
+                  <TrendingUp className="w-4 h-4 mr-1" />
+                  {stat.change}
+                </span>
               )}
             </div>
             <div>
@@ -397,12 +427,14 @@ const DashboardView: React.FC<any> = ({ users, workspaces, bills, inventory, par
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <button
           onClick={() => onNavigate('users')}
-          className="group bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white hover:shadow-2xl hover:shadow-blue-500/50 transition-all text-left"
+          className="group bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white hover:shadow-2xl hover:shadow-blue-500/50 transition-all text-left hover:scale-105"
         >
-          <Users className="w-10 h-10 mb-4" />
+          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-white/30 transition-all">
+            <Users className="w-6 h-6" />
+          </div>
           <h3 className="text-lg font-bold mb-2">User Management</h3>
           <p className="text-blue-100 text-sm mb-4">Create, edit, and manage all system users</p>
           <div className="flex items-center text-white font-semibold">
@@ -412,10 +444,30 @@ const DashboardView: React.FC<any> = ({ users, workspaces, bills, inventory, par
         </button>
 
         <button
-          onClick={() => onNavigate('finance')}
-          className="group bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white hover:shadow-2xl hover:shadow-green-500/50 transition-all text-left"
+          onClick={() => onNavigate('branches')}
+          className="group bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl p-6 text-white hover:shadow-2xl hover:shadow-purple-500/50 transition-all text-left hover:scale-105"
         >
-          <DollarSign className="w-10 h-10 mb-4" />
+          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-white/30 transition-all">
+            <Building2 className="w-6 h-6" />
+          </div>
+          <h3 className="text-lg font-bold mb-2 flex items-center">
+            Branch Management
+            <span className="ml-2 px-2 py-0.5 bg-yellow-400 text-purple-900 text-xs rounded-full font-bold">NEW</span>
+          </h3>
+          <p className="text-purple-100 text-sm mb-4">Manage branches, vendors, roles & access</p>
+          <div className="flex items-center text-white font-semibold">
+            <span>Manage Branches</span>
+            <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+          </div>
+        </button>
+
+        <button
+          onClick={() => onNavigate('finance')}
+          className="group bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white hover:shadow-2xl hover:shadow-green-500/50 transition-all text-left hover:scale-105"
+        >
+          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-white/30 transition-all">
+            <DollarSign className="w-6 h-6" />
+          </div>
           <h3 className="text-lg font-bold mb-2">Finance Oversight</h3>
           <p className="text-green-100 text-sm mb-4">Monitor all financial transactions and reports</p>
           <div className="flex items-center text-white font-semibold">
@@ -426,11 +478,13 @@ const DashboardView: React.FC<any> = ({ users, workspaces, bills, inventory, par
 
         <button
           onClick={() => onNavigate('audit')}
-          className="group bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-6 text-white hover:shadow-2xl hover:shadow-purple-500/50 transition-all text-left"
+          className="group bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl p-6 text-white hover:shadow-2xl hover:shadow-orange-500/50 transition-all text-left hover:scale-105"
         >
-          <Shield className="w-10 h-10 mb-4" />
+          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-white/30 transition-all">
+            <Shield className="w-6 h-6" />
+          </div>
           <h3 className="text-lg font-bold mb-2">Audit Log</h3>
-          <p className="text-purple-100 text-sm mb-4">Track all system activities and changes</p>
+          <p className="text-orange-100 text-sm mb-4">Track all system activities and changes</p>
           <div className="flex items-center text-white font-semibold">
             <span>View Logs</span>
             <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />

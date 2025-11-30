@@ -3,7 +3,7 @@ import {
   Package, Settings, Wrench, LogOut, Menu, X, Search, Plus, Edit, Trash2, 
   AlertCircle, TrendingUp, ShoppingCart, DollarSign, LayoutDashboard,
   FileText, History, Zap, Download, Upload, Filter, ChevronRight, 
-  ChevronDown, Box, Tag, Truck, BarChart3, CheckCircle, XCircle
+  ChevronDown, Box, Tag, Truck, BarChart3, CheckCircle, XCircle, Scan
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -14,6 +14,7 @@ import { InventoryItem, Transaction } from '../types';
 import { getFromStorage, saveToStorage } from '../utils/mockData';
 import { BillingSystem } from './BillingSystem';
 import { BulkImportPanel } from './panels/BulkImportPanel';
+import { BulkBarcodePanel } from './panels/BulkBarcodePanel';
 import { getPermissionForPanel } from '../utils/permissionMapping';
 
 type MenuItem = {
@@ -26,6 +27,7 @@ type MenuItem = {
 const menuItems: MenuItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, panel: 'dashboard' },
   { id: 'inventory', label: 'Inventory', icon: Package, panel: 'inventory' },
+  { id: 'barcode-scanner', label: 'Barcode Scanner', icon: Scan, panel: 'barcode-scanner' },
   { id: 'bulk-import', label: 'Bulk Import', icon: Upload, panel: 'bulk-import' },
   { id: 'billing', label: 'Billing & Sales', icon: ShoppingCart, panel: 'billing' },
   { id: 'transactions', label: 'Transactions', icon: History, panel: 'transactions' },
@@ -118,72 +120,65 @@ export const InventoryManagerDashboard: React.FC = () => {
   const totalInventoryValue = inventory.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   const renderPanel = () => {
-    const panelContent = (() => {
-      switch (activePanel) {
-        case 'dashboard':
-          return <DashboardView 
-            inventory={inventory}
-            lowStockItems={lowStockItems}
-            outOfStockItems={outOfStockItems}
-            todayTransactions={todayTransactions}
-            todayRevenue={todayRevenue}
-            totalInventoryValue={totalInventoryValue}
-            onNavigate={setActivePanel}
-          />;
-        case 'inventory':
-          return <InventoryView
-            filteredInventory={filteredInventory}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            filterCategory={filterCategory}
-            setFilterCategory={setFilterCategory}
-            filterVehicle={filterVehicle}
-            setFilterVehicle={setFilterVehicle}
-            lowStockItems={lowStockItems}
-            onAddItem={() => {
-              setEditingItem(null);
-              setShowAddItem(true);
-            }}
-            onEditItem={(item) => {
-              setEditingItem(item);
-              setShowAddItem(true);
-            }}
-            onDeleteItem={handleDeleteItem}
-          />;
-        case 'bulk-import':
-          return <BulkImportPanel />;
-        case 'billing':
-          return <BillingSystem 
-            inventory={inventory}
-            onTransactionComplete={handleTransactionComplete}
-          />;
-        case 'transactions':
-          return <TransactionsView transactions={transactions} />;
-        case 'reports':
-          return <ReportsView 
-            inventory={inventory}
-            transactions={transactions}
-          />;
-        default:
-          return <DashboardView 
-            inventory={inventory}
-            lowStockItems={lowStockItems}
-            outOfStockItems={outOfStockItems}
-            todayTransactions={todayTransactions}
-            todayRevenue={todayRevenue}
-            totalInventoryValue={totalInventoryValue}
-            onNavigate={setActivePanel}
-          />;
-      }
-    })();
-
-    const permissionKey = getPermissionForPanel(activePanel);
-    
-    return (
-      <PermissionGuard permission={permissionKey}>
-        {panelContent}
-      </PermissionGuard>
-    );
+    // Inventory Manager has full access to all panels - no permission checks
+    switch (activePanel) {
+      case 'dashboard':
+        return <DashboardView 
+          inventory={inventory}
+          lowStockItems={lowStockItems}
+          outOfStockItems={outOfStockItems}
+          todayTransactions={todayTransactions}
+          todayRevenue={todayRevenue}
+          totalInventoryValue={totalInventoryValue}
+          onNavigate={setActivePanel}
+        />;
+      case 'inventory':
+        return <InventoryView
+          filteredInventory={filteredInventory}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          filterCategory={filterCategory}
+          setFilterCategory={setFilterCategory}
+          filterVehicle={filterVehicle}
+          setFilterVehicle={setFilterVehicle}
+          lowStockItems={lowStockItems}
+          onAddItem={() => {
+            setEditingItem(null);
+            setShowAddItem(true);
+          }}
+          onEditItem={(item) => {
+            setEditingItem(item);
+            setShowAddItem(true);
+          }}
+          onDeleteItem={handleDeleteItem}
+        />;
+      case 'barcode-scanner':
+        return <BulkBarcodePanel />;
+      case 'bulk-import':
+        return <BulkImportPanel />;
+      case 'billing':
+        return <BillingSystem 
+          inventory={inventory}
+          onTransactionComplete={handleTransactionComplete}
+        />;
+      case 'transactions':
+        return <TransactionsView transactions={transactions} />;
+      case 'reports':
+        return <ReportsView 
+          inventory={inventory}
+          transactions={transactions}
+        />;
+      default:
+        return <DashboardView 
+          inventory={inventory}
+          lowStockItems={lowStockItems}
+          outOfStockItems={outOfStockItems}
+          todayTransactions={todayTransactions}
+          todayRevenue={todayRevenue}
+          totalInventoryValue={totalInventoryValue}
+          onNavigate={setActivePanel}
+        />;
+    }
   };
 
   return (

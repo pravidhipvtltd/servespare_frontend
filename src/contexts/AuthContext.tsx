@@ -22,6 +22,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initializeStorage();
     initializeExtendedStorage();
     
+    // CRITICAL: Ensure SuperAdmin accounts are always active
+    const ensureSuperAdminActive = () => {
+      const users: User[] = getFromStorage('users', []);
+      let hasChanges = false;
+      
+      const updatedUsers = users.map(user => {
+        if (user.role === 'super_admin' && user.isActive !== true) {
+          console.log('🔒 SYSTEM: Activating SuperAdmin account:', user.email);
+          hasChanges = true;
+          return { ...user, isActive: true };
+        }
+        return user;
+      });
+      
+      if (hasChanges) {
+        saveToStorage('users', updatedUsers);
+        console.log('✅ SYSTEM: SuperAdmin accounts activated');
+      }
+    };
+    
+    ensureSuperAdminActive();
+    
     // Check for existing session
     const sessionUser = getFromStorage('currentUser');
     if (sessionUser) {
@@ -50,19 +72,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
     const users: User[] = getFromStorage('users', []);
+    console.log('🔍 Login attempt:', { email, totalUsers: users.length });
+    console.log('📋 Available users:', users.map(u => ({ email: u.email, role: u.role, isActive: u.isActive })));
+    
     const user = users.find(u => u.email === email && u.password === password);
 
     if (user) {
+      console.log('✅ User found:', { email: user.email, role: user.role, isActive: user.isActive });
+      
       // Check if user is active
       if (user.isActive === false) {
+        console.log('❌ User is inactive');
         return { success: false, message: 'Your account has been deactivated. Please contact admin.' };
       }
       
+      console.log('✅ Login successful');
       setCurrentUser(user);
       saveToStorage('currentUser', user);
       return { success: true };
     }
 
+    console.log('❌ User not found with provided credentials');
     return { success: false, message: 'Invalid email or password' };
   };
 

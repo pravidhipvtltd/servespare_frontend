@@ -176,8 +176,19 @@ export const UserRolesPanel: React.FC = () => {
     const allUsers = getFromStorage('users', []);
 
     if (editingUser) {
+      // CRITICAL: Prevent changing SuperAdmin role BY ANYONE (including other SuperAdmins)
+      if (editingUser.role === 'super_admin' && formData.role !== 'super_admin') {
+        alert('🔒 SUPERADMIN PROTECTION\n\n❌ SuperAdmin role CANNOT be changed by ANYONE.\n\nThis includes:\n• Other SuperAdmin accounts\n• System administrators\n• Any user role\n\n✅ SuperAdmin role must remain constant to ensure:\n• System integrity\n• Critical security functions\n• Emergency administration access\n\nThis is a permanent security policy that cannot be overridden.');
+        return;
+      }
+      
+      // CRITICAL: SuperAdmin accounts must always be active
+      const updatedData = editingUser.role === 'super_admin' 
+        ? { ...formData, isActive: true } 
+        : formData;
+      
       const updated = allUsers.map((u: User) =>
-        u.id === editingUser.id ? { ...u, ...formData } : u
+        u.id === editingUser.id ? { ...u, ...updatedData } : u
       );
       saveToStorage('users', updated);
     } else {
@@ -196,14 +207,22 @@ export const UserRolesPanel: React.FC = () => {
   };
 
   const handleDelete = (userId: string) => {
-    // Admin cannot delete its own account
+    const allUsers = getFromStorage('users', []);
+    const targetUser = allUsers.find((u: User) => u.id === userId);
+    
+    // Cannot delete own account
     if (userId === currentUser?.id) {
-      alert('You cannot delete your own account.');
+      alert('❌ You cannot delete your own account.');
       return;
     }
     
-    if (confirm('Are you sure you want to delete this user?')) {
-      const allUsers = getFromStorage('users', []);
+    // CRITICAL: SuperAdmin accounts cannot be deleted BY ANYONE (including other SuperAdmins)
+    if (targetUser?.role === 'super_admin') {
+      alert('🔒 SUPERADMIN PROTECTION\n\n❌ SuperAdmin accounts CANNOT be deleted by ANYONE.\n\nThis includes:\n• Other SuperAdmin accounts\n• System administrators\n• Any user role\n\n✅ SuperAdmin accounts must ALWAYS exist to ensure:\n• System access and recovery\n• Critical security functions\n• Emergency administration\n\nThis is a permanent security policy that cannot be overridden.');
+      return;
+    }
+    
+    if (confirm('⚠️ Are you sure you want to delete this user?\n\nThis action cannot be undone!')) {
       const filtered = allUsers.filter((u: User) => u.id !== userId);
       saveToStorage('users', filtered);
       loadUsers();
@@ -211,13 +230,21 @@ export const UserRolesPanel: React.FC = () => {
   };
 
   const toggleUserStatus = (userId: string) => {
-    // Admin can activate/deactivate any user except themselves
+    const allUsers = getFromStorage('users', []);
+    const targetUser = allUsers.find((u: User) => u.id === userId);
+    
+    // Cannot toggle own status
     if (userId === currentUser?.id) {
-      alert('You cannot change your own status.');
+      alert('❌ You cannot change your own status.');
       return;
     }
     
-    const allUsers = getFromStorage('users', []);
+    // CRITICAL: SuperAdmin accounts cannot be deactivated BY ANYONE (including other SuperAdmins)
+    if (targetUser?.role === 'super_admin') {
+      alert('🔒 SUPERADMIN PROTECTION\n\n❌ SuperAdmin accounts CANNOT be deactivated by ANYONE.\n\nThis includes:\n• Other SuperAdmin accounts\n• System administrators\n• Any user role\n\n✅ SuperAdmin accounts must ALWAYS remain active to ensure:\n• System access and recovery\n• Critical security functions\n• Emergency administration\n\nThis is a permanent security policy that cannot be overridden.');
+      return;
+    }
+    
     const updated = allUsers.map((u: User) =>
       u.id === userId ? { ...u, isActive: !u.isActive } : u
     );
@@ -250,6 +277,10 @@ export const UserRolesPanel: React.FC = () => {
     if (user.id === currentUser?.id) {
       return false;
     }
+    // CRITICAL: SuperAdmin accounts cannot be deleted
+    if (user.role === 'super_admin') {
+      return false;
+    }
     // Only super admin can delete admin
     if (user.role === 'admin' && currentUser?.role !== 'super_admin') {
       return false;
@@ -260,6 +291,10 @@ export const UserRolesPanel: React.FC = () => {
   const canToggleStatus = (user: User) => {
     // Cannot toggle own status
     if (user.id === currentUser?.id) {
+      return false;
+    }
+    // CRITICAL: SuperAdmin accounts cannot be deactivated
+    if (user.role === 'super_admin') {
       return false;
     }
     // Only super admin can toggle admin status
@@ -395,16 +430,81 @@ export const UserRolesPanel: React.FC = () => {
         </div>
       </div>
 
+      {/* SuperAdmin Protection Warning Banner */}
+      {filteredUsers.some(user => user.role === 'super_admin') && (
+        <div className="bg-gradient-to-r from-yellow-50 via-orange-50 to-red-50 border-2 border-orange-400 rounded-xl p-5 shadow-lg mb-6">
+          <div className="flex items-start space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center flex-shrink-0 animate-pulse">
+              <Shield className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-orange-900 text-lg mb-2 flex items-center">
+                🔒 SuperAdmin Default Settings - Immutable Protection Policy
+              </h3>
+              <p className="text-orange-800 text-sm mb-3">
+                <strong>CRITICAL SECURITY NOTICE:</strong> The SuperAdmin role has <strong>default status settings that CANNOT be changed by ANY user</strong>, including other admins. SuperAdmin accounts displayed below are permanently protected and <strong>CANNOT</strong> be modified by <strong>ANYONE</strong>.
+              </p>
+              <div className="bg-white/60 rounded-lg p-3 space-y-2 text-sm">
+                <div className="flex items-start space-x-2">
+                  <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-white text-xs font-bold">✕</span>
+                  </div>
+                  <div>
+                    <strong className="text-gray-900">Cannot be Deactivated:</strong>
+                    <span className="text-gray-700"> SuperAdmin is ALWAYS ACTIVE in default state and cannot be made inactive</span>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-white text-xs font-bold">✕</span>
+                  </div>
+                  <div>
+                    <strong className="text-gray-900">Cannot be Deleted:</strong>
+                    <span className="text-gray-700"> SuperAdmin accounts must always exist in the system</span>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-white text-xs font-bold">✕</span>
+                  </div>
+                  <div>
+                    <strong className="text-gray-900">Role Cannot be Changed:</strong>
+                    <span className="text-gray-700"> SuperAdmin role is permanent and cannot be modified</span>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-2 mt-3 pt-3 border-t border-orange-200">
+                  <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-white text-xs font-bold">✓</span>
+                  </div>
+                  <div>
+                    <strong className="text-green-900">Reason:</strong>
+                    <span className="text-green-800"> These restrictions ensure system access, recovery capabilities, and critical security functions are always maintained.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Cards View */}
       {viewMode === 'cards' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredUsers.map((user, index) => (
             <div
               key={user.id}
-              className="group bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+              className={`group bg-white rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 ${
+                user.role === 'super_admin' 
+                  ? 'border-4 border-yellow-400 shadow-2xl shadow-yellow-100 ring-2 ring-yellow-300 ring-offset-2' 
+                  : 'border border-gray-200'
+              }`}
             >
               {/* Card Header with Avatar */}
-              <div className="relative h-32 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+              <div className={`relative h-32 flex items-center justify-center ${
+                user.role === 'super_admin'
+                  ? 'bg-gradient-to-br from-yellow-50 via-orange-50 to-red-50'
+                  : 'bg-gradient-to-br from-gray-50 to-gray-100'
+              }`}>
                 {user.avatar ? (
                   <img src={user.avatar} alt={user.name} className="w-24 h-24 rounded-full object-cover shadow-lg transform group-hover:scale-110 transition-transform duration-300" />
                 ) : (
@@ -415,11 +515,38 @@ export const UserRolesPanel: React.FC = () => {
                 
                 {/* Status Badge */}
                 <div className="absolute top-4 right-4">
-                  <button
-                    onClick={() => toggleUserStatus(user.id)}
-                    disabled={!canToggleStatus(user)}
-                    className={`w-3 h-3 rounded-full ${user.isActive !== false ? 'bg-green-500' : 'bg-red-500'} ring-4 ring-white ${canToggleStatus(user) ? 'cursor-pointer hover:scale-125' : 'cursor-not-allowed opacity-60'} transition-transform`}
-                  />
+                  {user.role === 'super_admin' ? (
+                    <div className="flex flex-col items-end space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => {
+                            alert('🔒 SUPERADMIN PROTECTION\n\n❌ SuperAdmin CANNOT be deactivated by ANYONE.\n\nThis includes:\n• Other SuperAdmin accounts\n• System administrators\n• Any user role\n\n✅ SuperAdmin accounts must ALWAYS remain active to ensure:\n• System access and recovery\n• Critical security functions\n• Emergency administration\n\nThis is a permanent security policy that cannot be overridden.\n\nThe SuperAdmin role has default status settings that CANNOT be changed by ANY user, including other admins.');
+                          }}
+                          className="w-3 h-3 rounded-full bg-green-500 ring-4 ring-white animate-pulse cursor-pointer hover:scale-125 transition-transform"
+                          title="SuperAdmin - Always Active (Click to see why)"
+                        />
+                        <div className="bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-bold flex items-center space-x-1">
+                          <Shield className="w-3 h-3" />
+                          <span>PROTECTED</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          alert('🔒 SUPERADMIN PROTECTION\n\n❌ SuperAdmin CANNOT be deactivated by ANYONE.\n\nThis includes:\n• Other SuperAdmin accounts\n• System administrators\n• Any user role\n\n✅ SuperAdmin accounts must ALWAYS remain active to ensure:\n• System access and recovery\n• Critical security functions\n• Emergency administration\n\nThis is a permanent security policy that cannot be overridden.\n\nThe SuperAdmin role has default status settings that CANNOT be changed by ANY user, including other admins.');
+                        }}
+                        className="text-xs font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-300 cursor-pointer hover:bg-green-100 hover:border-green-400 transition-all"
+                        title="Click to see why SuperAdmin cannot be deactivated"
+                      >
+                        ALWAYS ACTIVE
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => toggleUserStatus(user.id)}
+                      disabled={!canToggleStatus(user)}
+                      className={`w-3 h-3 rounded-full ${user.isActive !== false ? 'bg-green-500' : 'bg-red-500'} ring-4 ring-white ${canToggleStatus(user) ? 'cursor-pointer hover:scale-125' : 'cursor-not-allowed opacity-60'} transition-transform`}
+                    />
+                  )}
                 </div>
               </div>
 
@@ -427,9 +554,16 @@ export const UserRolesPanel: React.FC = () => {
               <div className="p-5">
                 <div className="text-center mb-4">
                   <h4 className="text-gray-900 font-semibold text-lg mb-1">{user.name}</h4>
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${ROLE_COLORS[user.role].bg} ${ROLE_COLORS[user.role].text}`}>
-                    {ROLE_LABELS[user.role]}
-                  </span>
+                  <div className="flex flex-col items-center space-y-1">
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${ROLE_COLORS[user.role].bg} ${ROLE_COLORS[user.role].text}`}>
+                      {ROLE_LABELS[user.role]}
+                    </span>
+                    {user.role === 'super_admin' && (
+                      <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-300">
+                        DEFAULT SETTINGS LOCKED
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Hover Info */}
@@ -463,18 +597,39 @@ export const UserRolesPanel: React.FC = () => {
                     <Shield className="w-4 h-4" />
                     <span>Permissions</span>
                   </button>
-                  <button
-                    onClick={() => handleOpenSidebar(user)}
-                    className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(user.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {user.role === 'super_admin' ? (
+                    <>
+                      <button
+                        onClick={() => handleOpenSidebar(user)}
+                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        title="Edit (Role Protected)"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        disabled
+                        className="p-2 text-gray-400 cursor-not-allowed rounded-lg opacity-50"
+                        title="Cannot Delete SuperAdmin"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => handleOpenSidebar(user)}
+                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(user.id)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -499,14 +654,28 @@ export const UserRolesPanel: React.FC = () => {
               </thead>
               <tbody>
                 {filteredUsers.map((user, index) => (
-                  <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                  <tr key={user.id} className={`border-b border-gray-100 transition-colors ${
+                    user.role === 'super_admin' 
+                      ? 'bg-yellow-50 hover:bg-yellow-100' 
+                      : 'hover:bg-gray-50'
+                  }`}>
                     <td className="py-4 px-6">
                       <div className="flex items-center space-x-3">
-                        <div className={`w-12 h-12 rounded-full ${getRandomGradient(index)} flex items-center justify-center text-white font-semibold`}>
+                        <div className={`w-12 h-12 rounded-full ${getRandomGradient(index)} flex items-center justify-center text-white font-semibold ${
+                          user.role === 'super_admin' ? 'ring-2 ring-yellow-400 ring-offset-2' : ''
+                        }`}>
                           {getInitials(user.name)}
                         </div>
                         <div>
-                          <div className="text-gray-900 font-medium">{user.name}</div>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-gray-900 font-medium">{user.name}</span>
+                            {user.role === 'super_admin' && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-yellow-400 text-yellow-900">
+                                <Shield className="w-3 h-3 mr-1" />
+                                PROTECTED
+                              </span>
+                            )}
+                          </div>
                           <div className="text-gray-500 text-sm">{user.email}</div>
                         </div>
                       </div>
@@ -518,26 +687,44 @@ export const UserRolesPanel: React.FC = () => {
                       </span>
                     </td>
                     <td className="py-4 px-6">
-                      <button
-                        onClick={() => toggleUserStatus(user.id)}
-                        className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                          user.isActive !== false
-                            ? 'bg-green-50 text-green-700 hover:bg-green-100'
-                            : 'bg-red-50 text-red-700 hover:bg-red-100'
-                        }`}
-                      >
-                        {user.isActive !== false ? (
-                          <>
-                            <CheckCircle className="w-3 h-3" />
-                            <span>Active</span>
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="w-3 h-3" />
-                            <span>Inactive</span>
-                          </>
-                        )}
-                      </button>
+                      {user.role === 'super_admin' ? (
+                        <div className="flex flex-col space-y-1">
+                          <button
+                            onClick={() => {
+                              alert('🔒 SUPERADMIN PROTECTION\n\n❌ SuperAdmin CANNOT be deactivated by ANYONE.\n\nThis includes:\n• Other SuperAdmin accounts\n• System administrators\n• Any user role\n\n✅ SuperAdmin accounts must ALWAYS remain active to ensure:\n• System access and recovery\n• Critical security functions\n• Emergency administration\n\nThis is a permanent security policy that cannot be overridden.\n\nThe SuperAdmin role has default status settings that CANNOT be changed by ANY user, including other admins.');
+                            }}
+                            className="flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border-2 border-green-400 cursor-pointer hover:bg-green-200 hover:border-green-500 transition-all"
+                            title="Click to see why SuperAdmin cannot be deactivated"
+                          >
+                            <div className="w-2 h-2 rounded-full bg-green-600 animate-pulse"></div>
+                            <span>ALWAYS ACTIVE</span>
+                            <Shield className="w-3 h-3" />
+                          </button>
+                          <span className="text-xs text-gray-500 italic pl-3">Default State - Cannot be Inactive</span>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => toggleUserStatus(user.id)}
+                          disabled={!canToggleStatus(user)}
+                          className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                            user.isActive !== false
+                              ? 'bg-green-50 text-green-700 hover:bg-green-100'
+                              : 'bg-red-50 text-red-700 hover:bg-red-100'
+                          } ${!canToggleStatus(user) ? 'cursor-not-allowed opacity-50' : ''}`}
+                        >
+                          {user.isActive !== false ? (
+                            <>
+                              <CheckCircle className="w-3 h-3" />
+                              <span>Active</span>
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="w-3 h-3" />
+                              <span>Inactive</span>
+                            </>
+                          )}
+                        </button>
+                      )}
                     </td>
                     <td className="py-4 px-6 text-gray-600 text-sm">
                       {new Date(user.createdAt).toLocaleDateString()}
@@ -551,20 +738,46 @@ export const UserRolesPanel: React.FC = () => {
                         >
                           <Shield className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => handleOpenSidebar(user)}
-                          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                          title="Edit User"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(user.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete User"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {user.role === 'super_admin' ? (
+                          <>
+                            <button
+                              onClick={() => handleOpenSidebar(user)}
+                              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                              title="Edit (Role & Status Protected)"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              disabled
+                              className="p-2 text-gray-400 cursor-not-allowed rounded-lg opacity-50"
+                              title="🔒 SuperAdmin Cannot Be Deleted"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleOpenSidebar(user)}
+                              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                              title="Edit User"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(user.id)}
+                              disabled={!canDeleteUser(user)}
+                              className={`p-2 rounded-lg transition-colors ${
+                                canDeleteUser(user)
+                                  ? 'text-red-600 hover:bg-red-50'
+                                  : 'text-gray-400 cursor-not-allowed opacity-50'
+                              }`}
+                              title={canDeleteUser(user) ? "Delete User" : "Cannot Delete This User"}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -601,6 +814,45 @@ export const UserRolesPanel: React.FC = () => {
                   <X className="w-6 h-6" />
                 </button>
               </div>
+
+              {/* SuperAdmin Protection Notice */}
+              {editingUser?.role === 'super_admin' && (
+                <div className="mb-6 bg-gradient-to-r from-yellow-50 via-orange-50 to-red-50 border-2 border-orange-400 rounded-xl p-4 shadow-lg">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center flex-shrink-0 animate-pulse">
+                      <Shield className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-orange-900 text-sm mb-2">
+                        🔒 SUPERADMIN DEFAULT SETTINGS - IMMUTABLE
+                      </h4>
+                      <p className="text-orange-800 text-xs mb-2">
+                        <strong>CRITICAL:</strong> The SuperAdmin role has <strong>default status settings that CANNOT be changed by ANY user</strong>, including other admins.
+                      </p>
+                      <div className="bg-white/60 rounded-lg p-2 space-y-1.5 text-xs">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-xs font-bold">✕</span>
+                          </div>
+                          <span className="text-gray-900"><strong>Role:</strong> Locked to SuperAdmin (cannot be changed)</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-xs font-bold">✕</span>
+                          </div>
+                          <span className="text-gray-900"><strong>Status:</strong> ALWAYS ACTIVE in default state (cannot be made inactive)</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-xs font-bold">✓</span>
+                          </div>
+                          <span className="text-green-900"><strong>Editable:</strong> Name, Email, Phone, Password, Avatar</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Avatar Upload */}

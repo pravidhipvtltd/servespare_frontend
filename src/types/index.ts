@@ -18,7 +18,10 @@ export interface User {
 export interface Workspace {
   id: string;
   name: string;
-  adminId: string;
+  adminId?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  address?: string;
   createdAt: string;
 }
 
