@@ -122,6 +122,7 @@ const translations = {
     'footer.app.title': 'Connect & Manage on a Touch !',
     'footer.app.subtitle': 'Track inventory, Streamline tasks, Ensure smooth mobile app. Add property, Manage Sales, Track your overall performance, and access all your properties directly from your phone or tablet.',
     'footer.app.tagline': 'A PERFECT PARTNER FOR YOU AND YOUR AUTO PARTS BUSINESS',
+    'footer.app.cta': 'Get Started with Us',
     'footer.follow': 'Follow us on social media',
     
     // About Page
@@ -489,6 +490,7 @@ const translations = {
     'footer.app.title': 'एक टच मा जडान र व्यवस्थापन गर्नुहोस् !',
     'footer.app.subtitle': 'सूची ट्र्याक गर्नुहोस्, कार्यहरू सुव्यवस्थित गर्नुहोस्, सहज मोबाइल एप सुनिश्चित गर्नुहोस्। सम्पत्ति थप्नुहोस्, बिक्री व्यवस्थापन गर्नुहोस्, आफ्नो समग्र प्रदर्शन ट्र्याक गर्नुहोस्, र आफ्नो फोन वा ट्याब्लेटबाट सीधै सबै सम्पत्तिहरू पहुँच गर्नुहोस्।',
     'footer.app.tagline': 'तपाईं र तपाईंको अटो पार्ट्स व्यवसायको लागि एक उत्तम साझेदार',
+    'footer.app.cta': 'हामीसँग सुरु गर्नुहोस्',
     'footer.follow': 'सामाजिक सञ्जालमा हामीलाई फलो गर्नुहोस्',
     
     // About Page

@@ -24,6 +24,16 @@ const LandingPageContent: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<PageType>('home');
   const { language } = useLandingLanguage();
 
+  // Listen for navigation events from feature cards
+  React.useEffect(() => {
+    const handleNavigateToContact = () => {
+      handleNavigation('contact');
+    };
+    
+    window.addEventListener('navigateToContact', handleNavigateToContact);
+    return () => window.removeEventListener('navigateToContact', handleNavigateToContact);
+  }, []);
+
   if (showLogin) {
     return <ModernAuthPage initialMode="login" onBack={() => setShowLogin(false)} />;
   }
@@ -63,7 +73,7 @@ const LandingPageContent: React.FC = () => {
       )}
       
       {currentPage === 'about' && <AboutPage />}
-      {currentPage === 'features' && <FeaturesPage />}
+      {currentPage === 'features' && <FeaturesPage onNavigateToPricing={() => handleNavigation('pricing')} onNavigateToRegister={() => setShowRegister(true)} />}
       {currentPage === 'pricing' && <PricingPage onGetStarted={() => handleNavigation('contact')} />}
       {currentPage === 'contact' && <ContactPage />}
       {currentPage === 'blog' && <BlogPage language={language} />}
@@ -539,13 +549,31 @@ const FeaturesSection: React.FC = () => {
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ delay: index * 0.1 }}
               whileHover={{ y: -10, scale: 1.02 }}
-              className="bg-gradient-to-br from-gray-50 to-gray-100 p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all"
+              whileTap={{ scale: 0.98 }}
+              className="bg-gradient-to-br from-gray-50 to-gray-100 p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all cursor-pointer"
             >
               <div className={`w-16 h-16 bg-gradient-to-br ${feature.color} rounded-2xl flex items-center justify-center text-white mb-6`}>
                 {feature.icon}
               </div>
               <h3 className="text-2xl font-bold mb-3">{t(feature.titleKey)}</h3>
-              <p className="text-gray-600 leading-relaxed">{t(feature.descKey)}</p>
+              <p className="text-gray-600 leading-relaxed mb-6">{t(feature.descKey)}</p>
+              
+              {/* Book a Demo Button */}
+              <motion.button
+                whileHover={{ scale: 1.05, x: 5 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  // This will be handled by parent component navigation
+                  const event = new CustomEvent('navigateToContact');
+                  window.dispatchEvent(event);
+                }}
+                className="flex items-center space-x-2 text-indigo-600 font-semibold hover:text-indigo-700 transition-colors group"
+              >
+                <span>Book a Demo Now</span>
+                <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+              </motion.button>
             </motion.div>
           ))}
         </div>
@@ -682,7 +710,7 @@ const Testimonials: React.FC = () => {
       roleKey: 'testimonials.3.role',
       textKey: 'testimonials.3.text',
       rating: 5,
-      avatar: '����‍🔧'
+      avatar: '‍🔧'
     },
   ];
 

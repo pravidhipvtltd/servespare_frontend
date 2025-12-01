@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Settings, Package, TrendingUp, ArrowRight, Mail, Lock, User, Phone, 
-  Eye, EyeOff, Facebook, Chrome, Building, MapPin, Wrench, Star, Zap, Shield, FileText, Upload, X, Info
+  Settings, Package, TrendingUp, ArrowRight, Mail, Lock, User, 
+  Eye, EyeOff, Building, MapPin, Wrench, Star, Zap, Shield, FileText, Upload, X, Info, Phone, Chrome, Facebook
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 import { OTPVerification } from './OTPVerification';
-import { APIConfigModal } from './APIConfigModal';
+import { EmailOTPLogin } from './EmailOTPLogin';
+import { ForgotPassword } from './ForgotPassword';
+import { createClient } from '@supabase/supabase-js';
 
 interface ModernAuthPageProps {
   initialMode?: 'login' | 'register';
@@ -21,6 +23,12 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({ initialMode = 'l
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Email OTP Login Flow
+  const [emailOtpMode, setEmailOtpMode] = useState(false);
+  
+  // Forgot Password Flow
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  
   const { login } = useAuth();
 
   // Login State
@@ -31,20 +39,19 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({ initialMode = 'l
 
   // Register State
   const [registerData, setRegisterData] = useState({
-    fullName: '',
+    businessName: '',
+    ownerName: '',
     email: '',
     phone: '',
-    businessName: '',
-    location: '',
-    panVatNumber: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    address: '',
+    panVatNumber: ''
   });
 
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [showOtpVerification, setShowOtpVerification] = useState(false);
   const [registrationEmail, setRegistrationEmail] = useState('');
-  const [registrationPhone, setRegistrationPhone] = useState('');
   const [showAPIConfigModal, setShowAPIConfigModal] = useState(false);
   const [apiErrors, setApiErrors] = useState<{ email?: string; sms?: string }>({});
 
@@ -96,18 +103,8 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({ initialMode = 'l
       return;
     }
 
-    // Validate phone number (should be 10 digits after +977)
-    const phoneDigits = registerData.phone.replace(/\s/g, '');
-    if (phoneDigits.length !== 10 || !/^\d{10}$/.test(phoneDigits)) {
-      setError('Please enter a valid 10-digit Nepali phone number');
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      const fullPhone = `+977${phoneDigits}`;
-      
-      // Send OTP to email and phone
+      // Send OTP to email only
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-9e3b22f5/send-otp`, {
         method: 'POST',
         headers: {
@@ -115,8 +112,7 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({ initialMode = 'l
           'Authorization': `Bearer ${publicAnonKey}`
         },
         body: JSON.stringify({
-          email: registerData.email,
-          phone: fullPhone
+          email: registerData.email
         })
       });
 
@@ -128,35 +124,12 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({ initialMode = 'l
 
       // Store registration data and show OTP verification
       setRegistrationEmail(registerData.email);
-      setRegistrationPhone(fullPhone);
       setShowOtpVerification(true);
 
-      // Store API errors for config modal
-      const errors: { email?: string; sms?: string } = {};
-      if (!result.emailSent && result.emailError) {
-        errors.email = result.emailError;
-      }
-      if (!result.smsSent && result.smsError) {
-        errors.sms = result.smsError;
-      }
-      setApiErrors(errors);
-
-      // Show appropriate message based on delivery status
+      // For testing: if email fails, show OTP in alert
       if (result.otp) {
-        // Both failed - show OTP in testing mode AND config modal
         console.log('🔐 TEST OTP:', result.otp);
-        alert(`📱 TESTING MODE\n\n` +
-              `Your OTP is: ${result.otp}\n\n` +
-              `━━━━━━━━━━━━━━━━━━━━\n` +
-              `${!result.emailSent ? '❌ Email: Failed to send\n' : '✅ Email: Sent successfully\n'}` +
-              `${!result.smsSent ? '❌ SMS: Failed to send\n' : '✅ SMS: Sent successfully\n'}\n` +
-              `${result.warning || ''}\n\n` +
-              `Click "API Configuration" in the OTP screen to see detailed fix instructions.`
-        );
-      } else if (result.warning) {
-        // One succeeded, one failed - show warning
-        console.warn('⚠️ Partial delivery:', result.warning);
-        // Don't show alert if only one method failed - they'll see it in the OTP screen
+        alert(`📧 TESTING MODE\n\nYour OTP is: ${result.otp}\n\nEmail delivery is in test mode. Check console for details.`);
       }
       
     } catch (err: any) {
@@ -166,43 +139,169 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({ initialMode = 'l
     }
   };
 
-  const handleSocialLogin = (provider: string) => {
-    console.log('Social login with:', provider);
-    // Add social login logic here
+  const handleSocialLogin = async (provider: string) => {
+    if (provider === 'email') {
+      // Show email OTP login flow
+      setEmailOtpMode(true);
+      return;
+    }
+
+    // Handle Facebook and Google login
+    try {
+      const supabaseUrl = `https://${projectId}.supabase.co`;
+      const supabase = createClient(supabaseUrl, publicAnonKey);
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: provider as 'facebook' | 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+
+      if (error) {
+        console.error(`${provider} login error:`, error);
+        alert(`${provider} login failed: ${error.message}\n\nPlease ensure ${provider} auth is configured in Supabase dashboard.`);
+        return;
+      }
+
+      // After successful OAuth, handle the user session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        // Check if user exists in our system
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        let existingUser = users.find((u: any) => u.email === session.user.email);
+
+        if (!existingUser) {
+          // Create new user with minimal data
+          const newUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          existingUser = {
+            id: newUserId,
+            email: session.user.email,
+            name: session.user.user_metadata.full_name || session.user.email?.split('@')[0],
+            role: 'admin' as const,
+            isActive: true,
+            profileComplete: false,
+            createdAt: new Date().toISOString(),
+            language: 'en' as const,
+            permissions: [],
+            oauthProvider: provider
+          };
+
+          users.push(existingUser);
+          localStorage.setItem('users', JSON.stringify(users));
+        }
+
+        localStorage.setItem('currentUser', JSON.stringify(existingUser));
+        if (!existingUser.profileComplete) {
+          localStorage.setItem('needsProfileCompletion', 'true');
+        }
+
+        // Refresh the page to load the dashboard
+        window.location.reload();
+      }
+    } catch (err: any) {
+      console.error(`${provider} login error:`, err);
+      alert(`Failed to login with ${provider}. Please try again.`);
+    }
   };
+
+  // If Email OTP mode is active
+  if (emailOtpMode) {
+    return (
+      <EmailOTPLogin
+        onBack={() => setEmailOtpMode(false)}
+        onSuccess={(email) => {
+          // EmailOTPLogin handles the redirect internally
+          // This callback is just for cleanup
+          setEmailOtpMode(false);
+        }}
+      />
+    );
+  }
+
+  // If Forgot Password mode is active
+  if (showForgotPassword) {
+    return (
+      <ForgotPassword
+        onBack={() => setShowForgotPassword(false)}
+        onSuccess={() => {
+          setShowForgotPassword(false);
+          setMode('login');
+        }}
+      />
+    );
+  }
 
   // If OTP verification is active, show that instead
   if (showOtpVerification) {
     return (
       <OTPVerification
         email={registrationEmail}
-        phone={registrationPhone}
         onVerified={() => {
-          // After OTP is verified, complete registration
-          // For now, just redirect to login
-          alert('Registration successful! Please login with your credentials.');
-          setShowOtpVerification(false);
-          setMode('login');
+          // After OTP is verified, complete registration by saving user to localStorage
+          try {
+            // Generate a unique ID for the new user
+            const newUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            
+            // Create the new user object
+            const newUser = {
+              id: newUserId,
+              name: registerData.ownerName,
+              email: registerData.email,
+              phone: registerData.phone,
+              password: registerData.password,
+              role: 'admin' as const, // New registrations get admin role by default
+              businessName: registerData.businessName,
+              address: registerData.address,
+              panVatNumber: registerData.panVatNumber,
+              isActive: true, // New users are active by default
+              createdAt: new Date().toISOString(),
+              language: 'en' as const,
+              permissions: [] // Permissions will be set by super admin later
+            };
+            
+            // Get existing users from localStorage
+            const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
+            
+            // Add the new user
+            existingUsers.push(newUser);
+            
+            // Save back to localStorage
+            localStorage.setItem('users', JSON.stringify(existingUsers));
+            
+            console.log('✅ New user registered successfully:', newUser.email);
+            
+            // Show success message and redirect to login
+            alert('🎉 Registration successful! You can now login with your credentials.');
+            setShowOtpVerification(false);
+            setMode('login');
+            
+            // Clear the registration data
+            setRegisterData({
+              businessName: '',
+              ownerName: '',
+              email: '',
+              phone: '',
+              password: '',
+              confirmPassword: '',
+              address: '',
+              panVatNumber: ''
+            });
+            setUploadedFile(null);
+          } catch (error) {
+            console.error('Error saving user:', error);
+            alert('Registration completed but there was an error. Please contact support.');
+          }
         }}
         onBack={() => {
           setShowOtpVerification(false);
         }}
-        apiErrors={apiErrors}
-        onOpenAPIConfig={() => setShowAPIConfigModal(true)}
       />
     );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-      {/* API Config Modal */}
-      <APIConfigModal
-        show={showAPIConfigModal}
-        onClose={() => setShowAPIConfigModal(false)}
-        emailError={apiErrors.email}
-        smsError={apiErrors.sms}
-      />
-      
       <div className="w-full max-w-6xl bg-white rounded-3xl shadow-2xl overflow-hidden">
         <div className="grid md:grid-cols-2 min-h-[600px]">
           {/* Left Side - Animated Visual */}
@@ -231,6 +330,7 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({ initialMode = 'l
                   handleLogin={handleLogin}
                   handleSocialLogin={handleSocialLogin}
                   switchToRegister={() => setMode('register')}
+                  setShowForgotPassword={setShowForgotPassword}
                 />
               ) : (
                 <RegisterForm
@@ -380,7 +480,8 @@ const StatCard: React.FC<{ number: string; label: string }> = ({ number, label }
 const LoginForm: React.FC<any> = ({ 
   loginData, setLoginData, showPassword, setShowPassword, 
   isLoading, error,
-  handleLogin, handleSocialLogin, switchToRegister 
+  handleLogin, handleSocialLogin, switchToRegister,
+  setShowForgotPassword
 }) => (
   <motion.div
     initial={{ opacity: 0, x: 20 }}
@@ -499,7 +600,7 @@ const LoginForm: React.FC<any> = ({
 
       {/* Forgot Password */}
       <div className="text-right">
-        <button type="button" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
+        <button type="button" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium" onClick={() => setShowForgotPassword(true)}>
           Forgot Password?
         </button>
       </div>
@@ -537,27 +638,13 @@ const LoginForm: React.FC<any> = ({
         </div>
       </div>
 
-      {/* Social Login */}
-      <div className="space-y-3">
-        <SocialButton 
-          icon={<Mail size={20} />} 
-          text="Continue with Email" 
-          onClick={() => handleSocialLogin('email')}
-          color="bg-gray-600"
-        />
-        <SocialButton 
-          icon={<Facebook size={20} />} 
-          text="Continue with Facebook" 
-          onClick={() => handleSocialLogin('facebook')}
-          color="bg-blue-600"
-        />
-        <SocialButton 
-          icon={<Chrome size={20} />} 
-          text="Continue with Google" 
-          onClick={() => handleSocialLogin('google')}
-          color="bg-red-600"
-        />
-      </div>
+      {/* Email OTP Login */}
+      <SocialButton 
+        icon={<Mail size={20} />} 
+        text="Continue with Email" 
+        onClick={() => handleSocialLogin('email')}
+        color="bg-indigo-600"
+      />
 
       {/* Sign Up Link */}
       <div className="text-center pt-4">
@@ -610,10 +697,30 @@ const RegisterForm: React.FC<any> = ({
         </motion.div>
       )}
 
-      {/* Full Name */}
+      {/* Business Name */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Full Name
+          Business Name
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Building className="text-gray-400" size={18} />
+          </div>
+          <input
+            type="text"
+            value={registerData.businessName}
+            onChange={(e) => setRegisterData({ ...registerData, businessName: e.target.value })}
+            className="w-full pl-10 pr-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
+            placeholder="Your Auto Parts Shop"
+            required
+          />
+        </div>
+      </div>
+
+      {/* Owner Name */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Owner Name
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -621,8 +728,8 @@ const RegisterForm: React.FC<any> = ({
           </div>
           <input
             type="text"
-            value={registerData.fullName}
-            onChange={(e) => setRegisterData({ ...registerData, fullName: e.target.value })}
+            value={registerData.ownerName}
+            onChange={(e) => setRegisterData({ ...registerData, ownerName: e.target.value })}
             className="w-full pl-10 pr-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
             placeholder="John Doe"
             required
@@ -630,95 +737,117 @@ const RegisterForm: React.FC<any> = ({
         </div>
       </div>
 
-      {/* Email & Phone */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Email
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Mail className="text-gray-400" size={18} />
-            </div>
-            <input
-              type="email"
-              value={registerData.email}
-              onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-              className="w-full pl-10 pr-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
-              placeholder="john@example.com"
-              required
-            />
+      {/* Email */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Email
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Mail className="text-gray-400" size={18} />
           </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Phone
-          </label>
-          <div className="relative flex">
-            {/* Locked +977 Prefix */}
-            <div className="absolute inset-y-0 left-0 pl-3 pr-2 flex items-center pointer-events-none bg-gray-100 border-2 border-r-0 border-gray-200 rounded-l-xl z-10">
-              <Phone className="text-gray-400 mr-1" size={18} />
-              <span className="text-gray-700 font-medium">+977</span>
-            </div>
-            <input
-              type="tel"
-              value={registerData.phone}
-              onChange={(e) => {
-                // Only allow numbers
-                const value = e.target.value.replace(/\D/g, '');
-                // Limit to 10 digits
-                if (value.length <= 10) {
-                  setRegisterData({ ...registerData, phone: value });
-                }
-              }}
-              className="w-full pl-24 pr-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
-              placeholder="9812345678"
-              maxLength={10}
-              pattern="[0-9]{10}"
-              required
-            />
-          </div>
-          <p className="text-xs text-gray-500 mt-1">10-digit Nepali mobile number</p>
+          <input
+            type="email"
+            value={registerData.email}
+            onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
+            className="w-full pl-10 pr-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
+            placeholder="john@example.com"
+            required
+          />
         </div>
       </div>
 
-      {/* Business Name & Location */}
+      {/* Phone Number */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Phone Number
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Phone className="text-gray-400" size={18} />
+          </div>
+          <input
+            type="tel"
+            value={registerData.phone}
+            onChange={(e) => setRegisterData({ ...registerData, phone: e.target.value })}
+            className="w-full pl-10 pr-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
+            placeholder="+977 9801234567"
+            required
+          />
+        </div>
+      </div>
+
+      {/* Password & Confirm Password */}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Business Name
+            Password
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Building className="text-gray-400" size={18} />
+              <Lock className="text-gray-400" size={18} />
             </div>
             <input
-              type="text"
-              value={registerData.businessName}
-              onChange={(e) => setRegisterData({ ...registerData, businessName: e.target.value })}
-              className="w-full pl-10 pr-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
-              placeholder="Your Auto Parts Shop"
+              type={showPassword ? 'text' : 'password'}
+              value={registerData.password}
+              onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
+              className="w-full pl-10 pr-10 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
+              placeholder="••••••••"
               required
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
           </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Location
+            Confirm Password
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <MapPin className="text-gray-400" size={18} />
+              <Lock className="text-gray-400" size={18} />
             </div>
             <input
-              type="text"
-              value={registerData.location}
-              onChange={(e) => setRegisterData({ ...registerData, location: e.target.value })}
-              className="w-full pl-10 pr-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
-              placeholder="Kathmandu, Nepal"
+              type={showConfirmPassword ? 'text' : 'password'}
+              value={registerData.confirmPassword}
+              onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
+              className="w-full pl-10 pr-10 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
+              placeholder="••••••••"
               required
             />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+            >
+              {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
           </div>
+        </div>
+      </div>
+
+      {/* Address */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Address
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <MapPin className="text-gray-400" size={18} />
+          </div>
+          <input
+            type="text"
+            value={registerData.address}
+            onChange={(e) => setRegisterData({ ...registerData, address: e.target.value })}
+            className="w-full pl-10 pr-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
+            placeholder="Kathmandu, Nepal"
+            required
+          />
         </div>
       </div>
 
@@ -781,60 +910,6 @@ const RegisterForm: React.FC<any> = ({
           </div>
         </div>
         <p className="text-xs text-gray-500 mt-1">Upload your business registration or PAN/VAT certificate</p>
-      </div>
-
-      {/* Password & Confirm Password */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Password
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Lock className="text-gray-400" size={18} />
-            </div>
-            <input
-              type={showPassword ? 'text' : 'password'}
-              value={registerData.password}
-              onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-              className="w-full pl-10 pr-10 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
-              placeholder="••••••••"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-            >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Confirm Password
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Lock className="text-gray-400" size={18} />
-            </div>
-            <input
-              type={showConfirmPassword ? 'text' : 'password'}
-              value={registerData.confirmPassword}
-              onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
-              className="w-full pl-10 pr-10 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
-              placeholder="••••••••"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-            >
-              {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* Register Button */}

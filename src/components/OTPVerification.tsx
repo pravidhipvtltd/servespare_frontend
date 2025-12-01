@@ -1,24 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Mail, Phone, ArrowLeft, CheckCircle, X, RefreshCw } from 'lucide-react';
+import { Mail, ArrowLeft, CheckCircle, X, RefreshCw } from 'lucide-react';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 
 interface OTPVerificationProps {
   email: string;
-  phone: string;
   onVerified: () => void;
   onBack: () => void;
-  apiErrors?: { email?: string; sms?: string };
-  onOpenAPIConfig?: () => void;
 }
 
 export const OTPVerification: React.FC<OTPVerificationProps> = ({ 
   email, 
-  phone, 
   onVerified, 
-  onBack,
-  apiErrors,
-  onOpenAPIConfig
+  onBack
 }) => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
@@ -117,7 +111,6 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
           },
           body: JSON.stringify({
             email,
-            phone,
             otp: otpCode
           })
         }
@@ -165,7 +158,7 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${publicAnonKey}`
           },
-          body: JSON.stringify({ email, phone })
+          body: JSON.stringify({ email })
         }
       );
 
@@ -243,35 +236,11 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
           {!success && (
             <>
               {/* Contact Info */}
-              <div className="bg-gray-50 rounded-xl p-4 mb-6 space-y-2">
+              <div className="bg-gray-50 rounded-xl p-4 mb-6">
                 <div className="flex items-center justify-center space-x-2 text-sm">
                   <Mail size={16} className="text-indigo-600" />
                   <span className="text-gray-700 font-medium">{email}</span>
                 </div>
-                <div className="flex items-center justify-center space-x-2 text-sm">
-                  <Phone size={16} className="text-indigo-600" />
-                  <span className="text-gray-700 font-medium">{phone}</span>
-                </div>
-                
-                {/* API Configuration Notice */}
-                {(apiErrors?.email || apiErrors?.sms) && onOpenAPIConfig && (
-                  <div className="pt-3 border-t border-gray-200 mt-3">
-                    <button
-                      onClick={onOpenAPIConfig}
-                      className="w-full px-4 py-2 bg-yellow-50 hover:bg-yellow-100 border border-yellow-200 rounded-lg text-sm text-yellow-800 font-medium transition-colors flex items-center justify-center space-x-2"
-                    >
-                      <span>⚠️ API Configuration</span>
-                    </button>
-                    <p className="text-xs text-gray-500 text-center mt-2">
-                      {apiErrors?.email && apiErrors?.sms 
-                        ? 'Both email & SMS have issues'
-                        : apiErrors?.email 
-                          ? 'Email delivery has an issue'
-                          : 'SMS delivery has an issue'
-                      }
-                    </p>
-                  </div>
-                )}
               </div>
 
               {/* Error Message */}

@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { motion, useInView } from 'motion/react';
 import { Check, X, Zap, Star, Crown, Sparkles } from 'lucide-react';
 import { useLandingLanguage } from '../../contexts/LandingLanguageContext';
+import { PricingCheckoutModal } from '../PricingCheckoutModal';
 
 interface PricingPageProps {
   onGetStarted: () => void;
@@ -9,6 +10,23 @@ interface PricingPageProps {
 
 export const PricingPage: React.FC<PricingPageProps> = ({ onGetStarted }) => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [checkoutModal, setCheckoutModal] = useState<{
+    isOpen: boolean;
+    planName: string;
+    planPrice: number;
+  }>({
+    isOpen: false,
+    planName: '',
+    planPrice: 0
+  });
+
+  const handleGetStarted = (planName: string, planPrice: number) => {
+    setCheckoutModal({
+      isOpen: true,
+      planName,
+      planPrice
+    });
+  };
 
   return (
     <div className="pt-20">
@@ -16,13 +34,25 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onGetStarted }) => {
       <HeroSection billingCycle={billingCycle} setBillingCycle={setBillingCycle} />
       
       {/* Pricing Cards */}
-      <PricingCards billingCycle={billingCycle} onGetStarted={onGetStarted} />
+      <PricingCards 
+        billingCycle={billingCycle} 
+        onGetStarted={handleGetStarted}
+      />
       
       {/* FAQ */}
       <FAQ />
       
       {/* CTA */}
       <CTA onGetStarted={onGetStarted} />
+
+      {/* Checkout Modal */}
+      <PricingCheckoutModal
+        isOpen={checkoutModal.isOpen}
+        onClose={() => setCheckoutModal({ ...checkoutModal, isOpen: false })}
+        planName={checkoutModal.planName}
+        planPrice={checkoutModal.planPrice}
+        billingCycle={billingCycle}
+      />
     </div>
   );
 };
@@ -87,7 +117,7 @@ const HeroSection: React.FC<{ billingCycle: string; setBillingCycle: (cycle: 'mo
   );
 };
 
-const PricingCards: React.FC<{ billingCycle: string; onGetStarted: () => void }> = ({ billingCycle, onGetStarted }) => {
+const PricingCards: React.FC<{ billingCycle: string; onGetStarted: (planName: string, planPrice: number) => void }> = ({ billingCycle, onGetStarted }) => {
   const { t } = useLandingLanguage();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
@@ -205,7 +235,7 @@ const PricingCards: React.FC<{ billingCycle: string; onGetStarted: () => void }>
               </div>
 
               <button
-                onClick={onGetStarted}
+                onClick={() => onGetStarted(plan.nameKey, billingCycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice)}
                 className={`block w-full text-center px-6 py-4 rounded-full font-semibold transition-all mb-8 ${
                   plan.popular
                     ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-lg hover:scale-105'

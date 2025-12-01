@@ -9,15 +9,40 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { InventoryManagerDashboard } from './components/InventoryManagerDashboard';
 import { CashierDashboard } from './components/CashierDashboard';
 import { FinanceDashboard } from './components/FinanceDashboard';
+import { ProfileCompletion } from './components/ProfileCompletion';
 import './utils/debugHelpers';
 
 const AppContent: React.FC = () => {
-  const { currentUser, isLoading } = useAuth();
+  const { currentUser, isLoading, logout } = useAuth();
+  const [needsProfileCompletion, setNeedsProfileCompletion] = React.useState(false);
 
   // Set document title
   React.useEffect(() => {
     document.title = 'Serve Spares - Inventory System';
   }, []);
+
+  // Check if profile completion is needed
+  React.useEffect(() => {
+    if (currentUser) {
+      const needsCompletion = localStorage.getItem('needsProfileCompletion') === 'true';
+      console.log('🔍 Profile completion check:', {
+        user: currentUser.email,
+        needsCompletion,
+        role: currentUser.role
+      });
+      setNeedsProfileCompletion(needsCompletion);
+    } else {
+      console.log('⚠️ No current user found');
+    }
+  }, [currentUser]);
+
+  console.log('📱 App render state:', {
+    isLoading,
+    hasUser: !!currentUser,
+    userEmail: currentUser?.email,
+    needsProfileCompletion,
+    role: currentUser?.role
+  });
 
   if (isLoading) {
     return (
@@ -32,6 +57,24 @@ const AppContent: React.FC = () => {
 
   if (!currentUser) {
     return <LandingPage />;
+  }
+
+  // Show profile completion if needed
+  if (needsProfileCompletion) {
+    return (
+      <ProfileCompletion
+        userEmail={currentUser.email}
+        onComplete={() => {
+          localStorage.removeItem('needsProfileCompletion');
+          setNeedsProfileCompletion(false);
+          window.location.reload();
+        }}
+        onSkip={() => {
+          localStorage.removeItem('needsProfileCompletion');
+          setNeedsProfileCompletion(false);
+        }}
+      />
+    );
   }
 
   // Role-based dashboard routing

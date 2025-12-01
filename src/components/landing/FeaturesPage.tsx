@@ -1,20 +1,42 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion, useInView } from 'motion/react';
 import { 
   Package, BarChart3, Users, Truck, Smartphone, Settings,
   DollarSign, ShoppingCart, FileText, Wrench, Shield, Zap,
-  Clock, Globe, CheckCircle, Star, Scan, Languages
+  Clock, Globe, CheckCircle, Star, Scan, Languages, ArrowRight, Calendar
 } from 'lucide-react';
 import { useLandingLanguage } from '../../contexts/LandingLanguageContext';
+import { DemoBookingModal } from '../DemoBookingModal';
 
-export const FeaturesPage: React.FC = () => {
+interface FeaturesPageProps {
+  onNavigateToPricing?: () => void;
+  onNavigateToRegister?: () => void;
+}
+
+export const FeaturesPage: React.FC<FeaturesPageProps> = ({ onNavigateToPricing, onNavigateToRegister }) => {
+  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
+  const [selectedFeature, setSelectedFeature] = useState<string>('');
+
+  const handleBookDemo = (featureName: string) => {
+    setSelectedFeature(featureName);
+    setIsDemoModalOpen(true);
+  };
+
+  const handleGetStarted = () => {
+    if (onNavigateToRegister) {
+      onNavigateToRegister();
+    } else if (onNavigateToPricing) {
+      onNavigateToPricing();
+    }
+  };
+
   return (
     <div className="pt-20">
       {/* Hero */}
       <HeroSection />
       
       {/* Core Features */}
-      <CoreFeatures />
+      <CoreFeatures onBookDemo={handleBookDemo} onGetStarted={handleGetStarted} />
       
       {/* Feature Categories */}
       <FeatureCategories />
@@ -24,6 +46,13 @@ export const FeaturesPage: React.FC = () => {
       
       {/* Security */}
       <Security />
+
+      {/* Demo Booking Modal */}
+      <DemoBookingModal
+        isOpen={isDemoModalOpen}
+        onClose={() => setIsDemoModalOpen(false)}
+        featureName={selectedFeature}
+      />
     </div>
   );
 };
@@ -73,7 +102,7 @@ const HeroSection: React.FC = () => {
   );
 };
 
-const CoreFeatures: React.FC = () => {
+const CoreFeatures: React.FC<{ onBookDemo: (featureName: string) => void, onGetStarted: () => void }> = ({ onBookDemo, onGetStarted }) => {
   const { t } = useLandingLanguage();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
@@ -164,6 +193,29 @@ const CoreFeatures: React.FC = () => {
                   </li>
                 ))}
               </ul>
+
+              {/* Action Buttons */}
+              <div className="mt-8 pt-6 border-t border-gray-300 flex space-x-3">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex-1 bg-white border-2 border-gray-300 text-gray-700 px-4 py-3 rounded-xl font-semibold flex items-center justify-center space-x-2 hover:border-indigo-500 hover:text-indigo-600 transition-all"
+                  onClick={() => onBookDemo(t(feature.titleKey))}
+                >
+                  <Calendar size={18} />
+                  <span>Book a Demo</span>
+                </motion.button>
+                
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`flex-1 bg-gradient-to-r ${feature.color} text-white px-4 py-3 rounded-xl font-semibold flex items-center justify-center space-x-2 hover:shadow-lg transition-all`}
+                  onClick={onGetStarted}
+                >
+                  <span>Get Started</span>
+                  <ArrowRight size={18} />
+                </motion.button>
+              </div>
             </motion.div>
           ))}
         </div>

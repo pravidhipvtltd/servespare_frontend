@@ -23,7 +23,7 @@ export const ModernFooter: React.FC<ModernFooterProps> = ({ setShowLogin, onNavi
           <BlogSection onNavigate={onNavigate} />
           
           {/* Mobile App Section */}
-          <MobileAppSection />
+          <MobileAppSection onNavigate={onNavigate} />
         </>
       )}
       
@@ -104,84 +104,283 @@ const BlogSection: React.FC<{ onNavigate: (page: PageType) => void }> = ({ onNav
 };
 
 // Mobile App Section
-const MobileAppSection: React.FC = () => {
+const MobileAppSection: React.FC<{ onNavigate: (page: PageType) => void }> = ({ onNavigate }) => {
   const { t } = useLandingLanguage();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
 
   return (
-    <section ref={ref} className="py-20 bg-gradient-to-br from-purple-50 to-indigo-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section ref={ref} className="py-20 bg-gradient-to-br from-indigo-50 via-purple-50 to-indigo-100 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <motion.div
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3],
+          }}
+          transition={{ duration: 8, repeat: Infinity }}
+          className="absolute top-10 left-10 w-72 h-72 bg-indigo-300 rounded-full blur-3xl"
+        />
+        <motion.div
+          animate={{
+            scale: [1.2, 1, 1.2],
+            opacity: [0.3, 0.5, 0.3],
+          }}
+          transition={{ duration: 10, repeat: Infinity }}
+          className="absolute bottom-10 right-10 w-96 h-96 bg-purple-300 rounded-full blur-3xl"
+        />
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           {/* Left Content */}
           <motion.div
             initial={{ opacity: 0, x: -50 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.6 }}
           >
-            <h2 className="text-4xl font-bold text-indigo-600 mb-6">{t('footer.app.title')}</h2>
-            <p className="text-gray-700 mb-8 leading-relaxed">{t('footer.app.subtitle')}</p>
+            <motion.h2 
+              className="text-5xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 bg-clip-text text-transparent mb-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ delay: 0.2 }}
+            >
+              {t('footer.app.title')}
+            </motion.h2>
+            
+            <motion.p 
+              className="text-gray-700 mb-8 leading-relaxed text-lg"
+              initial={{ opacity: 0, y: 20 }}
+              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ delay: 0.3 }}
+            >
+              {t('footer.app.subtitle')}
+            </motion.p>
             
             {/* Download Buttons */}
-            <div className="flex flex-wrap gap-4 mb-8">
-              <a href="#" className="hover:opacity-80 transition-opacity">
+            <motion.div 
+              className="flex flex-wrap gap-4 mb-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ delay: 0.4 }}
+            >
+              <motion.a 
+                href="#" 
+                whileHover={{ scale: 1.05, y: -5 }}
+                whileTap={{ scale: 0.95 }}
+                className="hover:opacity-80 transition-all shadow-lg hover:shadow-xl"
+              >
                 <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Get it on Google Play" className="h-14" />
-              </a>
-              <a href="#" className="hover:opacity-80 transition-opacity">
+              </motion.a>
+              <motion.a 
+                href="#" 
+                whileHover={{ scale: 1.05, y: -5 }}
+                whileTap={{ scale: 0.95 }}
+                className="hover:opacity-80 transition-all shadow-lg hover:shadow-xl"
+              >
                 <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="Download on the App Store" className="h-14" />
-              </a>
-            </div>
+              </motion.a>
+            </motion.div>
+
+            {/* Get Started Button */}
+            <motion.button
+              onClick={() => onNavigate('contact')}
+              initial={{ opacity: 0, y: 20 }}
+              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ delay: 0.5 }}
+              whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(99, 102, 241, 0.3)" }}
+              whileTap={{ scale: 0.95 }}
+              className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white font-semibold rounded-xl shadow-xl hover:shadow-2xl transition-all group"
+            >
+              <span className="text-lg">{t('footer.app.cta')}</span>
+              <motion.svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6 ml-2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                animate={{ x: [0, 5, 0] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </motion.svg>
+            </motion.button>
           </motion.div>
 
           {/* Right - Phone Mockups */}
           <motion.div
             initial={{ opacity: 0, x: 50 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.6 }}
             className="relative flex justify-center items-center"
           >
             <div className="relative">
-              {/* Phone 1 */}
+              {/* Phone 1 - Main */}
               <motion.div
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 3, repeat: Infinity, repeatType: 'reverse' }}
-                className="w-64 h-[500px] bg-gradient-to-br from-indigo-600 to-purple-800 rounded-[3rem] shadow-2xl relative overflow-hidden border-8 border-gray-800"
+                animate={{ 
+                  y: [0, -15, 0],
+                  rotateY: [0, 5, 0]
+                }}
+                transition={{ duration: 4, repeat: Infinity, repeatType: 'reverse' }}
+                className="w-64 h-[520px] bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 rounded-[3rem] shadow-2xl relative overflow-hidden border-8 border-gray-900"
+                style={{ transformStyle: 'preserve-3d' }}
               >
-                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-32 h-6 bg-gray-800 rounded-b-2xl"></div>
-                <div className="p-6 mt-8 flex flex-col items-center justify-center h-full text-white">
-                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 w-full">
-                    <Smartphone size={80} className="mx-auto mb-4" />
-                    <p className="text-center font-bold text-lg">ServeSpares</p>
-                    <p className="text-center text-sm opacity-80">Inventory System</p>
+                {/* Notch */}
+                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-32 h-7 bg-gray-900 rounded-b-3xl z-20"></div>
+                
+                {/* Screen Content */}
+                <div className="p-6 mt-10 flex flex-col items-center justify-center h-full text-white relative">
+                  {/* Animated Gradient Overlay */}
+                  <motion.div
+                    animate={{
+                      background: [
+                        'linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)',
+                        'linear-gradient(225deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)',
+                        'linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)',
+                      ]
+                    }}
+                    transition={{ duration: 3, repeat: Infinity }}
+                    className="absolute inset-0"
+                  />
+                  
+                  <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-6 w-full shadow-xl border border-white/20 relative z-10">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                    >
+                      <Smartphone size={80} className="mx-auto mb-4" />
+                    </motion.div>
+                    <p className="text-center font-bold text-xl">ServeSpares</p>
+                    <p className="text-center text-sm opacity-90">Inventory System</p>
                   </div>
                 </div>
+
+                {/* Shine Effect */}
+                <motion.div
+                  animate={{
+                    x: [-100, 400],
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    repeatDelay: 2,
+                    ease: "easeInOut"
+                  }}
+                  className="absolute top-0 left-0 w-20 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
+                />
               </motion.div>
 
               {/* Phone 2 - Overlapping */}
               <motion.div
-                animate={{ y: [0, 10, 0] }}
-                transition={{ duration: 3, repeat: Infinity, repeatType: 'reverse', delay: 0.5 }}
-                className="absolute top-10 -right-20 w-56 h-[450px] bg-gradient-to-br from-purple-600 to-pink-600 rounded-[3rem] shadow-2xl overflow-hidden border-8 border-gray-800"
+                animate={{ 
+                  y: [0, 15, 0],
+                  rotateY: [0, -5, 0]
+                }}
+                transition={{ duration: 4, repeat: Infinity, repeatType: 'reverse', delay: 0.5 }}
+                className="absolute top-12 -right-20 w-56 h-[470px] bg-gradient-to-br from-purple-600 via-pink-600 to-purple-800 rounded-[3rem] shadow-2xl overflow-hidden border-8 border-gray-900"
+                style={{ transformStyle: 'preserve-3d' }}
               >
-                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-28 h-6 bg-gray-800 rounded-b-2xl"></div>
-                <div className="p-6 mt-8 flex flex-col items-center justify-center h-full text-white">
-                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 w-full">
-                    <Smartphone size={70} className="mx-auto mb-4" />
-                    <p className="text-center font-bold">ServeSpares</p>
-                    <p className="text-center text-xs opacity-80">Inventory System</p>
+                {/* Notch */}
+                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-28 h-6 bg-gray-900 rounded-b-3xl z-20"></div>
+                
+                {/* Screen Content */}
+                <div className="p-6 mt-9 flex flex-col items-center justify-center h-full text-white relative">
+                  {/* Animated Gradient Overlay */}
+                  <motion.div
+                    animate={{
+                      background: [
+                        'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)',
+                        'linear-gradient(315deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)',
+                        'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)',
+                      ]
+                    }}
+                    transition={{ duration: 3, repeat: Infinity, delay: 1 }}
+                    className="absolute inset-0"
+                  />
+                  
+                  <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-5 w-full shadow-xl border border-white/20 relative z-10">
+                    <motion.div
+                      animate={{ rotate: -360 }}
+                      transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                    >
+                      <Smartphone size={70} className="mx-auto mb-3" />
+                    </motion.div>
+                    <p className="text-center font-bold text-lg">ServeSpares</p>
+                    <p className="text-center text-xs opacity-90">Inventory System</p>
                   </div>
                 </div>
+
+                {/* Shine Effect */}
+                <motion.div
+                  animate={{
+                    x: [-100, 400],
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    repeatDelay: 2,
+                    delay: 1,
+                    ease: "easeInOut"
+                  }}
+                  className="absolute top-0 left-0 w-20 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
+                />
               </motion.div>
             </div>
           </motion.div>
         </div>
 
-        {/* Tagline */}
+        {/* Tagline Banner */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ delay: 0.5 }}
-          className="mt-12 text-center"
+          transition={{ delay: 0.7, duration: 0.6 }}
+          className="mt-16 relative"
         >
-          <p className="text-2xl font-bold text-indigo-600">{t('footer.app.tagline')}</p>
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 rounded-2xl p-8 text-center shadow-2xl relative overflow-hidden"
+          >
+            {/* Animated Background Pattern */}
+            <div className="absolute inset-0 opacity-20">
+              <motion.div
+                animate={{
+                  backgroundPosition: ['0% 0%', '100% 100%'],
+                }}
+                transition={{ duration: 20, repeat: Infinity, repeatType: 'reverse' }}
+                className="w-full h-full"
+                style={{
+                  backgroundImage: 'radial-gradient(circle, white 2px, transparent 2px)',
+                  backgroundSize: '50px 50px'
+                }}
+              />
+            </div>
+            
+            <motion.p 
+              className="text-3xl font-bold text-white relative z-10"
+              animate={{
+                textShadow: [
+                  '0 0 20px rgba(255,255,255,0.5)',
+                  '0 0 30px rgba(255,255,255,0.8)',
+                  '0 0 20px rgba(255,255,255,0.5)',
+                ]
+              }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              {t('footer.app.tagline')}
+            </motion.p>
+            
+            {/* Decorative Elements */}
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+              className="absolute top-4 left-4 w-16 h-16 border-4 border-white/30 rounded-full"
+            />
+            <motion.div
+              animate={{ rotate: -360 }}
+              transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+              className="absolute bottom-4 right-4 w-20 h-20 border-4 border-white/30 rounded-full"
+            />
+          </motion.div>
         </motion.div>
       </div>
     </section>

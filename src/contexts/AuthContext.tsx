@@ -48,7 +48,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const sessionUser = getFromStorage('currentUser');
     if (sessionUser) {
       // Refresh user data from users array to get latest permissions
-      refreshUserData(sessionUser.id);
+      const users: User[] = getFromStorage('users', []);
+      const updatedUser = users.find(u => u.id === sessionUser.id);
+      if (updatedUser) {
+        setCurrentUser(updatedUser);
+        saveToStorage('currentUser', updatedUser);
+      } else {
+        // If user not found in users array but exists in currentUser, use it anyway
+        // This can happen with newly created users from Email OTP
+        setCurrentUser(sessionUser);
+      }
     }
     setIsLoading(false);
   }, []);
