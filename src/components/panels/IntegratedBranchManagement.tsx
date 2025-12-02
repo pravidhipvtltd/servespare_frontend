@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { getFromStorage, saveToStorage } from '../../utils/mockData';
 import { Workspace, User, Bill } from '../../types';
+import { Pagination } from '../common/Pagination';
 
 interface Vendor {
   id: string;
@@ -87,6 +88,9 @@ export const IntegratedBranchManagement: React.FC<{ users: User[]; bills: Bill[]
   const [showAddBranchModal, setShowAddBranchModal] = useState(false);
   const [showAddVendorModal, setShowAddVendorModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'vendors' | 'roles' | 'users'>('overview');
+  const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   useEffect(() => {
     loadData();
@@ -212,6 +216,66 @@ export const IntegratedBranchManagement: React.FC<{ users: User[]; bills: Bill[]
     loadData();
     onUpdate();
     alert('✅ Branch and vendors deleted!');
+    setSelectedBranches([]);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedBranches.length === 0) {
+      alert('Please select branches to delete');
+      return;
+    }
+
+    if (!confirm(`⚠️ Delete ${selectedBranches.length} branch(es) and all associated vendors?\\n\\nThis action cannot be undone!`)) return;
+
+    const allWorkspaces = getFromStorage('workspaces', []);
+    const allVendors = getFromStorage('vendors', []);
+    const branchRoles = getFromStorage('branchRoles', {});
+    
+    // Filter out selected branches
+    const updatedWorkspaces = allWorkspaces.filter((w: Workspace) => !selectedBranches.includes(w.id));
+    saveToStorage('workspaces', updatedWorkspaces);
+
+    // Delete associated vendors for all selected branches
+    const updatedVendors = allVendors.filter((v: Vendor) => !selectedBranches.includes(v.parentBranchId));
+    saveToStorage('vendors', updatedVendors);
+
+    // Delete branch roles
+    selectedBranches.forEach(branchId => {
+      delete branchRoles[branchId];
+    });
+    saveToStorage('branchRoles', branchRoles);
+
+    // Audit log
+    const auditLog = getFromStorage('auditLog', []);
+    auditLog.unshift({
+      id: `AUDIT-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      userId: 'superadmin',
+      userName: 'Super Admin',
+      action: 'Bulk Delete Branches',
+      details: `Deleted ${selectedBranches.length} branches and all associated vendors`,
+      category: 'branch',
+    });
+    saveToStorage('auditLog', auditLog);
+
+    setSelectedBranches([]);
+    loadData();
+    onUpdate();
+    alert(`✅ ${selectedBranches.length} branch(es) and vendors deleted!`);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedBranches.length === paginatedBranches.length) {
+      setSelectedBranches([]);
+    } else {
+      setSelectedBranches(paginatedBranches.map(b => b.id));
+    }
+  };
+
+  const toggleSelectBranch = (id: string) => {
+    setSelectedBranches(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
   };
 
   const handleDeleteVendor = (vendorId: string) => {
@@ -255,6 +319,8 @@ export const IntegratedBranchManagement: React.FC<{ users: User[]; bills: Bill[]
     (branch.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (branch.contactEmail || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const paginatedBranches = filteredBranches.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="space-y-6">
@@ -309,21 +375,34 @@ export const IntegratedBranchManagement: React.FC<{ users: User[]; bills: Bill[]
 
       {/* Search */}
       <div className="bg-white border border-gray-200 rounded-xl p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search branches..."
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-          />
+        <div className="flex flex-col md:flex-row gap-4 items-center">
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search branches..."
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Bulk Delete Button */}
+          {selectedBranches.length > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              className="flex items-center space-x-2 px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
+            >
+              <Trash2 className="w-5 h-5" />
+              <span>Delete ({selectedBranches.length})</span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* Branches Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredBranches.map((branch) => {
+        {paginatedBranches.map((branch) => {
           const branchUsers = users.filter(u => u.workspaceId === branch.id);
           const branchBills = bills.filter(b => b.workspaceId === branch.id);
           const branchVendors = vendors.filter(v => v.parentBranchId === branch.id);

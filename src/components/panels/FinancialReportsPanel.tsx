@@ -65,10 +65,13 @@ export const FinancialReportsPanel: React.FC = () => {
   const loadData = () => {
     // Load bills
     const allBills = getFromStorage('bills', []).filter((b: Bill) => {
-      const billDate = new Date(b.createdAt).toISOString().split('T')[0];
+      if (!b.createdAt) return false;
+      const date = new Date(b.createdAt);
+      if (isNaN(date.getTime())) return false;
+      const billDate = date.toISOString().split('T')[0];
       return (
         b.workspaceId === currentUser?.workspaceId &&
-        b.status === 'paid' &&
+        b.paymentStatus === 'paid' &&
         billDate >= dateRange.start &&
         billDate <= dateRange.end
       );
@@ -106,7 +109,10 @@ export const FinancialReportsPanel: React.FC = () => {
 
     // Load purchase orders
     const allPurchaseOrders = getFromStorage('purchaseOrders', []).filter((po: any) => {
-      const poDate = new Date(po.createdAt).toISOString().split('T')[0];
+      if (!po.createdAt) return false;
+      const date = new Date(po.createdAt);
+      if (isNaN(date.getTime())) return false;
+      const poDate = date.toISOString().split('T')[0];
       return (
         po.workspaceId === currentUser?.workspaceId &&
         poDate >= dateRange.start &&

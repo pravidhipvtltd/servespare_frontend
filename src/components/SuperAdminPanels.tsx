@@ -19,8 +19,8 @@ export const InventoryMasterView: React.FC<any> = ({ inventory, parties, onUpdat
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
 
   const filteredInventory = inventory.filter((item: InventoryItem) => {
-    const searchMatch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                       item.partNumber?.toLowerCase().includes(searchQuery.toLowerCase());
+    const searchMatch = (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                       (item.partNumber || '').toLowerCase().includes(searchQuery.toLowerCase());
     const categoryMatch = categoryFilter === 'all' || item.category === categoryFilter;
     return searchMatch && categoryMatch;
   });

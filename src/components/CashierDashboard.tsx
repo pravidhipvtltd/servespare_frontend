@@ -15,6 +15,7 @@ import { PermissionGuard } from './PermissionGuard';
 import { InventoryItem, Bill, BillItem, CashTransaction } from '../types';
 import { getFromStorage, saveToStorage } from '../utils/mockData';
 import { getPermissionForPanel } from '../utils/permissionMapping';
+import { CashierCashDrawerPanel } from './panels/CashierCashDrawerPanel';
 
 type MenuItem = {
   id: string;
@@ -230,6 +231,10 @@ export const CashierDashboard: React.FC = () => {
     const allBills: Bill[] = getFromStorage('bills', []);
     saveToStorage('bills', [...allBills, newBill]);
 
+    // Emit billCreated event for cash drawer tracking
+    const billCreatedEvent = new CustomEvent('billCreated', { detail: newBill });
+    window.dispatchEvent(billCreatedEvent);
+
     // Record cash transaction if cash payment
     if (paymentMethod === 'cash') {
       const cashTxn: CashTransaction = {
@@ -267,9 +272,9 @@ export const CashierDashboard: React.FC = () => {
   };
 
   const filteredInventory = inventory.filter(item => 
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.partNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.barcode?.toLowerCase().includes(searchQuery.toLowerCase())
+    (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.partNumber || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.barcode || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const todayBills = bills.filter(b => 
@@ -328,15 +333,7 @@ export const CashierDashboard: React.FC = () => {
       case 'sales':
         return <SalesHistoryView bills={todayBills} />;
       case 'cash':
-        return <CashDrawerView 
-          cashTransactions={cashTransactions}
-          todayCashSales={todayCashSales}
-          shiftStartCash={shiftStartCash}
-          shiftStarted={shiftStarted}
-          startShift={startShift}
-          currentUser={currentUser}
-          onUpdate={loadData}
-        />;
+        return <CashierCashDrawerPanel />;
       case 'eod':
         return <EndOfDayView 
           todayBills={todayBills}

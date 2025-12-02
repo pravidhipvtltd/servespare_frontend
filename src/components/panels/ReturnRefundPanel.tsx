@@ -98,7 +98,7 @@ export const ReturnRefundPanel: React.FC = () => {
 
   const loadData = () => {
     const allBills = getFromStorage('bills', []).filter(
-      (b: Bill) => b.workspaceId === currentUser?.workspaceId && b.status === 'paid'
+      (b: Bill) => b.workspaceId === currentUser?.workspaceId && b.paymentStatus === 'paid'
     );
     setBills(allBills);
 

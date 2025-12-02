@@ -346,7 +346,7 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
-                  { code: 'en' as const, name: 'English', nativeName: 'English', flag: '🇬🇧' },
+                  { code: 'en' as const, name: 'English', nativeName: 'English', flag: '🇺🇸' },
                   { code: 'ne' as const, name: 'Nepali', nativeName: 'नेपाली', flag: '🇳🇵' },
                   { code: 'hi' as const, name: 'Hindi', nativeName: 'हिन्दी', flag: '🇮🇳' },
                 ].map((lang) => (

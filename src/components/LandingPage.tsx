@@ -1,19 +1,20 @@
-import React, { useState, useRef } from 'react';
-import { motion, useInView, useScroll, useTransform } from 'motion/react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useScroll, useTransform, useInView } from 'motion/react';
 import { 
-  Settings, Package, TrendingUp, Users, Shield, Zap, 
-  BarChart3, Wrench, Truck, DollarSign, Clock, CheckCircle,
-  ArrowRight, Star, ChevronDown, Menu, X, ChevronRight, Globe
+  Menu, X, LogIn, UserPlus, Settings, Globe, 
+  Package, BarChart3, Users, DollarSign, Truck, Shield,
+  ArrowRight, ChevronDown, Star, TrendingUp, Zap, Clock, ChevronRight
 } from 'lucide-react';
-import { LoginPage } from './LoginPage';
+import { useLandingLanguage, LandingLanguageProvider } from '../contexts/LandingLanguageContext';
 import { AboutPage } from './landing/AboutPage';
 import { FeaturesPage } from './landing/FeaturesPage';
 import { PricingPage } from './landing/PricingPage';
 import { ContactPage } from './landing/ContactPage';
 import { BlogPage } from './landing/BlogPage';
-import { ModernFooter } from './landing/ModernFooter';
-import { LandingLanguageProvider, useLandingLanguage } from '../contexts/LandingLanguageContext';
+import { DemoBookingModal } from './DemoBookingModal';
+import { AIChatBotWidget } from './AIChatBotWidget';
 import { ModernAuthPage } from './ModernAuthPage';
+import serveSparesLogo from '../assets/servespares.png';
 
 type PageType = 'home' | 'about' | 'features' | 'pricing' | 'contact' | 'blog';
 
@@ -22,10 +23,12 @@ const LandingPageContent: React.FC = () => {
   const [showRegister, setShowRegister] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState<PageType>('home');
+  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
+  const [selectedFeature, setSelectedFeature] = useState<string>('');
   const { language } = useLandingLanguage();
 
   // Listen for navigation events from feature cards
-  React.useEffect(() => {
+  useEffect(() => {
     const handleNavigateToContact = () => {
       handleNavigation('contact');
     };
@@ -48,6 +51,11 @@ const LandingPageContent: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleBookDemo = (featureName: string) => {
+    setSelectedFeature(featureName);
+    setIsDemoModalOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
@@ -63,23 +71,30 @@ const LandingPageContent: React.FC = () => {
       {/* Page Content */}
       {currentPage === 'home' && (
         <>
-          <HeroSection setShowLogin={setShowLogin} />
-          <FeaturesSection />
+          <HeroSection setShowRegister={setShowRegister} />
+          <FeaturesSection onBookDemo={handleBookDemo} />
           <StatsSection />
           <HowItWorks />
           <Testimonials />
-          <CTASection setShowLogin={setShowLogin} />
+          <CTASection onNavigateToPricing={() => handleNavigation('pricing')} />
         </>
       )}
       
       {currentPage === 'about' && <AboutPage />}
       {currentPage === 'features' && <FeaturesPage onNavigateToPricing={() => handleNavigation('pricing')} onNavigateToRegister={() => setShowRegister(true)} />}
-      {currentPage === 'pricing' && <PricingPage onGetStarted={() => handleNavigation('contact')} />}
+      {currentPage === 'pricing' && <PricingPage onGetStarted={() => handleBookDemo('Start Free Trial')} />}
       {currentPage === 'contact' && <ContactPage />}
       {currentPage === 'blog' && <BlogPage language={language} />}
       
+      {/* Demo Booking Modal */}
+      <DemoBookingModal
+        isOpen={isDemoModalOpen}
+        onClose={() => setIsDemoModalOpen(false)}
+        featureName={selectedFeature}
+      />
+      
       {/* Footer */}
-      <ModernFooter setShowLogin={setShowLogin} onNavigate={handleNavigation} currentPage={currentPage} />
+      <Footer setShowLogin={setShowLogin} onNavigate={handleNavigation} currentPage={currentPage} />
     </div>
   );
 };
@@ -88,6 +103,8 @@ export const LandingPage: React.FC = () => {
   return (
     <LandingLanguageProvider>
       <LandingPageContent />
+      {/* AI ChatBot Widget - Available on landing page */}
+      <AIChatBotWidget />
     </LandingLanguageProvider>
   );
 };
@@ -104,7 +121,7 @@ const Navigation: React.FC<{
   const [scrolled, setScrolled] = useState(false);
   const { language, setLanguage, t } = useLandingLanguage();
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -173,25 +190,25 @@ const Navigation: React.FC<{
             <div className="flex items-center bg-gray-100 rounded-full p-1">
               <button
                 onClick={() => setLanguage('en')}
-                className={`w-12 h-12 rounded-full transition-all flex items-center justify-center ${
+                className={`w-12 h-12 rounded-full transition-all flex items-center justify-center text-2xl ${
                   language === 'en' 
                     ? 'bg-white shadow-md scale-110' 
                     : 'hover:scale-105'
                 }`}
                 title="English"
               >
-                <span className="text-2xl">🇬🇧</span>
+                🇺🇸
               </button>
               <button
                 onClick={() => setLanguage('ne')}
-                className={`w-12 h-12 rounded-full transition-all flex items-center justify-center ${
+                className={`w-12 h-12 rounded-full transition-all flex items-center justify-center text-2xl ${
                   language === 'ne' 
                     ? 'bg-white shadow-md scale-110' 
                     : 'hover:scale-105'
                 }`}
                 title="Nepali"
               >
-                <span className="text-2xl">🇳🇵</span>
+                🇳🇵
               </button>
             </div>
 
@@ -260,7 +277,7 @@ const Navigation: React.FC<{
 };
 
 // Hero Section
-const HeroSection: React.FC<{ setShowLogin: (show: boolean) => void }> = ({ setShowLogin }) => {
+const HeroSection: React.FC<{ setShowRegister: (show: boolean) => void }> = ({ setShowRegister }) => {
   const { t } = useLandingLanguage();
   const heroRef = useRef(null);
   const { scrollYProgress } = useScroll({
@@ -349,10 +366,10 @@ const HeroSection: React.FC<{ setShowLogin: (show: boolean) => void }> = ({ setS
               className="flex flex-wrap gap-4"
             >
               <button
-                onClick={() => setShowLogin(true)}
+                onClick={() => setShowRegister(true)}
                 className="group bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-full font-semibold flex items-center space-x-2 hover:shadow-xl transition-all hover:scale-105"
               >
-                <span>{t('home.getStarted')}</span>
+                <span>Let's Get Started</span>
                 <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
               </button>
               <a
@@ -480,7 +497,7 @@ const FloatingCard: React.FC<{ delay: number; position: string; icon: React.Reac
 );
 
 // Features Section
-const FeaturesSection: React.FC = () => {
+const FeaturesSection: React.FC<{ onBookDemo: (featureName: string) => void }> = ({ onBookDemo }) => {
   const { t } = useLandingLanguage();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
@@ -564,10 +581,7 @@ const FeaturesSection: React.FC = () => {
                 whileTap={{ scale: 0.95 }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                  // This will be handled by parent component navigation
-                  const event = new CustomEvent('navigateToContact');
-                  window.dispatchEvent(event);
+                  onBookDemo(t(feature.titleKey));
                 }}
                 className="flex items-center space-x-2 text-indigo-600 font-semibold hover:text-indigo-700 transition-colors group"
               >
@@ -763,7 +777,7 @@ const Testimonials: React.FC = () => {
 };
 
 // CTA Section
-const CTASection: React.FC<{ setShowLogin: (show: boolean) => void }> = ({ setShowLogin }) => {
+const CTASection: React.FC<{ onNavigateToPricing: () => void }> = ({ onNavigateToPricing }) => {
   const { t } = useLandingLanguage();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
@@ -795,10 +809,10 @@ const CTASection: React.FC<{ setShowLogin: (show: boolean) => void }> = ({ setSh
           </p>
           
           <button
-            onClick={() => setShowLogin(true)}
+            onClick={onNavigateToPricing}
             className="bg-white text-indigo-600 px-12 py-5 rounded-full font-bold text-lg hover:shadow-2xl transition-all hover:scale-105 inline-flex items-center space-x-2"
           >
-            <span>{t('home.getStarted')}</span>
+            <span>Pricing & Features</span>
             <ArrowRight size={24} />
           </button>
         </motion.div>
@@ -808,7 +822,7 @@ const CTASection: React.FC<{ setShowLogin: (show: boolean) => void }> = ({ setSh
 };
 
 // Footer
-const Footer: React.FC<{ setShowLogin: (show: boolean) => void; onNavigate: (page: PageType) => void }> = ({ setShowLogin, onNavigate }) => {
+const Footer: React.FC<{ setShowLogin: (show: boolean) => void; onNavigate: (page: PageType) => void; currentPage: PageType }> = ({ setShowLogin, onNavigate, currentPage }) => {
   return (
     <footer className="bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">

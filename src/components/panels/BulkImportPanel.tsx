@@ -2,24 +2,30 @@ import React, { useState } from 'react';
 import { Upload, Download, FileSpreadsheet, Copy, Plus, CheckCircle, XCircle, AlertTriangle, RefreshCw, File, Table, List } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getFromStorage, saveToStorage } from '../../utils/mockData';
-import { InventoryItem } from '../../types';
+import { InventoryItem, VehicleType, ItemCategory } from '../../types';
 
 type ImportMethod = 'csv' | 'excel' | 'paste' | 'quick';
 
 interface BulkItem {
-  partName: string;
+  name: string;
   partNumber: string;
-  category: string;
-  brand: string;
-  hsnCode: string;
+  category: ItemCategory;
+  vehicleType: VehicleType;
+  vehicleName?: string;
+  bikeModel?: string;
+  bikeType?: string;
+  hsnCode?: string;
   quantity: number;
-  minStock: number;
-  maxStock: number;
-  costPrice: number;
-  sellingPrice: number;
+  minStockLevel: number;
+  price: number;
   mrp: number;
-  supplier: string;
-  location: string;
+  retailPrice?: number;
+  wholesalePrice?: number;
+  distributorPrice?: number;
+  partyName?: string; // Changed from partyId to partyName
+  barcode?: string;
+  location?: string;
+  warrantyPeriod?: string;
 }
 
 interface ValidationError {
@@ -48,60 +54,78 @@ export const BulkImportPanel: React.FC = () => {
 
   function createEmptyItem(): BulkItem {
     return {
-      partName: '',
+      name: '',
       partNumber: '',
-      category: 'Two-Wheeler',
-      brand: 'Local',
+      category: 'local',
+      vehicleType: 'two_wheeler',
+      vehicleName: '',
+      bikeModel: '',
+      bikeType: '',
       hsnCode: '',
       quantity: 0,
-      minStock: 5,
-      maxStock: 100,
-      costPrice: 0,
-      sellingPrice: 0,
+      minStockLevel: 5,
+      price: 0,
       mrp: 0,
-      supplier: '',
+      retailPrice: 0,
+      wholesalePrice: 0,
+      distributorPrice: 0,
+      partyName: '',
+      barcode: '',
       location: 'Main Warehouse',
+      warrantyPeriod: '',
     };
   }
 
   const downloadTemplate = (format: 'csv' | 'excel') => {
     const headers = [
-      'Part Name*',
+      'Item Name*',
       'Part Number*',
-      'Category*',
-      'Brand*',
+      'Category* (local/original)',
+      'Vehicle Type* (two_wheeler/four_wheeler)',
+      'Vehicle Name',
+      'Bike Model',
+      'Bike Type',
       'HSN Code',
       'Quantity*',
-      'Min Stock',
-      'Max Stock',
-      'Cost Price*',
-      'Selling Price*',
+      'Min Stock Level*',
+      'Price*',
       'MRP*',
-      'Supplier',
-      'Location'
+      'Retail Price',
+      'Wholesale Price',
+      'Distributor Price',
+      'Supplier/Party Name',
+      'Barcode',
+      'Location',
+      'Warranty Period (months)'
     ];
 
     const sampleData = [
-      'Brake Pad',
+      'Brake Pad - Premium Quality',
       'BP-001',
-      'Two-Wheeler',
-      'Branded',
+      'local',
+      'two_wheeler',
+      'Hero Splendor',
+      'Splendor Plus',
+      'Commuter',
       '8708',
       '50',
       '10',
-      '200',
       '150',
-      '200',
       '250',
-      'ABC Motors',
-      'Main Warehouse'
+      '200',
+      '180',
+      '160',
+      '',
+      'BP001',
+      'Main Warehouse - Shelf A-12',
+      '6'
     ];
 
     if (format === 'csv') {
       const csv = [
         headers.join(','),
         sampleData.join(','),
-        ',,,,,,,,,,,,', // Empty row for user to fill
+        ',,,,,,,,,,,,,,,,,', // Empty row for user to fill
       ].join('\n');
 
       const blob = new Blob([csv], { type: 'text/csv' });
@@ -115,7 +139,7 @@ export const BulkImportPanel: React.FC = () => {
       const tsv = [
         headers.join('\t'),
         sampleData.join('\t'),
-        '\t\t\t\t\t\t\t\t\t\t\t\t',
+        '\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t',
       ].join('\n');
 
       const blob = new Blob([tsv], { type: 'application/vnd.ms-excel' });
@@ -134,45 +158,166 @@ export const BulkImportPanel: React.FC = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
-      parseCSV(text);
+      parseImportedData(text);
     };
     reader.readAsText(file);
   };
 
-  const parseCSV = (text: string) => {
+  const parseImportedData = (text: string) => {
+    // Try to detect delimiter - could be comma, tab, or pipe
+    const firstLine = text.split('\n')[0];
+    let delimiter = ',';
+    
+    if (firstLine.includes('\t')) {
+      delimiter = '\t';
+    } else if (firstLine.includes('|')) {
+      delimiter = '|';
+    }
+    
     const lines = text.split('\n').filter(line => line.trim());
     if (lines.length < 2) {
-      alert('CSV file is empty or invalid');
+      alert('File is empty or invalid');
       return;
     }
 
-    const headers = lines[0].split(',').map(h => h.trim());
+    // Parse headers - normalize them for flexible matching
+    const rawHeaders = lines[0].split(delimiter).map(h => h.trim().toLowerCase().replace(/[^a-z0-9]/g, ''));
+    console.log('Detected headers:', rawHeaders);
+    console.log('Original headers:', lines[0].split(delimiter));
+    
     const items: BulkItem[] = [];
 
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim());
-      if (values.length < 6) continue; // Skip invalid rows
+    // Enhanced flexible column finder with multiple possible name variations
+    const findColumnIndex = (possibleNames: string[]) => {
+      for (const name of possibleNames) {
+        const index = rawHeaders.findIndex(h => {
+          // Exact match
+          if (h === name) return true;
+          // Contains match
+          if (h.includes(name) || name.includes(h)) return true;
+          // Partial match with at least 4 characters
+          if (name.length >= 4 && h.length >= 4 && (h.includes(name.slice(0, 4)) || name.includes(h.slice(0, 4)))) return true;
+          return false;
+        });
+        if (index !== -1) return index;
+      }
+      return -1;
+    };
 
-      items.push({
-        partName: values[0] || '',
-        partNumber: values[1] || '',
-        category: values[2] || 'Two-Wheeler',
-        brand: values[3] || 'Local',
-        hsnCode: values[4] || '',
-        quantity: parseInt(values[5]) || 0,
-        minStock: parseInt(values[6]) || 5,
-        maxStock: parseInt(values[7]) || 100,
-        costPrice: parseFloat(values[8]) || 0,
-        sellingPrice: parseFloat(values[9]) || 0,
-        mrp: parseFloat(values[10]) || 0,
-        supplier: values[11] || '',
-        location: values[12] || 'Main Warehouse',
-      });
+    // Comprehensive column mapping with all possible field name variations
+    const columnMap = {
+      name: findColumnIndex(['name', 'itemname', 'partname', 'item', 'product', 'description', 'itemdescription']),
+      partNumber: findColumnIndex(['partnumber', 'partnumb', 'number', 'code', 'sku', 'partno', 'itemcode', 'productcode']),
+      category: findColumnIndex(['category', 'cat', 'type', 'itemtype', 'categorytype']),
+      vehicleType: findColumnIndex(['vehicletype', 'vehicle', 'vtype', 'vehiclecat', 'vehiclecategory', '2w4w', 'wheeler']),
+      vehicleName: findColumnIndex(['vehiclename', 'model', 'bikebrand']),
+      bikeModel: findColumnIndex(['bikemodel', 'model', 'modelno', 'modelnumber', 'variant']),
+      bikeType: findColumnIndex(['biketype', 'vtype', 'vehicletype', 'segment']),
+      hsnCode: findColumnIndex(['hsncode', 'hsn', 'hscode', 'hsnno', 'hsnnumber', 'taxcode']),
+      quantity: findColumnIndex(['quantity', 'qty', 'stock', 'qnty', 'instock', 'currentstock', 'availableqty']),
+      minStockLevel: findColumnIndex(['minstocklevel', 'min', 'minqty', 'minstock', 'reorder', 'reorderpoint', 'minimumlevel']),
+      price: findColumnIndex(['price', 'costprice', 'cp', 'buyprice', 'purchase', 'cost', 'baseprice', 'unitprice']),
+      mrp: findColumnIndex(['mrp', 'retail', 'maximum', 'maxretailprice', 'retailprice', 'maxprice']),
+      retailPrice: findColumnIndex(['retailprice', 'retail', 'rp', 'sellingprice', 'saleprice']),
+      wholesalePrice: findColumnIndex(['wholesaleprice', 'wholesale', 'wp', 'tradeprice', 'dealerprice']),
+      distributorPrice: findColumnIndex(['distributorprice', 'distributor', 'dp', 'distprice', 'bulkprice']),
+      partyName: findColumnIndex(['partyname', 'suppliername', 'vendorname', 'supplier', 'vendor', 'party', 'suppliername']),
+      barcode: findColumnIndex(['barcode', 'code', 'ean', 'upc', 'barcodeno', 'itembarcode']),
+      location: findColumnIndex(['location', 'warehouse', 'place', 'storage', 'storagelocation', 'shelf', 'bin', 'rack']),
+      warrantyPeriod: findColumnIndex(['warrantyperiod', 'warranty', 'warr', 'guaranteeperiod', 'warrantytime', 'warrantymonths']),
+    };
+
+    console.log('Column mapping:', columnMap);
+    console.log('Columns found:', Object.entries(columnMap).filter(([key, value]) => value !== -1).map(([key]) => key));
+    console.log('Columns NOT found:', Object.entries(columnMap).filter(([key, value]) => value === -1).map(([key]) => key));
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(delimiter).map(v => v.trim());
+      
+      // Skip completely empty rows
+      if (values.every(v => !v)) continue;
+
+      // Helper to safely get value with smart empty/null handling
+      const getValue = (index: number, defaultValue: any = ''): any => {
+        if (index === -1) return defaultValue; // Column doesn't exist
+        const value = values[index];
+        if (value === undefined || value === null || value === '' || value.toLowerCase() === 'null' || value === '-') {
+          return defaultValue;
+        }
+        return value;
+      };
+
+      // Helper to parse number with smart null handling
+      const parseNumber = (value: string, defaultValue: number | undefined = undefined): number | undefined => {
+        if (!value || value === '' || value.toLowerCase() === 'null' || value === '-') return defaultValue;
+        // Remove currency symbols, commas, and other non-numeric characters except dots
+        const cleaned = value.toString().replace(/[^0-9.-]/g, '');
+        const parsed = parseFloat(cleaned);
+        return isNaN(parsed) ? defaultValue : parsed;
+      };
+
+      // Smart category detection (handles various formats)
+      const detectCategory = (value: string): ItemCategory => {
+        if (!value) return 'local';
+        const v = value.toLowerCase().trim();
+        if (v.includes('orig') || v.includes('genuine') || v.includes('oem') || v === 'o') return 'original';
+        if (v.includes('local') || v.includes('aftermarket') || v === 'l') return 'local';
+        return 'local'; // Default to local
+      };
+
+      // Smart vehicle type detection (handles various formats)
+      const detectVehicleType = (value: string): VehicleType => {
+        if (!value) return 'two_wheeler';
+        const v = value.toLowerCase().trim();
+        if (v.includes('4') || v.includes('four') || v.includes('car') || v === '4w') return 'four_wheeler';
+        if (v.includes('2') || v.includes('two') || v.includes('bike') || v.includes('motorcycle') || v === '2w') return 'two_wheeler';
+        return 'two_wheeler'; // Default to two-wheeler
+      };
+
+      const item: BulkItem = {
+        name: getValue(columnMap.name) || `Item ${i}`, // Required: generate name if missing
+        partNumber: getValue(columnMap.partNumber) || `AUTO-${Date.now()}-${i}`, // Required: auto-generate if missing
+        category: detectCategory(getValue(columnMap.category)),
+        vehicleType: detectVehicleType(getValue(columnMap.vehicleType)),
+        vehicleName: getValue(columnMap.vehicleName) || undefined,
+        bikeModel: getValue(columnMap.bikeModel) || undefined,
+        bikeType: getValue(columnMap.bikeType) || undefined,
+        hsnCode: getValue(columnMap.hsnCode) || undefined,
+        quantity: parseNumber(getValue(columnMap.quantity, '0')) || 0,
+        minStockLevel: parseNumber(getValue(columnMap.minStockLevel, '5')) || 5,
+        price: parseNumber(getValue(columnMap.price, '0')) || 0,
+        mrp: parseNumber(getValue(columnMap.mrp, '0')) || 0,
+        retailPrice: parseNumber(getValue(columnMap.retailPrice)) || undefined,
+        wholesalePrice: parseNumber(getValue(columnMap.wholesalePrice)) || undefined,
+        distributorPrice: parseNumber(getValue(columnMap.distributorPrice)) || undefined,
+        partyName: getValue(columnMap.partyName) || undefined,
+        barcode: getValue(columnMap.barcode) || undefined,
+        location: getValue(columnMap.location) || 'Main Warehouse',
+        warrantyPeriod: getValue(columnMap.warrantyPeriod) || undefined,
+      };
+
+      // Only add items with at least a name (even if auto-generated)
+      if (item.name && item.name.trim() !== '') {
+        items.push(item);
+      }
+    }
+
+    console.log('Parsed items:', items);
+    console.log(`Successfully parsed ${items.length} items from ${lines.length - 1} rows`);
+
+    if (items.length === 0) {
+      alert('No valid items found in the file. Please check the format.');
+      return;
     }
 
     setBulkItems(items);
     validateItems(items);
     setShowPreview(true);
+  };
+
+  const parseCSV = (text: string) => {
+    // Redirect to the new unified parser
+    parseImportedData(text);
   };
 
   const handlePaste = () => {
@@ -191,8 +336,8 @@ export const BulkImportPanel: React.FC = () => {
     items.forEach((item, index) => {
       const rowNum = index + 1;
 
-      if (!item.partName) {
-        errors.push({ row: rowNum, field: 'Part Name', message: 'Part Name is required' });
+      if (!item.name) {
+        errors.push({ row: rowNum, field: 'Item Name', message: 'Item Name is required' });
       }
       if (!item.partNumber) {
         errors.push({ row: rowNum, field: 'Part Number', message: 'Part Number is required' });
@@ -200,14 +345,11 @@ export const BulkImportPanel: React.FC = () => {
       if (item.quantity < 0) {
         errors.push({ row: rowNum, field: 'Quantity', message: 'Quantity cannot be negative' });
       }
-      if (item.costPrice <= 0) {
-        errors.push({ row: rowNum, field: 'Cost Price', message: 'Cost Price must be greater than 0' });
+      if (item.price <= 0) {
+        errors.push({ row: rowNum, field: 'Price', message: 'Price must be greater than 0' });
       }
-      if (item.sellingPrice <= 0) {
-        errors.push({ row: rowNum, field: 'Selling Price', message: 'Selling Price must be greater than 0' });
-      }
-      if (item.mrp < item.sellingPrice) {
-        errors.push({ row: rowNum, field: 'MRP', message: 'MRP should be >= Selling Price' });
+      if (item.mrp < item.price) {
+        errors.push({ row: rowNum, field: 'MRP', message: 'MRP should be >= Price' });
       }
     });
 
@@ -224,7 +366,7 @@ export const BulkImportPanel: React.FC = () => {
 
   const handleQuickEntryImport = () => {
     const validItems = quickEntryRows.filter(item => 
-      item.partName && item.partNumber && item.quantity > 0
+      item.name && item.partNumber && item.quantity > 0
     );
 
     if (validItems.length === 0) {
@@ -276,14 +418,28 @@ export const BulkImportPanel: React.FC = () => {
 
         const newItem: InventoryItem = {
           id: `INV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          ...item,
-          sku: item.partNumber,
-          barcode: item.partNumber,
-          reorderPoint: item.minStock,
-          description: '',
-          dateAdded: new Date().toISOString(),
-          lastUpdated: new Date().toISOString(),
+          name: item.name,
+          partNumber: item.partNumber || '',
+          category: item.category,
+          vehicleType: item.vehicleType,
+          bikeName: item.vehicleName,
+          bikeModel: item.bikeModel,
+          bikeType: item.bikeType,
+          hsnCode: item.hsnCode,
+          quantity: item.quantity,
+          minStockLevel: item.minStockLevel,
+          price: item.price,
+          mrp: item.mrp,
+          retailPrice: item.retailPrice || item.mrp,
+          wholesalePrice: item.wholesalePrice || item.price,
+          distributorPrice: item.distributorPrice || item.price,
+          partyId: item.partyName,
+          barcode: item.barcode || item.partNumber,
+          location: item.location,
+          warrantyPeriod: item.warrantyPeriod,
           workspaceId: currentUser?.workspaceId || '',
+          createdAt: new Date().toISOString(),
+          lastRestocked: new Date().toISOString(),
         };
 
         existingInventory.push(newItem);
@@ -489,93 +645,215 @@ export const BulkImportPanel: React.FC = () => {
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-3 py-2 text-left">#</th>
-                        <th className="px-3 py-2 text-left">Part Name*</th>
-                        <th className="px-3 py-2 text-left">Part Number*</th>
-                        <th className="px-3 py-2 text-left">Category</th>
-                        <th className="px-3 py-2 text-left">Brand</th>
-                        <th className="px-3 py-2 text-left">Qty*</th>
-                        <th className="px-3 py-2 text-left">Cost*</th>
-                        <th className="px-3 py-2 text-left">Selling*</th>
-                        <th className="px-3 py-2 text-left">MRP*</th>
-                        <th className="px-3 py-2 text-left">Actions</th>
+                        <th className="px-2 py-2 text-left">#</th>
+                        <th className="px-2 py-2 text-left">Item Name*</th>
+                        <th className="px-2 py-2 text-left">Part Number*</th>
+                        <th className="px-2 py-2 text-left">Category*</th>
+                        <th className="px-2 py-2 text-left">Vehicle Type*</th>
+                        <th className="px-2 py-2 text-left">Vehicle Name</th>
+                        <th className="px-2 py-2 text-left">Model</th>
+                        <th className="px-2 py-2 text-left">Type</th>
+                        <th className="px-2 py-2 text-left">HSN Code</th>
+                        <th className="px-2 py-2 text-left">Barcode</th>
+                        <th className="px-2 py-2 text-left">Qty*</th>
+                        <th className="px-2 py-2 text-left">Min Stock*</th>
+                        <th className="px-2 py-2 text-left">Price*</th>
+                        <th className="px-2 py-2 text-left">MRP*</th>
+                        <th className="px-2 py-2 text-left">Retail</th>
+                        <th className="px-2 py-2 text-left">Wholesale</th>
+                        <th className="px-2 py-2 text-left">Distributor</th>
+                        <th className="px-2 py-2 text-left">Supplier</th>
+                        <th className="px-2 py-2 text-left">Location</th>
+                        <th className="px-2 py-2 text-left">Warranty</th>
+                        <th className="px-2 py-2 text-left">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {quickEntryRows.map((row, index) => (
                         <tr key={index} className="border-b border-gray-200">
-                          <td className="px-3 py-2">{index + 1}</td>
-                          <td className="px-3 py-2">
+                          <td className="px-2 py-2">{index + 1}</td>
+                          <td className="px-2 py-2">
                             <input
                               type="text"
-                              value={row.partName}
-                              onChange={(e) => updateQuickEntryRow(index, 'partName', e.target.value)}
-                              className="w-full border border-gray-300 rounded px-2 py-1"
+                              value={row.name}
+                              onChange={(e) => updateQuickEntryRow(index, 'name', e.target.value)}
+                              className="w-40 border border-gray-300 rounded px-2 py-1 text-sm"
                               placeholder="Brake Pad"
                             />
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-2 py-2">
                             <input
                               type="text"
                               value={row.partNumber}
                               onChange={(e) => updateQuickEntryRow(index, 'partNumber', e.target.value)}
-                              className="w-full border border-gray-300 rounded px-2 py-1"
+                              className="w-28 border border-gray-300 rounded px-2 py-1 text-sm"
                               placeholder="BP-001"
                             />
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-2 py-2">
                             <select
                               value={row.category}
-                              onChange={(e) => updateQuickEntryRow(index, 'category', e.target.value)}
-                              className="w-full border border-gray-300 rounded px-2 py-1"
+                              onChange={(e) => updateQuickEntryRow(index, 'category', e.target.value as ItemCategory)}
+                              className="w-28 border border-gray-300 rounded px-2 py-1 text-sm"
                             >
-                              <option>Two-Wheeler</option>
-                              <option>Four-Wheeler</option>
+                              <option value="local">local</option>
+                              <option value="original">original</option>
                             </select>
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-2 py-2">
                             <select
-                              value={row.brand}
-                              onChange={(e) => updateQuickEntryRow(index, 'brand', e.target.value)}
-                              className="w-full border border-gray-300 rounded px-2 py-1"
+                              value={row.vehicleType}
+                              onChange={(e) => updateQuickEntryRow(index, 'vehicleType', e.target.value as VehicleType)}
+                              className="w-32 border border-gray-300 rounded px-2 py-1 text-sm"
                             >
-                              <option>Local</option>
-                              <option>Branded</option>
+                              <option value="two_wheeler">two_wheeler</option>
+                              <option value="four_wheeler">four_wheeler</option>
                             </select>
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-2 py-2">
+                            <input
+                              type="text"
+                              value={row.vehicleName || ''}
+                              onChange={(e) => updateQuickEntryRow(index, 'vehicleName', e.target.value)}
+                              className="w-28 border border-gray-300 rounded px-2 py-1 text-sm"
+                              placeholder="Splendor"
+                            />
+                          </td>
+                          <td className="px-2 py-2">
+                            <input
+                              type="text"
+                              value={row.bikeModel || ''}
+                              onChange={(e) => updateQuickEntryRow(index, 'bikeModel', e.target.value)}
+                              className="w-24 border border-gray-300 rounded px-2 py-1 text-sm"
+                              placeholder="Plus"
+                            />
+                          </td>
+                          <td className="px-2 py-2">
+                            <input
+                              type="text"
+                              value={row.bikeType || ''}
+                              onChange={(e) => updateQuickEntryRow(index, 'bikeType', e.target.value)}
+                              className="w-24 border border-gray-300 rounded px-2 py-1 text-sm"
+                              placeholder="Commuter"
+                            />
+                          </td>
+                          <td className="px-2 py-2">
+                            <input
+                              type="text"
+                              value={row.hsnCode || ''}
+                              onChange={(e) => updateQuickEntryRow(index, 'hsnCode', e.target.value)}
+                              className="w-24 border border-gray-300 rounded px-2 py-1 text-sm"
+                              placeholder="8708"
+                            />
+                          </td>
+                          <td className="px-2 py-2">
+                            <input
+                              type="text"
+                              value={row.barcode || ''}
+                              onChange={(e) => updateQuickEntryRow(index, 'barcode', e.target.value)}
+                              className="w-28 border border-gray-300 rounded px-2 py-1 text-sm font-mono"
+                              placeholder="BP001"
+                            />
+                          </td>
+                          <td className="px-2 py-2">
                             <input
                               type="number"
                               value={row.quantity}
-                              onChange={(e) => updateQuickEntryRow(index, 'quantity', parseInt(e.target.value))}
-                              className="w-20 border border-gray-300 rounded px-2 py-1"
+                              onChange={(e) => updateQuickEntryRow(index, 'quantity', parseInt(e.target.value) || 0)}
+                              className="w-20 border border-gray-300 rounded px-2 py-1 text-sm"
+                              min="0"
                             />
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-2 py-2">
                             <input
                               type="number"
-                              value={row.costPrice}
-                              onChange={(e) => updateQuickEntryRow(index, 'costPrice', parseFloat(e.target.value))}
-                              className="w-24 border border-gray-300 rounded px-2 py-1"
+                              value={row.minStockLevel}
+                              onChange={(e) => updateQuickEntryRow(index, 'minStockLevel', parseInt(e.target.value) || 0)}
+                              className="w-20 border border-gray-300 rounded px-2 py-1 text-sm"
+                              min="0"
                             />
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-2 py-2">
                             <input
                               type="number"
-                              value={row.sellingPrice}
-                              onChange={(e) => updateQuickEntryRow(index, 'sellingPrice', parseFloat(e.target.value))}
-                              className="w-24 border border-gray-300 rounded px-2 py-1"
+                              value={row.price}
+                              onChange={(e) => updateQuickEntryRow(index, 'price', parseFloat(e.target.value) || 0)}
+                              className="w-24 border border-gray-300 rounded px-2 py-1 text-sm"
+                              min="0"
+                              step="0.01"
                             />
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-2 py-2">
                             <input
                               type="number"
                               value={row.mrp}
-                              onChange={(e) => updateQuickEntryRow(index, 'mrp', parseFloat(e.target.value))}
-                              className="w-24 border border-gray-300 rounded px-2 py-1"
+                              onChange={(e) => updateQuickEntryRow(index, 'mrp', parseFloat(e.target.value) || 0)}
+                              className="w-24 border border-gray-300 rounded px-2 py-1 text-sm"
+                              min="0"
+                              step="0.01"
                             />
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-2 py-2">
+                            <input
+                              type="number"
+                              value={row.retailPrice || ''}
+                              onChange={(e) => updateQuickEntryRow(index, 'retailPrice', e.target.value ? parseFloat(e.target.value) : undefined)}
+                              className="w-24 border border-gray-300 rounded px-2 py-1 text-sm"
+                              min="0"
+                              step="0.01"
+                              placeholder="Optional"
+                            />
+                          </td>
+                          <td className="px-2 py-2">
+                            <input
+                              type="number"
+                              value={row.wholesalePrice || ''}
+                              onChange={(e) => updateQuickEntryRow(index, 'wholesalePrice', e.target.value ? parseFloat(e.target.value) : undefined)}
+                              className="w-24 border border-gray-300 rounded px-2 py-1 text-sm"
+                              min="0"
+                              step="0.01"
+                              placeholder="Optional"
+                            />
+                          </td>
+                          <td className="px-2 py-2">
+                            <input
+                              type="number"
+                              value={row.distributorPrice || ''}
+                              onChange={(e) => updateQuickEntryRow(index, 'distributorPrice', e.target.value ? parseFloat(e.target.value) : undefined)}
+                              className="w-24 border border-gray-300 rounded px-2 py-1 text-sm"
+                              min="0"
+                              step="0.01"
+                              placeholder="Optional"
+                            />
+                          </td>
+                          <td className="px-2 py-2">
+                            <input
+                              type="text"
+                              value={row.partyName || ''}
+                              onChange={(e) => updateQuickEntryRow(index, 'partyName', e.target.value)}
+                              className="w-28 border border-gray-300 rounded px-2 py-1 text-sm"
+                              placeholder="Supplier ID"
+                            />
+                          </td>
+                          <td className="px-2 py-2">
+                            <input
+                              type="text"
+                              value={row.location || ''}
+                              onChange={(e) => updateQuickEntryRow(index, 'location', e.target.value)}
+                              className="w-32 border border-gray-300 rounded px-2 py-1 text-sm"
+                              placeholder="Shelf A-12"
+                            />
+                          </td>
+                          <td className="px-2 py-2">
+                            <input
+                              type="text"
+                              value={row.warrantyPeriod || ''}
+                              onChange={(e) => updateQuickEntryRow(index, 'warrantyPeriod', e.target.value)}
+                              className="w-20 border border-gray-300 rounded px-2 py-1 text-sm"
+                              placeholder="6"
+                            />
+                          </td>
+                          <td className="px-2 py-2">
                             <button
                               onClick={() => removeQuickEntryRow(index)}
                               className="text-red-600 hover:text-red-700"
@@ -678,16 +956,27 @@ export const BulkImportPanel: React.FC = () => {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr>
-                    <th className="px-4 py-3 text-left">#</th>
-                    <th className="px-4 py-3 text-left">Part Name</th>
-                    <th className="px-4 py-3 text-left">Part Number</th>
-                    <th className="px-4 py-3 text-left">Category</th>
-                    <th className="px-4 py-3 text-left">Brand</th>
-                    <th className="px-4 py-3 text-left">Qty</th>
-                    <th className="px-4 py-3 text-left">Cost</th>
-                    <th className="px-4 py-3 text-left">Selling</th>
-                    <th className="px-4 py-3 text-left">MRP</th>
-                    <th className="px-4 py-3 text-left">Status</th>
+                    <th className="px-3 py-3 text-left border-r">#</th>
+                    <th className="px-3 py-3 text-left">Item Name</th>
+                    <th className="px-3 py-3 text-left">Part Number</th>
+                    <th className="px-3 py-3 text-left">Category</th>
+                    <th className="px-3 py-3 text-left">Vehicle Type</th>
+                    <th className="px-3 py-3 text-left">Vehicle Name</th>
+                    <th className="px-3 py-3 text-left">Model</th>
+                    <th className="px-3 py-3 text-left">Type</th>
+                    <th className="px-3 py-3 text-left">HSN Code</th>
+                    <th className="px-3 py-3 text-left">Barcode</th>
+                    <th className="px-3 py-3 text-left">Qty</th>
+                    <th className="px-3 py-3 text-left">Min Stock</th>
+                    <th className="px-3 py-3 text-left">Price (₹)</th>
+                    <th className="px-3 py-3 text-left">MRP (₹)</th>
+                    <th className="px-3 py-3 text-left">Retail (₹)</th>
+                    <th className="px-3 py-3 text-left">Wholesale (₹)</th>
+                    <th className="px-3 py-3 text-left">Distributor (₹)</th>
+                    <th className="px-3 py-3 text-left">Supplier/Party</th>
+                    <th className="px-3 py-3 text-left">Location</th>
+                    <th className="px-3 py-3 text-left">Warranty</th>
+                    <th className="px-3 py-3 text-left border-l">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -695,16 +984,39 @@ export const BulkImportPanel: React.FC = () => {
                     const hasError = validationErrors.some(e => e.row === index + 1);
                     return (
                       <tr key={index} className={`border-b border-gray-200 ${hasError ? 'bg-red-50' : ''}`}>
-                        <td className="px-4 py-3">{index + 1}</td>
-                        <td className="px-4 py-3">{item.partName}</td>
-                        <td className="px-4 py-3">{item.partNumber}</td>
-                        <td className="px-4 py-3">{item.category}</td>
-                        <td className="px-4 py-3">{item.brand}</td>
-                        <td className="px-4 py-3">{item.quantity}</td>
-                        <td className="px-4 py-3">NPR {item.costPrice.toFixed(2)}</td>
-                        <td className="px-4 py-3">NPR {item.sellingPrice.toFixed(2)}</td>
-                        <td className="px-4 py-3">NPR {item.mrp.toFixed(2)}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-3 border-r font-medium">{index + 1}</td>
+                        <td className="px-3 py-3 max-w-[200px] truncate" title={item.name}>{item.name}</td>
+                        <td className="px-3 py-3">{item.partNumber}</td>
+                        <td className="px-3 py-3">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            item.category === 'original' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {item.category}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            item.vehicleType === 'four_wheeler' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                          }`}>
+                            {item.vehicleType === 'two_wheeler' ? '2W' : '4W'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-gray-600">{item.vehicleName || '-'}</td>
+                        <td className="px-3 py-3 text-gray-600">{item.bikeModel || '-'}</td>
+                        <td className="px-3 py-3 text-gray-600">{item.bikeType || '-'}</td>
+                        <td className="px-3 py-3 text-gray-600">{item.hsnCode || '-'}</td>
+                        <td className="px-3 py-3 text-gray-600 font-mono text-xs">{item.barcode || '-'}</td>
+                        <td className="px-3 py-3 font-semibold">{item.quantity}</td>
+                        <td className="px-3 py-3 text-gray-600">{item.minStockLevel}</td>
+                        <td className="px-3 py-3 font-semibold text-blue-600">₹{item.price.toFixed(2)}</td>
+                        <td className="px-3 py-3 font-semibold text-green-600">₹{item.mrp.toFixed(2)}</td>
+                        <td className="px-3 py-3 text-gray-600">{item.retailPrice ? `₹${item.retailPrice.toFixed(2)}` : '-'}</td>
+                        <td className="px-3 py-3 text-gray-600">{item.wholesalePrice ? `₹${item.wholesalePrice.toFixed(2)}` : '-'}</td>
+                        <td className="px-3 py-3 text-gray-600">{item.distributorPrice ? `₹${item.distributorPrice.toFixed(2)}` : '-'}</td>
+                        <td className="px-3 py-3 text-gray-600">{item.partyName || '-'}</td>
+                        <td className="px-3 py-3 text-gray-600 max-w-[150px] truncate" title={item.location}>{item.location || '-'}</td>
+                        <td className="px-3 py-3 text-gray-600">{item.warrantyPeriod ? `${item.warrantyPeriod}m` : '-'}</td>
+                        <td className="px-3 py-3 border-l">
                           {hasError ? (
                             <XCircle className="w-5 h-5 text-red-600" />
                           ) : (

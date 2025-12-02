@@ -13,6 +13,18 @@ import { getFromStorage, getItemSalesStats } from '../../utils/mockData';
 import { useAuth } from '../../contexts/AuthContext';
 import { InventoryItem, Bill, Party } from '../../types';
 
+// Date validation utilities - Version 2.0
+const isValidDate = (dateString: any): boolean => {
+  if (!dateString) return false;
+  const date = new Date(dateString);
+  return date instanceof Date && !isNaN(date.getTime());
+};
+
+const getDateString = (dateString: any): string | null => {
+  if (!isValidDate(dateString)) return null;
+  return new Date(dateString).toISOString().split('T')[0];
+};
+
 interface DashboardStats {
   totalItems: number;
   totalValue: number;
@@ -68,29 +80,101 @@ export const DashboardPanel: React.FC = () => {
   const [branchPerformance, setBranchPerformance] = useState<any[]>([]);
 
   useEffect(() => {
+    migrateBillsData(); // Run migration first
     loadDashboardData();
     generateAIAlerts();
   }, []);
 
-  const loadDashboardData = () => {
-    const inventory = getFromStorage('inventory', []).filter((i: InventoryItem) => i.workspaceId === currentUser?.workspaceId);
-    const bills = getFromStorage('bills', []).filter((b: Bill) => b.workspaceId === currentUser?.workspaceId);
-    const parties = getFromStorage('parties', []).filter((p: Party) => p.workspaceId === currentUser?.workspaceId);
+  // Migration function to fix existing bills without createdAt
+  const migrateBillsData = () => {
+    const storedBills = localStorage.getItem('bills');
+    if (!storedBills) return;
 
-    // Calculate stats
+    try {
+      const bills: Bill[] = JSON.parse(storedBills);
+      let migratedCount = 0;
+
+      const migratedBills = bills.map(bill => {
+        // Check if bill is missing createdAt
+        if (!bill.createdAt) {
+          migratedCount++;
+          
+          // Try to use 'date' field if it exists, otherwise use bill ID timestamp or current time
+          let createdAt: string;
+          if ((bill as any).date) {
+            createdAt = (bill as any).date;
+          } else if (bill.id && bill.id.includes('_')) {
+            // Extract timestamp from bill ID like "bill_1764604525045"
+            const timestamp = parseInt(bill.id.split('_')[1]);
+            if (!isNaN(timestamp)) {
+              createdAt = new Date(timestamp).toISOString();
+            } else {
+              createdAt = new Date().toISOString();
+            }
+          } else {
+            createdAt = new Date().toISOString();
+          }
+
+          // Remove old 'date' field if it exists
+          const { date, ...billWithoutDate } = bill as any;
+          return { ...billWithoutDate, createdAt };
+        }
+        return bill;
+      });
+
+      if (migratedCount > 0) {
+        localStorage.setItem('bills', JSON.stringify(migratedBills));
+        console.log(`✅ Successfully migrated ${migratedCount} bills to include createdAt field`);
+      }
+    } catch (error) {
+      console.error('❌ Error migrating bills data:', error);
+    }
+  };
+
+  const loadDashboardData = () => {
+    const storedInventory = localStorage.getItem('inventory');
+    const storedBills = localStorage.getItem('bills');
+    const storedExpenses = localStorage.getItem('expenses');
+    const storedParties = localStorage.getItem('parties');
+
+    const inventory: InventoryItem[] = storedInventory ? JSON.parse(storedInventory) : [];
+    const allBills: Bill[] = storedBills ? JSON.parse(storedBills) : [];
+    const expenses: any[] = storedExpenses ? JSON.parse(storedExpenses) : [];
+    const parties: any[] = storedParties ? JSON.parse(storedParties) : [];
+
+    // Filter out bills with invalid dates to prevent crashes
+    // After migration, this should not filter out any bills
+    const bills = allBills.filter(b => {
+      if (!b.createdAt) {
+        // This should rarely happen after migration
+        console.error('⚠️ Bill still missing createdAt after migration:', b.id, 'This bill will be excluded from reports');
+        return false;
+      }
+      if (!isValidDate(b.createdAt)) {
+        console.error('⚠️ Bill has invalid createdAt date:', b.id, b.createdAt, 'This bill will be excluded from reports');
+        return false;
+      }
+      return true;
+    });
+
+    if (bills.length < allBills.length) {
+      console.warn(`⚠️ ${allBills.length - bills.length} bills were excluded due to missing/invalid dates`);
+    }
+
+    // Inventory stats
     const totalItems = inventory.length;
     const totalValue = inventory.reduce((sum, item) => sum + (item.quantity * item.price), 0);
     const lowStock = inventory.filter(item => item.quantity <= item.minStockLevel).length;
 
     // Today's sales
     const today = new Date().toISOString().split('T')[0];
-    const todaysBills = bills.filter(b => new Date(b.createdAt).toISOString().split('T')[0] === today);
+    const todaysBills = bills.filter(b => getDateString(b.createdAt) === today);
     const todaysSales = todaysBills.reduce((sum, bill) => sum + bill.total, 0);
 
     // Yesterday's sales for comparison
     const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
     const yesterdaysSales = bills
-      .filter(b => new Date(b.createdAt).toISOString().split('T')[0] === yesterday)
+      .filter(b => getDateString(b.createdAt) === yesterday)
       .reduce((sum, bill) => sum + bill.total, 0);
     const dailyChange = yesterdaysSales > 0 ? ((todaysSales - yesterdaysSales) / yesterdaysSales) * 100 : 0;
 
@@ -98,6 +182,7 @@ export const DashboardPanel: React.FC = () => {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     const monthlyBills = bills.filter(b => {
+      if (!isValidDate(b.createdAt)) return false;
       const billDate = new Date(b.createdAt);
       return billDate.getMonth() === currentMonth && billDate.getFullYear() === currentYear;
     });
@@ -108,6 +193,7 @@ export const DashboardPanel: React.FC = () => {
     const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
     const lastMonthSales = bills
       .filter(b => {
+        if (!isValidDate(b.createdAt)) return false;
         const billDate = new Date(b.createdAt);
         return billDate.getMonth() === lastMonth && billDate.getFullYear() === lastMonthYear;
       })
@@ -162,7 +248,12 @@ export const DashboardPanel: React.FC = () => {
       const dateStr = date.toISOString().split('T')[0];
       const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
       
-      const dayBills = bills.filter(b => new Date(b.createdAt).toISOString().split('T')[0] === dateStr);
+      const dayBills = bills.filter(b => {
+        if (!b.createdAt) return false;
+        const billDate = new Date(b.createdAt);
+        if (isNaN(billDate.getTime())) return false;
+        return billDate.toISOString().split('T')[0] === dateStr;
+      });
       const revenue = dayBills.reduce((sum, b) => sum + b.total, 0);
       
       data.push({
@@ -204,26 +295,29 @@ export const DashboardPanel: React.FC = () => {
       });
     });
 
-    // Create heatmap
-    return inventory.slice(0, 12).map(item => {
-      const sales = itemSales.get(item.id) || 0;
-      let velocity: 'fast' | 'medium' | 'slow' = 'slow';
-      
-      if (sales > 20) velocity = 'fast';
-      else if (sales > 5) velocity = 'medium';
+    // Create heatmap - filter out items without names and take first 12
+    return inventory
+      .filter(item => item.name || item.partNumber) // Only include items with name or partNumber
+      .slice(0, 12)
+      .map(item => {
+        const sales = itemSales.get(item.id) || 0;
+        let velocity: 'fast' | 'medium' | 'slow' = 'slow';
+        
+        if (sales > 20) velocity = 'fast';
+        else if (sales > 5) velocity = 'medium';
 
-      const profitMargin = ((item.mrp - item.price) / item.mrp) * 100;
+        const profitMargin = item.mrp && item.price ? ((item.mrp - item.price) / item.mrp) * 100 : 0;
 
-      return {
-        id: item.id,
-        name: item.name,
-        velocity,
-        sales,
-        stock: item.quantity,
-        profitMargin: Math.round(profitMargin),
-        vehicleType: item.vehicleType === 'two_wheeler' ? '2W' : '4W',
-      };
-    });
+        return {
+          id: item.id || 'unknown',
+          name: item.name || item.partNumber || 'Unknown Item',
+          velocity,
+          sales,
+          stock: item.quantity || 0,
+          profitMargin: Math.round(profitMargin),
+          vehicleType: item.vehicleType === 'two_wheeler' ? '2W' : '4W',
+        };
+      });
   };
 
   const generateAIAlerts = () => {
@@ -481,7 +575,7 @@ export const DashboardPanel: React.FC = () => {
                     {/* Default view - Fades out on hover */}
                     <div className="text-white transition-opacity duration-300 group-hover:opacity-0">
                       <div className="text-2xl mb-1">{item.sales}</div>
-                      <div className="text-xs opacity-90 truncate">{item.name.substring(0, 15)}</div>
+                      <div className="text-xs opacity-90 truncate">{(item.name || '').substring(0, 15)}</div>
                     </div>
                     
                     {/* Velocity badge - Fades out on hover */}

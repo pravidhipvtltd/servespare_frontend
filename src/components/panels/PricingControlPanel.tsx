@@ -159,8 +159,8 @@ export const PricingControlPanel: React.FC = () => {
 
   const filteredItems = items.filter(item => {
     const matchesSearch = 
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.partNumber?.toLowerCase().includes(searchQuery.toLowerCase());
+      (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.partNumber || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesVehicle = vehicleFilter === 'all' || item.vehicleType === vehicleFilter;
     return matchesSearch && matchesVehicle;
   });

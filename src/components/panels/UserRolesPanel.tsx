@@ -8,6 +8,7 @@ import {
 import { getFromStorage, saveToStorage } from '../../utils/mockData';
 import { useAuth } from '../../contexts/AuthContext';
 import { User, UserRole } from '../../types';
+import { Pagination } from '../common/Pagination';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   super_admin: 'Super Admin',
@@ -97,6 +98,9 @@ export const UserRolesPanel: React.FC = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [permissions, setPermissions] = useState<RolePermissions>(DEFAULT_PERMISSIONS.inventory_manager);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
   
   const [formData, setFormData] = useState({
     name: '',
@@ -225,8 +229,56 @@ export const UserRolesPanel: React.FC = () => {
     if (confirm('⚠️ Are you sure you want to delete this user?\n\nThis action cannot be undone!')) {
       const filtered = allUsers.filter((u: User) => u.id !== userId);
       saveToStorage('users', filtered);
+      setSelectedUsers([]);
       loadUsers();
     }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedUsers.length === 0) {
+      alert('Please select users to delete');
+      return;
+    }
+
+    const allUsers = getFromStorage('users', []);
+    
+    // Check if trying to delete own account
+    if (selectedUsers.includes(currentUser?.id || '')) {
+      alert('❌ You cannot delete your own account.');
+      return;
+    }
+    
+    // Check if trying to delete super admin
+    const hasSuperAdmin = selectedUsers.some(id => {
+      const user = allUsers.find((u: User) => u.id === id);
+      return user?.role === 'super_admin';
+    });
+    
+    if (hasSuperAdmin) {
+      alert('🔒 SUPERADMIN PROTECTION\\n\\n❌ SuperAdmin accounts CANNOT be deleted.\\n\\nPlease deselect SuperAdmin users and try again.');
+      return;
+    }
+
+    if (confirm(`⚠️ Are you sure you want to delete ${selectedUsers.length} user(s)?\\n\\nThis action cannot be undone!`)) {
+      const filtered = allUsers.filter((u: User) => !selectedUsers.includes(u.id));
+      saveToStorage('users', filtered);
+      setSelectedUsers([]);
+      loadUsers();
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedUsers.length === paginatedUsers.length) {
+      setSelectedUsers([]);
+    } else {
+      setSelectedUsers(paginatedUsers.map(u => u.id));
+    }
+  };
+
+  const toggleSelectUser = (id: string) => {
+    setSelectedUsers(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
   };
 
   const toggleUserStatus = (userId: string) => {
@@ -324,6 +376,17 @@ export const UserRolesPanel: React.FC = () => {
     return matchesSearch && matchesRole;
   });
 
+  // Pagination
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+
+  // Reset to page 1 when changing filters or search
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedRole, searchQuery]);
+
   const roleCounts = users.reduce((acc, u) => {
     acc[u.role] = (acc[u.role] || 0) + 1;
     return acc;
@@ -378,6 +441,17 @@ export const UserRolesPanel: React.FC = () => {
               />
             </div>
           </div>
+
+          {/* Bulk Delete Button */}
+          {selectedUsers.length > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              className="flex items-center space-x-2 px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
+            >
+              <Trash2 className="w-5 h-5" />
+              <span>Delete ({selectedUsers.length})</span>
+            </button>
+          )}
           
           <div className="flex items-center space-x-2">
             <button
@@ -489,8 +563,9 @@ export const UserRolesPanel: React.FC = () => {
 
       {/* Cards View */}
       {viewMode === 'cards' && (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredUsers.map((user, index) => (
+          {paginatedUsers.map((user, index) => (
             <div
               key={user.id}
               className={`group bg-white rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 ${
@@ -505,6 +580,16 @@ export const UserRolesPanel: React.FC = () => {
                   ? 'bg-gradient-to-br from-yellow-50 via-orange-50 to-red-50'
                   : 'bg-gradient-to-br from-gray-50 to-gray-100'
               }`}>
+                {/* Checkbox */}
+                <div className="absolute top-3 left-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedUsers.includes(user.id)}
+                    onChange={() => toggleSelectUser(user.id)}
+                    className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
                 {user.avatar ? (
                   <img src={user.avatar} alt={user.name} className="w-24 h-24 rounded-full object-cover shadow-lg transform group-hover:scale-110 transition-transform duration-300" />
                 ) : (
@@ -635,15 +720,34 @@ export const UserRolesPanel: React.FC = () => {
             </div>
           ))}
         </div>
+
+        {/* Pagination for Cards */}
+        {filteredUsers.length > itemsPerPage && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        )}
+        </>
       )}
 
       {/* Table View */}
       {viewMode === 'table' && (
+        <>
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">
+                    <input
+                      type="checkbox"
+                      checked={selectedUsers.length === paginatedUsers.length && paginatedUsers.length > 0}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                  </th>
                   <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">User</th>
                   <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">Contact</th>
                   <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">Role</th>
@@ -653,12 +757,20 @@ export const UserRolesPanel: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((user, index) => (
+                {paginatedUsers.map((user, index) => (
                   <tr key={user.id} className={`border-b border-gray-100 transition-colors ${
                     user.role === 'super_admin' 
                       ? 'bg-yellow-50 hover:bg-yellow-100' 
                       : 'hover:bg-gray-50'
                   }`}>
+                    <td className="py-4 px-6">
+                      <input
+                        type="checkbox"
+                        checked={selectedUsers.includes(user.id)}
+                        onChange={() => toggleSelectUser(user.id)}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                    </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center space-x-3">
                         <div className={`w-12 h-12 rounded-full ${getRandomGradient(index)} flex items-center justify-center text-white font-semibold ${
@@ -786,6 +898,16 @@ export const UserRolesPanel: React.FC = () => {
             </table>
           </div>
         </div>
+
+        {/* Pagination for Table */}
+        {filteredUsers.length > itemsPerPage && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        )}
+        </>
       )}
 
       {/* Add/Edit User Sidebar */}

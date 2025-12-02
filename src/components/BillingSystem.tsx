@@ -24,8 +24,8 @@ export const BillingSystem: React.FC<BillingSystemProps> = ({ inventory, onTrans
   const [showSuccess, setShowSuccess] = useState(false);
 
   const filteredInventory = inventory.filter(item => 
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.partNumber.toLowerCase().includes(searchQuery.toLowerCase())
+    (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.partNumber || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const addToCart = (item: InventoryItem) => {

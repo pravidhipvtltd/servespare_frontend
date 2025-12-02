@@ -7,7 +7,7 @@ import {
   Server, HardDrive, Zap, Code, CreditCard, Calendar, Mail, Phone, MapPin,
   Filter, Plus, Check, Clock, Archive, GitBranch, Percent, Wallet, Tag,
   Copy, Save, Loader, Award, Star, TrendingDown, PieChart, ArrowUpCircle,
-  ArrowDownCircle, Briefcase, Tool, Image, Trash, Upload, ExternalLink, Store
+  ArrowDownCircle, Briefcase, Tool, Image, Trash, Upload, ExternalLink, Store, UserCheck
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { User, Workspace, Bill, InventoryItem, Party, BankAccount } from '../types';
@@ -33,6 +33,7 @@ import { MultiVendorPanel } from './panels/MultiVendorPanel';
 import { AccessControlPanel } from './panels/AccessControlPanel';
 import { BranchVendorManagement } from './panels/BranchVendorManagement';
 import { IntegratedBranchManagement } from './panels/IntegratedBranchManagement';
+import { PendingVerificationsPanel } from './panels/PendingVerificationsPanel';
 
 type MenuItem = {
   id: string;
@@ -45,6 +46,7 @@ type MenuItem = {
 const menuItems: MenuItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3, panel: 'dashboard' },
   { id: 'users', label: 'User Management', icon: Users, panel: 'users' },
+  { id: 'pending_verifications', label: 'Pending Verifications', icon: UserCheck, panel: 'pending_verifications' },
   { id: 'vendors', label: 'Multi-Vendor', icon: Store, panel: 'vendors' },
   { id: 'access_control', label: 'Access Control', icon: Key, panel: 'access_control' },
   { id: 'branches', label: 'Branch Management', icon: Building2, panel: 'branches' },
@@ -74,6 +76,7 @@ export const SuperAdminDashboard: React.FC = () => {
   const [parties, setParties] = useState<Party[]>([]);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
+  const [pendingVerificationsCount, setPendingVerificationsCount] = useState(0);
 
   useEffect(() => {
     loadData();
@@ -93,6 +96,10 @@ export const SuperAdminDashboard: React.FC = () => {
     setParties(getFromStorage('parties', []));
     setBankAccounts(getFromStorage('bankAccounts', []));
     setExpenses(getFromStorage('expenses', []));
+    
+    // Load pending verifications count
+    const pendingUsers = JSON.parse(localStorage.getItem('pending_user_verifications') || '[]');
+    setPendingVerificationsCount(pendingUsers.length);
   };
 
   const renderPanel = () => {
@@ -109,6 +116,8 @@ export const SuperAdminDashboard: React.FC = () => {
         />;
       case 'users':
         return <UserManagementView users={users} workspaces={workspaces} onUpdate={loadData} />;
+      case 'pending_verifications':
+        return <PendingVerificationsPanel />;
       case 'vendors':
         return <MultiVendorPanel />;
       case 'access_control':
@@ -201,29 +210,35 @@ export const SuperAdminDashboard: React.FC = () => {
 
         {/* Menu Items */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActivePanel(item.panel || item.id)}
-              className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all group text-sm ${
-                activePanel === (item.panel || item.id)
-                  ? 'bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <item.icon className={`w-4 h-4 ${
-                  activePanel === (item.panel || item.id) ? 'text-white' : 'text-gray-400 group-hover:text-white'
-                }`} />
-                <span className="font-medium">{item.label}</span>
-              </div>
-              {item.badge && (
-                <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                  {item.badge}
-                </span>
-              )}
-            </button>
-          ))}
+          {menuItems.map((item) => {
+            const badge = item.id === 'pending_verifications' ? pendingVerificationsCount : item.badge;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActivePanel(item.panel || item.id);
+                  if (item.id === 'pending_verifications') loadData();
+                }}
+                className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all group text-sm ${
+                  activePanel === (item.panel || item.id)
+                    ? 'bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg'
+                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <item.icon className={`w-4 h-4 ${
+                    activePanel === (item.panel || item.id) ? 'text-white' : 'text-gray-400 group-hover:text-white'
+                  }`} />
+                  <span className="font-medium">{item.label}</span>
+                </div>
+                {badge && badge > 0 && (
+                  <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-pulse">
+                    {badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </nav>
 
         {/* User Profile */}

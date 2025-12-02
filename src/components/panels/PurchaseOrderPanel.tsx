@@ -102,8 +102,8 @@ export const PurchaseOrderPanel: React.FC = () => {
     if (!productSearch) return [];
     return inventory
       .filter(item => 
-        item.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-        item.partNumber?.toLowerCase().includes(productSearch.toLowerCase())
+        (item.name || '').toLowerCase().includes(productSearch.toLowerCase()) ||
+        (item.partNumber || '').toLowerCase().includes(productSearch.toLowerCase())
       )
       .slice(0, 5);
   };

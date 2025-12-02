@@ -26,15 +26,20 @@ import { LedgerPanel } from './panels/LedgerPanel';
 import { ReturnPanel } from './panels/ReturnPanel';
 import { BillCreationPanel } from './panels/BillCreationPanel';
 import { PricingControlPanel } from './panels/PricingControlPanel';
-import { PurchaseOrderPanel } from './panels/PurchaseOrderPanel';
+import { PurchaseOrdersPanel } from './panels/PurchaseOrdersPanel';
 import { ReturnRefundPanel } from './panels/ReturnRefundPanel';
-import { ExpensePettyCashPanel } from './panels/ExpensePettyCashPanel';
 import { FinancialReportsPanel } from './panels/FinancialReportsPanel';
-import { OrderManagementPanel } from './panels/OrderManagementPanel';
+import { SalesOrderPanel } from './panels/SalesOrderPanel';
 import { BankAccountsPanel } from './panels/BankAccountsPanel';
 import { CashInHandPanel } from './panels/CashInHandPanel';
 import { BulkImportPanel } from './panels/BulkImportPanel';
-import { BulkBarcodePanel } from './panels/BulkBarcodePanel';
+import { SalesInvoicesPanel } from './panels/SalesInvoicesPanel';
+import { CashDrawerMonitorPanel } from './panels/CashDrawerMonitorPanel';
+
+// Import new enhancement components
+import { QuickActionsMenu } from './QuickActionsMenu';
+import { GlobalSearch } from './GlobalSearch';
+import { SystemHealthWidget } from './SystemHealthWidget';
 
 type MenuItem = {
   id: string;
@@ -60,11 +65,11 @@ const menuStructure: MenuItem[] = [
     icon: null,
     children: [
       { id: 'parties', label: 'Parties', icon: Users, panel: 'parties' },
+      { id: 'purchase-orders', label: 'Purchase Orders', icon: ShoppingBag, panel: 'purchase-orders' },
       { id: 'total-inventory', label: 'Total Inventory', icon: Package, panel: 'total-inventory' },
-      { id: 'barcode-scanner', label: 'Barcode Scanner', icon: Scan, panel: 'barcode-scanner' },
       { id: 'bulk-import', label: 'Bulk Import', icon: Upload, panel: 'bulk-import' },
       { id: 'pricing-control', label: 'Pricing Control', icon: DollarSign, panel: 'pricing-control' },
-      { id: 'order-management', label: 'Order Management', icon: ShoppingCart, panel: 'order-management' },
+      { id: 'sales-order', label: 'Sales Order', icon: ShoppingCart, panel: 'sales-order' },
     ],
   },
   {
@@ -76,6 +81,7 @@ const menuStructure: MenuItem[] = [
       { id: 'daybook', label: 'DayBook', icon: BookOpen, panel: 'daybook' },
       { id: 'ledger', label: 'Ledger', icon: TrendingDown, panel: 'ledger' },
       { id: 'return', label: 'Return', icon: Undo, panel: 'return' },
+      { id: 'sales-invoices', label: 'Sales Invoices', icon: FileText, panel: 'sales-invoices' },
     ],
   },
   {
@@ -93,16 +99,10 @@ const menuStructure: MenuItem[] = [
     children: [
       { id: 'bank-accounts', label: 'Bank Accounts', icon: Building2, panel: 'bank-accounts' },
       { id: 'cash-in-hand', label: 'Cash In Hand', icon: Wallet, panel: 'cash-in-hand' },
+      { id: 'cash-drawer-monitor', label: 'Cash Drawer Monitor', icon: RotateCcw, panel: 'cash-drawer-monitor' },
     ],
   },
-  {
-    id: 'expenses',
-    label: 'EXPENSES',
-    icon: null,
-    children: [
-      { id: 'petty-cash', label: 'Petty Cash', icon: DollarSign, panel: 'petty-cash' },
-    ],
-  },
+
   {
     id: 'financial-reports',
     label: 'FINANCIAL REPORTS',
@@ -126,6 +126,9 @@ export const AdminDashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredMenuStructure, setFilteredMenuStructure] = useState(menuStructure);
 
+  // New enhancement states
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+
   useEffect(() => {
     initializeExtendedStorage();
     
@@ -136,8 +139,20 @@ export const AdminDashboard: React.FC = () => {
       setInventoryFilter(filter);
     };
     
+    // Global search keyboard shortcut (Cmd+K or Ctrl+K)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setGlobalSearchOpen(true);
+      }
+    };
+    
     window.addEventListener('quickStatClick', handleQuickStatClick);
-    return () => window.removeEventListener('quickStatClick', handleQuickStatClick);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('quickStatClick', handleQuickStatClick);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   useEffect(() => {
@@ -219,17 +234,63 @@ export const AdminDashboard: React.FC = () => {
       case 'ledger': return <LedgerPanel />;
       case 'return': return <ReturnPanel />;
       case 'bill-creation': return <BillCreationPanel />;
-      case 'pricing-control': return <PricingControlPanel />;
-      case 'purchase-orders': return <PurchaseOrderPanel />;
-      case 'return-refund': return <ReturnRefundPanel />;
-      case 'petty-cash': return <ExpensePettyCashPanel />;
-      case 'financial-reports': return <FinancialReportsPanel />;
-      case 'order-management': return <OrderManagementPanel />;
       case 'bank-accounts': return <BankAccountsPanel />;
+      case 'pricing-control': return <PricingControlPanel />;
+      case 'purchase-orders': return <PurchaseOrdersPanel />;
+      case 'return-refund': return <ReturnRefundPanel />;
+      case 'financial-reports': return <FinancialReportsPanel />;
+      case 'sales-order': return <SalesOrderPanel />;
       case 'cash-in-hand': return <CashInHandPanel />;
-      case 'barcode-scanner': return <BulkBarcodePanel />;
       case 'bulk-import': return <BulkImportPanel />;
+      case 'sales-invoices': return <SalesInvoicesPanel />;
+      case 'cash-drawer-monitor': return <CashDrawerMonitorPanel />;
       default: return <DashboardPanel />;
+    }
+  };
+
+  // Handler for quick action clicks
+  const handleQuickAction = (actionId: string) => {
+    switch (actionId) {
+      case 'create-bill':
+        setActivePanel('bill-creation');
+        break;
+      case 'add-inventory':
+        setActivePanel('total-inventory');
+        break;
+      case 'add-party':
+        setActivePanel('parties');
+        break;
+      case 'create-order':
+        setActivePanel('purchase-orders');
+        break;
+      case 'add-expense':
+        setActivePanel('cash-in-hand');
+        break;
+      case 'view-reports':
+        setActivePanel('financial-reports');
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Handler for global search result selection
+  const handleSearchSelect = (result: any) => {
+    switch (result.type) {
+      case 'product':
+        setActivePanel('total-inventory');
+        break;
+      case 'party':
+        setActivePanel('parties');
+        break;
+      case 'bill':
+        setActivePanel('bills');
+        break;
+      case 'order':
+        setActivePanel('purchase-orders');
+        break;
+      default:
+        break;
     }
   };
 

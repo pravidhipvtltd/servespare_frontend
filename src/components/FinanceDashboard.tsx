@@ -15,6 +15,8 @@ import { PermissionGuard } from './PermissionGuard';
 import { Bill, BankAccount, CashTransaction, InventoryItem, Party } from '../types';
 import { getFromStorage, saveToStorage } from '../utils/mockData';
 import { getPermissionForPanel } from '../utils/permissionMapping';
+import { CashInHandPanel } from './panels/CashInHandPanel';
+import { BankAccountsPanel } from './panels/BankAccountsPanel';
 
 type MenuItem = {
   id: string;
@@ -30,7 +32,9 @@ const menuItems: MenuItem[] = [
   { id: 'supplier-ledger', label: 'Supplier Ledger', icon: Users, panel: 'supplier-ledger' },
   { id: 'customer-ledger', label: 'Customer Ledger', icon: FileText, panel: 'customer-ledger' },
   { id: 'expenses', label: 'Expenses', icon: ArrowDownCircle, panel: 'expenses' },
-  { id: 'cash-bank', label: 'Cash & Bank', icon: Wallet, panel: 'cash-bank' },
+  { id: 'cash-hand', label: 'Cash in Hand', icon: Wallet, panel: 'cash-hand' },
+  { id: 'bank-accounts', label: 'Bank Accounts', icon: Building2, panel: 'bank-accounts' },
+  { id: 'cash-bank', label: 'Cash & Bank Overview', icon: CreditCard, panel: 'cash-bank' },
   { id: 'cheques', label: 'Cheque Management', icon: FileCheck, panel: 'cheques' },
   { id: 'returns', label: 'Returns', icon: RefreshCw, panel: 'returns' },
   { id: 'tax', label: 'Tax & VAT', icon: Percent, panel: 'tax' },
@@ -109,6 +113,10 @@ export const FinanceDashboard: React.FC = () => {
           return <CustomerLedgerView parties={parties} bills={bills} onUpdate={loadData} currentUser={currentUser} />;
         case 'expenses':
           return <ExpensesView expenses={expenses} onUpdate={loadData} currentUser={currentUser} />;
+        case 'cash-hand':
+          return <CashInHandPanel />;
+        case 'bank-accounts':
+          return <BankAccountsPanel />;
         case 'cash-bank':
           return <CashBankView 
             bankAccounts={bankAccounts}

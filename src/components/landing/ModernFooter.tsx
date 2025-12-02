@@ -1,7 +1,9 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion, useInView } from 'motion/react';
-import { Smartphone } from 'lucide-react';
+import { Smartphone, MessageCircle } from 'lucide-react';
 import { useLandingLanguage } from '../../contexts/LandingLanguageContext';
+import { ContactModal } from '../ContactModal';
+import serveSparesLogo from 'figma:asset/21c6740f21b1ace618daa199363b9be61bdfe73e.png';
 
 type PageType = 'home' | 'about' | 'features' | 'pricing' | 'contact' | 'blog';
 
@@ -13,7 +15,8 @@ interface ModernFooterProps {
 
 export const ModernFooter: React.FC<ModernFooterProps> = ({ setShowLogin, onNavigate, currentPage }) => {
   const { t, language } = useLandingLanguage();
-  
+  const [isContactModalOpen, setContactModalOpen] = useState(false);
+
   return (
     <>
       {/* Only show Blog and Mobile App sections on home page */}
@@ -23,12 +26,15 @@ export const ModernFooter: React.FC<ModernFooterProps> = ({ setShowLogin, onNavi
           <BlogSection onNavigate={onNavigate} />
           
           {/* Mobile App Section */}
-          <MobileAppSection onNavigate={onNavigate} />
+          <MobileAppSection onNavigate={onNavigate} setContactModalOpen={setContactModalOpen} />
         </>
       )}
       
       {/* Main Footer - Always visible on all pages */}
       <MainFooter setShowLogin={setShowLogin} onNavigate={onNavigate} currentPage={currentPage} />
+      
+      {/* Contact Modal */}
+      <ContactModal isOpen={isContactModalOpen} onClose={() => setContactModalOpen(false)} />
     </>
   );
 };
@@ -104,7 +110,7 @@ const BlogSection: React.FC<{ onNavigate: (page: PageType) => void }> = ({ onNav
 };
 
 // Mobile App Section
-const MobileAppSection: React.FC<{ onNavigate: (page: PageType) => void }> = ({ onNavigate }) => {
+const MobileAppSection: React.FC<{ onNavigate: (page: PageType) => void; setContactModalOpen: (open: boolean) => void }> = ({ onNavigate, setContactModalOpen }) => {
   const { t } = useLandingLanguage();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
@@ -182,9 +188,9 @@ const MobileAppSection: React.FC<{ onNavigate: (page: PageType) => void }> = ({ 
               </motion.a>
             </motion.div>
 
-            {/* Get Started Button */}
+            {/* Contact Us Button */}
             <motion.button
-              onClick={() => onNavigate('contact')}
+              onClick={() => setContactModalOpen(true)}
               initial={{ opacity: 0, y: 20 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ delay: 0.5 }}
@@ -192,7 +198,8 @@ const MobileAppSection: React.FC<{ onNavigate: (page: PageType) => void }> = ({ 
               whileTap={{ scale: 0.95 }}
               className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white font-semibold rounded-xl shadow-xl hover:shadow-2xl transition-all group"
             >
-              <span className="text-lg">{t('footer.app.cta')}</span>
+              <MessageCircle className="h-6 w-6 mr-2" />
+              <span className="text-lg">Need Help? Contact Us Now</span>
               <motion.svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-6 w-6 ml-2"
@@ -398,8 +405,18 @@ const MainFooter: React.FC<{ setShowLogin: (show: boolean) => void; onNavigate: 
           {/* Brand */}
           <div>
             <div className="flex items-center space-x-2 mb-6">
-              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-                <span className="text-indigo-600 font-bold text-xl">SS</span>
+              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center overflow-hidden">
+                <motion.img 
+                  src={serveSparesLogo} 
+                  alt="Serve Spares Logo" 
+                  className="w-7 h-7 object-contain"
+                  animate={{ rotate: [0, 360] }}
+                  transition={{ 
+                    duration: 20, 
+                    repeat: Infinity, 
+                    ease: "linear" 
+                  }}
+                />
               </div>
               <div>
                 <div className="font-bold text-lg">ServeSpares</div>
@@ -486,8 +503,7 @@ const MainFooter: React.FC<{ setShowLogin: (show: boolean) => void; onNavigate: 
         {/* Bottom */}
         <div className="border-t border-white/20 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-white/80 text-sm">
-            <p>© {new Date().getFullYear()} SERVE SPARES. DEVELOPED IN PARTNERSHIP WITH <span className="text-white font-bold">DEEPLEEK AI</span></p>
-            <p>{t('footer.follow')}</p>
+            <p>© {new Date().getFullYear()} SERVE SPARES. DEVELOPED IN PARTNERSHIP WITH <span className="text-white font-bold">PRAVIDHI</span></p>
           </div>
         </div>
       </div>

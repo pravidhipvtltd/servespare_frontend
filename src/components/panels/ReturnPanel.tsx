@@ -151,8 +151,8 @@ export const ReturnPanel: React.FC = () => {
       const item = inventory.find(
         (i: InventoryItem) =>
           i.id === searchQuery ||
-          i.partNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          i.name.toLowerCase().includes(searchQuery.toLowerCase())
+          i.partNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          i.name?.toLowerCase().includes(searchQuery.toLowerCase())
       );
 
       if (item) {

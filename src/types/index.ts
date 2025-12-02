@@ -25,13 +25,15 @@ export interface Workspace {
   createdAt: string;
 }
 
-export type PartyType = 'customer' | 'supplier' | 'distributor' | 'manufacturer' | 'wholesaler';
+export type PartyType = 'supplier' | 'customer';
+export type CustomerType = 'retail' | 'retailer' | 'workshop' | 'distributor' | 'wholesaler';
 export type PaymentTerms = 'cash' | 'credit_7' | 'credit_15' | 'credit_30' | 'credit_45';
 
 export interface Party {
   id: string;
   name: string;
   type: PartyType;
+  customerType?: CustomerType; // Only used when type is 'customer'
   contactPerson: string;
   phone: string;
   email?: string;
@@ -61,6 +63,96 @@ export interface PartyTransaction {
   date: string;
   workspaceId?: string;
   createdBy?: string;
+}
+
+export type PurchaseOrderStatus = 'draft' | 'ordered' | 'received' | 'billed';
+
+export interface PurchaseOrderItem {
+  id: string;
+  inventoryItemId?: string;
+  itemName: string;
+  partNumber?: string;
+  description?: string;
+  orderedQuantity: number;
+  receivedQuantity: number;
+  unitPrice: number;
+  taxPercent: number;
+  discount: number;
+  totalAmount: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  poNumber: string;
+  supplierId: string;
+  supplierName: string;
+  status: PurchaseOrderStatus;
+  orderDate: string;
+  expectedDeliveryDate: string;
+  receivedDate?: string;
+  items: PurchaseOrderItem[];
+  subtotal: number;
+  taxAmount: number;
+  discountAmount: number;
+  totalAmount: number;
+  notes?: string;
+  terms?: string;
+  invoiceFile?: string; // Base64 PDF
+  invoiceFileName?: string;
+  grnGenerated: boolean;
+  grnNumber?: string;
+  workspaceId?: string;
+  createdAt: string;
+  createdBy?: string;
+  updatedAt: string;
+}
+
+export interface GRN {
+  id: string;
+  grnNumber: string;
+  purchaseOrderId: string;
+  poNumber: string;
+  supplierId: string;
+  supplierName: string;
+  receivedDate: string;
+  receivedBy: string;
+  items: PurchaseOrderItem[];
+  notes?: string;
+  workspaceId?: string;
+  createdAt: string;
+}
+
+export interface CashDrawerShift {
+  id: string;
+  cashierId: string;
+  cashierName: string;
+  branchId?: string;
+  branchName?: string;
+  openedAt: string;
+  closedAt?: string;
+  openingAmount: number;
+  closingAmount?: number;
+  expectedAmount?: number;
+  actualAmount?: number;
+  difference?: number; // Positive = surplus, Negative = loss
+  status: 'open' | 'closed' | 'force_closed';
+  transactions: CashTransaction[];
+  notes?: string;
+  flagged?: boolean;
+  flagReason?: string;
+  flaggedBy?: string;
+  flaggedAt?: string;
+  workspaceId?: string;
+  createdAt: string;
+}
+
+export interface CashTransaction {
+  id: string;
+  type: 'sale' | 'refund' | 'cash_in' | 'cash_out' | 'opening' | 'closing';
+  amount: number;
+  billNumber?: string;
+  description?: string;
+  timestamp: string;
 }
 
 export type VehicleType = 'two_wheeler' | 'four_wheeler';
@@ -116,18 +208,35 @@ export interface Bill {
   customerPanVat?: string;
   customerType?: 'customer' | PartyType; // Type of customer
   partyId?: string; // Link to party if exists
+  customerId?: string; // Same as partyId, for ledger compatibility
   items: BillItem[];
   subtotal: number;
   tax: number;
   discount: number;
   discountType?: 'percentage' | 'fixed';
+  discountHistory?: DiscountHistoryEntry[]; // Track all discounts applied
   total: number;
   paymentMethod: 'cash' | 'esewa' | 'fonepay' | 'bank' | 'credit' | 'cheque';
-  paymentStatus: 'paid' | 'pending' | 'draft';
+  bankAccountId?: string; // ID of the bank account/payment method used
+  paymentStatus: 'paid' | 'pending' | 'draft' | 'hold' | 'cancelled' | 'refunded' | 'credit';
   notes?: string;
+  branchId?: string; // Branch where sale was made
+  branchName?: string;
+  cashierName?: string; // Name of cashier who created the bill
   workspaceId?: string;
   createdAt: string;
   createdBy?: string;
+  refundedAt?: string;
+  refundReason?: string;
+}
+
+export interface DiscountHistoryEntry {
+  id: string;
+  amount: number;
+  type: 'percentage' | 'fixed';
+  appliedBy: string;
+  appliedAt: string;
+  reason?: string;
 }
 
 export interface BillItem {
@@ -136,6 +245,7 @@ export interface BillItem {
   quantity: number;
   price: number;
   total: number;
+  warranty?: string; // e.g., '1 Year', '6 Months', 'No Warranty'
 }
 
 export interface Order {
@@ -212,16 +322,6 @@ export interface BankAccount {
   accountHolder: string;
   ifscCode: string;
   balance: number;
-  workspaceId?: string;
-  createdAt: string;
-}
-
-export interface CashTransaction {
-  id: string;
-  type: 'in' | 'out';
-  amount: number;
-  description: string;
-  category: string;
   workspaceId?: string;
   createdAt: string;
 }

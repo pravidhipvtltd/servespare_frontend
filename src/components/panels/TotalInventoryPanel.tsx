@@ -3,6 +3,7 @@ import { Plus, Search, AlertCircle, Edit, Trash2, Package, TrendingDown, DollarS
 import { getFromStorage, saveToStorage } from '../../utils/mockData';
 import { useAuth } from '../../contexts/AuthContext';
 import { InventoryItem, Party, VehicleType, ItemCategory } from '../../types';
+import { Pagination } from '../common/Pagination';
 
 const VEHICLE_TYPE_LABELS: Record<VehicleType, string> = {
   two_wheeler: '2-Wheeler',
@@ -31,6 +32,9 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({ filter }) =
   const [scanError, setScanError] = useState<string>('');
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const streamRef = React.useRef<MediaStream | null>(null);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   const [formData, setFormData] = useState<Partial<InventoryItem>>({
     name: '',
@@ -181,8 +185,38 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({ filter }) =
       const allInventory = getFromStorage('inventory', []);
       const filtered = allInventory.filter((i: InventoryItem) => i.id !== itemId);
       saveToStorage('inventory', filtered);
+      setSelectedItems([]);
       loadInventory();
     }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedItems.length === 0) {
+      alert('Please select items to delete');
+      return;
+    }
+
+    if (confirm(`Are you sure you want to delete ${selectedItems.length} item(s)?`)) {
+      const allInventory = getFromStorage('inventory', []);
+      const filtered = allInventory.filter((i: InventoryItem) => !selectedItems.includes(i.id));
+      saveToStorage('inventory', filtered);
+      setSelectedItems([]);
+      loadInventory();
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedItems.length === paginatedInventory.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(paginatedInventory.map(i => i.id));
+    }
+  };
+
+  const toggleSelectItem = (id: string) => {
+    setSelectedItems(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
   };
 
   // Barcode Scanner Functions
@@ -306,9 +340,10 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({ filter }) =
 
   const filteredInventory = inventory.filter(item => {
     const matchesSearch = 
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.partNumber && item.partNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (item.hsnCode && item.hsnCode.toLowerCase().includes(searchQuery.toLowerCase()));
+      (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.partName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.partNumber || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.hsnCode || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = filterCategory === 'all' || item.category === filterCategory;
     const matchesVehicleType = filterVehicleType === 'all' || item.vehicleType === filterVehicleType;
     
@@ -354,6 +389,11 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({ filter }) =
     
     return matchesSearch && matchesCategory && matchesVehicleType && matchesQuickFilter;
   });
+
+  const paginatedInventory = filteredInventory.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const lowStockCount = inventory.filter(i => i.quantity <= i.minStockLevel).length;
   const totalValue = inventory.reduce((sum, i) => sum + (i.quantity * i.price), 0);
@@ -466,6 +506,17 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({ filter }) =
               />
             </div>
 
+            {/* Bulk Delete Button */}
+            {selectedItems.length > 0 && (
+              <button
+                onClick={handleBulkDelete}
+                className="flex items-center space-x-2 px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
+              >
+                <Trash2 className="w-5 h-5" />
+                <span>Delete Selected ({selectedItems.length})</span>
+              </button>
+            )}
+
             {/* Category Filter */}
             <div className="flex items-center space-x-2">
               <Filter className="w-4 h-4 text-gray-500" />
@@ -531,6 +582,14 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({ filter }) =
           <table className="w-full">
             <thead className="bg-gray-100 border-b border-gray-200">
               <tr>
+                <th className="text-left text-gray-600 text-sm py-4 px-6">
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.length === paginatedInventory.length && paginatedInventory.length > 0}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                </th>
                 <th className="text-left text-gray-600 text-sm py-4 px-6">Photo</th>
                 <th className="text-left text-gray-600 text-sm py-4 px-6">Item Details</th>
                 <th className="text-left text-gray-600 text-sm py-4 px-6">Category</th>
@@ -545,7 +604,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({ filter }) =
             <tbody>
               {filteredInventory.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-12">
+                  <td colSpan={10} className="text-center py-12">
                     <Archive className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                     <p className="text-gray-500">No inventory items found</p>
                     <button
@@ -557,12 +616,20 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({ filter }) =
                   </td>
                 </tr>
               ) : (
-                filteredInventory.map((item, index) => (
+                paginatedInventory.map((item, index) => (
                   <tr 
                     key={item.id} 
                     className="border-b border-gray-100 hover:bg-blue-50 transition-all duration-200 group"
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
+                    <td className="py-4 px-6">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.includes(item.id)}
+                        onChange={() => toggleSelectItem(item.id)}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                    </td>
                     <td className="py-4 px-6">
                       {item.image ? (
                         <img 
@@ -676,14 +743,25 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({ filter }) =
           </table>
         </div>
 
-        {/* Pagination Footer */}
+        {/* Pagination */}
+        {filteredInventory.length > itemsPerPage && (
+          <Pagination
+            totalItems={filteredInventory.length}
+            itemsPerPage={itemsPerPage}
+            currentPage={currentPage}
+            totalPages={Math.ceil(filteredInventory.length / itemsPerPage)}
+            onPageChange={setCurrentPage}
+          />
+        )}
+
+        {/* Summary Footer */}
         {filteredInventory.length > 0 && (
           <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
             <div className="text-sm text-gray-600">
-              Showing {filteredInventory.length} of {inventory.length} items
+              Total {filteredInventory.length} items ({inventory.length} in workspace)
             </div>
             <div className="text-sm text-gray-500">
-              Total Value: ₹{filteredInventory.reduce((sum, i) => sum + (i.quantity * i.price), 0).toLocaleString()}
+              Total Value: रू{filteredInventory.reduce((sum, i) => sum + (i.quantity * i.price), 0).toLocaleString()}
             </div>
           </div>
         )}

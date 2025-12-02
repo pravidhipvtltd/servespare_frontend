@@ -4,6 +4,7 @@ import { getFromStorage, saveToStorage } from '../../utils/mockData';
 import { useAuth } from '../../contexts/AuthContext';
 import { Bill, Party } from '../../types';
 import { BillCreationPanel } from './BillCreationPanel';
+import { Pagination } from '../common/Pagination';
 
 type BillStatus = 'pending' | 'paid' | 'draft';
 
@@ -16,6 +17,7 @@ export const BillsPanel: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewingBill, setViewingBill] = useState<Bill | null>(null);
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
+  const [selectedBills, setSelectedBills] = useState<string[]>([]);
   const itemsPerPage = 20;
 
   useEffect(() => {
@@ -55,8 +57,38 @@ export const BillsPanel: React.FC = () => {
       const allBills = getFromStorage('bills', []);
       const updated = allBills.filter((b: Bill) => b.id !== billId);
       saveToStorage('bills', updated);
+      setSelectedBills([]);
       loadBills();
     }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedBills.length === 0) {
+      alert('Please select bills to delete');
+      return;
+    }
+
+    if (confirm(`Are you sure you want to delete ${selectedBills.length} bill(s)?`)) {
+      const allBills = getFromStorage('bills', []);
+      const updated = allBills.filter((b: Bill) => !selectedBills.includes(b.id));
+      saveToStorage('bills', updated);
+      setSelectedBills([]);
+      loadBills();
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedBills.length === currentBills.length) {
+      setSelectedBills([]);
+    } else {
+      setSelectedBills(currentBills.map(b => b.id));
+    }
+  };
+
+  const toggleSelectBill = (id: string) => {
+    setSelectedBills(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
   };
 
   const handleExport = () => {
@@ -254,15 +286,28 @@ export const BillsPanel: React.FC = () => {
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         {/* Search Bar */}
         <div className="p-6 border-b border-gray-200 bg-gray-50">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by order ID, bill number, customer name, or phone..."
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-            />
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by order ID, bill number, customer name, or phone..."
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+              />
+            </div>
+
+            {/* Bulk Delete Button */}
+            {selectedBills.length > 0 && (
+              <button
+                onClick={handleBulkDelete}
+                className="flex items-center space-x-2 px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
+              >
+                <Trash2 className="w-5 h-5" />
+                <span>Delete ({selectedBills.length})</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -271,6 +316,14 @@ export const BillsPanel: React.FC = () => {
           <table className="w-full">
             <thead className="bg-gray-100 border-b border-gray-200">
               <tr>
+                <th className="text-left text-gray-600 text-sm py-4 px-6">
+                  <input
+                    type="checkbox"
+                    checked={selectedBills.length === currentBills.length && currentBills.length > 0}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                </th>
                 <th className="text-left text-gray-600 text-sm py-4 px-6">Order ID</th>
                 <th className="text-left text-gray-600 text-sm py-4 px-6">Bill Number</th>
                 <th className="text-left text-gray-600 text-sm py-4 px-6">Customer Details</th>
@@ -284,7 +337,7 @@ export const BillsPanel: React.FC = () => {
             <tbody>
               {currentBills.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12">
+                  <td colSpan={9} className="text-center py-12">
                     <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                     <p className="text-gray-500">No {activeTab} bills found</p>
                   </td>
@@ -295,6 +348,14 @@ export const BillsPanel: React.FC = () => {
                     key={bill.id} 
                     className="border-b border-gray-100 hover:bg-blue-50 transition-all duration-200"
                   >
+                    <td className="py-4 px-6">
+                      <input
+                        type="checkbox"
+                        checked={selectedBills.includes(bill.id)}
+                        onChange={() => toggleSelectBill(bill.id)}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                    </td>
                     <td className="py-4 px-6">
                       <div className="text-gray-900 font-mono text-sm">#{bill.id.slice(0, 8)}</div>
                     </td>
@@ -396,65 +457,11 @@ export const BillsPanel: React.FC = () => {
 
         {/* Pagination */}
         {filteredBills.length > 0 && (
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-            <div className="text-sm text-gray-600">
-              Showing {startIndex + 1} to {Math.min(endIndex, filteredBills.length)} of {filteredBills.length} bills
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className={`px-3 py-2 rounded-lg border transition-all duration-200 ${
-                  currentPage === 1
-                    ? 'border-gray-200 text-gray-400 cursor-not-allowed'
-                    : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              
-              <div className="flex items-center space-x-1">
-                {[...Array(totalPages)].map((_, i) => {
-                  const pageNum = i + 1;
-                  // Show first page, last page, current page, and pages around current
-                  if (
-                    pageNum === 1 ||
-                    pageNum === totalPages ||
-                    (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
-                  ) {
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`px-3 py-2 rounded-lg transition-all duration-200 ${
-                          currentPage === pageNum
-                            ? 'bg-blue-600 text-white'
-                            : 'text-gray-700 hover:bg-gray-100'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  } else if (pageNum === currentPage - 2 || pageNum === currentPage + 2) {
-                    return <span key={i} className="px-2 text-gray-400">...</span>;
-                  }
-                  return null;
-                })}
-              </div>
-
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-                className={`px-3 py-2 rounded-lg border transition-all duration-200 ${
-                  currentPage === totalPages
-                    ? 'border-gray-200 text-gray-400 cursor-not-allowed'
-                    : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         )}
       </div>
 

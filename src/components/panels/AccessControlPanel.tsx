@@ -73,7 +73,7 @@ const AVAILABLE_PERMISSIONS: Permission[] = [
 ];
 
 const AVAILABLE_LANGUAGES = [
-  { code: 'en', name: 'English', flag: '🇬🇧' },
+  { code: 'en', name: 'English', flag: '🇺🇸' },
   { code: 'ne', name: 'नेपाली (Nepali)', flag: '🇳🇵' },
   { code: 'hi', name: 'हिंदी (Hindi)', flag: '🇮🇳' },
   { code: 'es', name: 'Español (Spanish)', flag: '🇪🇸' },

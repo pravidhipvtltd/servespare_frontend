@@ -1,22 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search, X, Eye, Building2, Phone, Mail, MapPin, FileText, TrendingUp, Download, Filter, Package } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, X, Eye, Building2, Phone, Mail, MapPin, FileText, TrendingUp, Download, Filter, Package, Users, ShoppingCart } from 'lucide-react';
 import { getFromStorage, saveToStorage } from '../../utils/mockData';
 import { useAuth } from '../../contexts/AuthContext';
-import { Party, PartyType, PaymentTerms, PartyTransaction } from '../../types';
+import { Party, PartyType, CustomerType, PaymentTerms, PartyTransaction } from '../../types';
+import { Pagination } from '../common/Pagination';
 
 const PARTY_TYPE_LABELS: Record<PartyType, string> = {
   customer: 'Customer',
   supplier: 'Supplier',
-  distributor: 'Distributor',
-  manufacturer: 'Manufacturer',
-  wholesaler: 'Wholesaler',
 };
 
 const PARTY_TYPE_COLORS: Record<PartyType, string> = {
   customer: 'bg-pink-100 text-pink-700',
   supplier: 'bg-blue-100 text-blue-700',
+};
+
+const CUSTOMER_TYPE_LABELS: Record<CustomerType, string> = {
+  retail: 'Retail Customer',
+  retailer: 'Retailer',
+  workshop: 'Workshop',
+  distributor: 'Distributor',
+  wholesaler: 'Wholesaler',
+};
+
+const CUSTOMER_TYPE_COLORS: Record<CustomerType, string> = {
+  retail: 'bg-pink-100 text-pink-700',
+  retailer: 'bg-blue-100 text-blue-700',
+  workshop: 'bg-purple-100 text-purple-700',
   distributor: 'bg-green-100 text-green-700',
-  manufacturer: 'bg-purple-100 text-purple-700',
   wholesaler: 'bg-orange-100 text-orange-700',
 };
 
@@ -31,17 +42,22 @@ const PAYMENT_TERMS_LABELS: Record<PaymentTerms, string> = {
 export const PartiesPanel: React.FC = () => {
   const { currentUser } = useAuth();
   const [parties, setParties] = useState<Party[]>([]);
+  const [activeTab, setActiveTab] = useState<'suppliers' | 'customers'>('suppliers');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedType, setSelectedType] = useState<PartyType | 'all'>('all');
+  const [selectedCustomerType, setSelectedCustomerType] = useState<CustomerType | 'all'>('all');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewingSidebar, setViewingSidebar] = useState(false);
   const [editingParty, setEditingParty] = useState<Party | null>(null);
   const [viewingParty, setViewingParty] = useState<Party | null>(null);
   const [transactions, setTransactions] = useState<PartyTransaction[]>([]);
+  const [selectedParties, setSelectedParties] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
   
   const [formData, setFormData] = useState<Partial<Party>>({
     name: '',
     type: 'supplier',
+    customerType: 'retail',
     contactPerson: '',
     phone: '+977',
     email: '',
@@ -84,6 +100,7 @@ export const PartiesPanel: React.FC = () => {
       setFormData({
         name: '',
         type: 'supplier',
+        customerType: 'retail',
         contactPerson: '',
         phone: '+977',
         email: '',
@@ -109,6 +126,7 @@ export const PartiesPanel: React.FC = () => {
     setFormData({
       name: '',
       type: 'supplier',
+      customerType: 'retail',
       contactPerson: '',
       phone: '+977',
       email: '',
@@ -181,8 +199,38 @@ export const PartiesPanel: React.FC = () => {
       const allParties = getFromStorage('parties', []);
       const filtered = allParties.filter((p: Party) => p.id !== partyId);
       saveToStorage('parties', filtered);
+      setSelectedParties([]);
       loadParties();
     }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedParties.length === 0) {
+      alert('Please select parties to delete');
+      return;
+    }
+
+    if (confirm(`Are you sure you want to delete ${selectedParties.length} part${selectedParties.length > 1 ? 'ies' : 'y'}?`)) {
+      const allParties = getFromStorage('parties', []);
+      const filtered = allParties.filter((p: Party) => !selectedParties.includes(p.id));
+      saveToStorage('parties', filtered);
+      setSelectedParties([]);
+      loadParties();
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedParties.length === paginatedParties.length) {
+      setSelectedParties([]);
+    } else {
+      setSelectedParties(paginatedParties.map(p => p.id));
+    }
+  };
+
+  const toggleSelectParty = (id: string) => {
+    setSelectedParties(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
   };
 
   const handleExportReport = () => {
@@ -215,7 +263,7 @@ export const PartiesPanel: React.FC = () => {
       p.contactPerson.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.phone.includes(searchQuery) ||
       (p.gstNumber && p.gstNumber.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesType = selectedType === 'all' || p.type === selectedType;
+    const matchesType = activeTab === 'suppliers' ? p.type === 'supplier' : p.type === 'customer' && (selectedCustomerType === 'all' || p.customerType === selectedCustomerType);
     return matchesSearch && matchesType;
   });
 
@@ -235,6 +283,8 @@ export const PartiesPanel: React.FC = () => {
     const inventory = getFromStorage('inventory', []);
     return inventory.filter((item: any) => item.partyId === partyId);
   };
+
+  const paginatedParties = filteredParties.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="space-y-6">
@@ -314,28 +364,52 @@ export const PartiesPanel: React.FC = () => {
         {/* Type Filter Badges */}
         <div className="flex flex-wrap gap-2 mb-6">
           <button
-            onClick={() => setSelectedType('all')}
+            onClick={() => setActiveTab('suppliers')}
             className={`px-4 py-2 rounded-full text-sm transition-colors ${
-              selectedType === 'all'
+              activeTab === 'suppliers'
                 ? 'bg-gray-900 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            All ({parties.length})
+            Suppliers ({typeCounts['supplier'] || 0})
           </button>
-          {(['customer', 'supplier', 'distributor', 'manufacturer', 'wholesaler'] as PartyType[]).map((type) => (
-            <button
-              key={type}
-              onClick={() => setSelectedType(type)}
-              className={`px-4 py-2 rounded-full text-sm transition-colors ${
-                selectedType === type
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {PARTY_TYPE_LABELS[type]} ({typeCounts[type] || 0})
-            </button>
-          ))}
+          <button
+            onClick={() => setActiveTab('customers')}
+            className={`px-4 py-2 rounded-full text-sm transition-colors ${
+              activeTab === 'customers'
+                ? 'bg-gray-900 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Customers ({typeCounts['customer'] || 0})
+          </button>
+          {activeTab === 'customers' && (
+            <div className="ml-2">
+              <button
+                onClick={() => setSelectedCustomerType('all')}
+                className={`px-4 py-2 rounded-full text-sm transition-colors ${
+                  selectedCustomerType === 'all'
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                All ({typeCounts['customer'] || 0})
+              </button>
+              {(['retail', 'retailer', 'workshop', 'distributor', 'wholesaler'] as CustomerType[]).map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setSelectedCustomerType(type)}
+                  className={`px-4 py-2 rounded-full text-sm transition-colors ${
+                    selectedCustomerType === type
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {CUSTOMER_TYPE_LABELS[type]} ({typeCounts['customer'] || 0})
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Parties Table */}
@@ -354,7 +428,7 @@ export const PartiesPanel: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredParties.map((party) => (
+              {paginatedParties.map((party) => (
                 <tr key={party.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="py-4 px-4">
                     <div className="flex items-center space-x-3">
@@ -449,6 +523,17 @@ export const PartiesPanel: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {filteredParties.length > itemsPerPage && (
+          <Pagination
+            totalItems={filteredParties.length}
+            itemsPerPage={itemsPerPage}
+            currentPage={currentPage}
+            totalPages={Math.ceil(filteredParties.length / itemsPerPage)}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
 
       {/* Add/Edit Sidebar */}
@@ -499,6 +584,23 @@ export const PartiesPanel: React.FC = () => {
                       ))}
                     </select>
                   </div>
+
+                  {/* Customer Type - Only shown when Party Type is 'customer' */}
+                  {formData.type === 'customer' && (
+                    <div className="col-span-2">
+                      <label className="block text-gray-700 text-sm mb-2">Customer Type *</label>
+                      <select
+                        value={formData.customerType || 'retail'}
+                        onChange={(e) => setFormData({ ...formData, customerType: e.target.value as CustomerType })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      >
+                        {Object.entries(CUSTOMER_TYPE_LABELS).map(([value, label]) => (
+                          <option key={value} value={value}>{label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   <div className="col-span-2">
                     <label className="block text-gray-700 text-sm mb-2">Contact Person *</label>

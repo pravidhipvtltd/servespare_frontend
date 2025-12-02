@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { motion, useInView } from 'motion/react';
-import { Check, X, Zap, Star, Crown, Sparkles } from 'lucide-react';
+import { Check, X, Zap, Star, Crown, Sparkles, Search } from 'lucide-react';
 import { useLandingLanguage } from '../../contexts/LandingLanguageContext';
 import { PricingCheckoutModal } from '../PricingCheckoutModal';
 
@@ -271,15 +271,26 @@ const FAQ: React.FC = () => {
   const { t } = useLandingLanguage();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
+  const [searchQuery, setSearchQuery] = useState('');
 
+  // FAQ questions sorted by relevance (most common/important first)
   const faqs = [
-    { questionKey: 'pricing.faq.q1', answerKey: 'pricing.faq.a1' },
-    { questionKey: 'pricing.faq.q2', answerKey: 'pricing.faq.a2' },
-    { questionKey: 'pricing.faq.q3', answerKey: 'pricing.faq.a3' },
-    { questionKey: 'pricing.faq.q4', answerKey: 'pricing.faq.a4' },
-    { questionKey: 'pricing.faq.q5', answerKey: 'pricing.faq.a5' },
-    { questionKey: 'pricing.faq.q6', answerKey: 'pricing.faq.a6' },
+    { questionKey: 'pricing.faq.q3', answerKey: 'pricing.faq.a3', priority: 1 }, // Free trial
+    { questionKey: 'pricing.faq.q1', answerKey: 'pricing.faq.a1', priority: 2 }, // Upgrade/downgrade
+    { questionKey: 'pricing.faq.q2', answerKey: 'pricing.faq.a2', priority: 3 }, // Payment methods
+    { questionKey: 'pricing.faq.q5', answerKey: 'pricing.faq.a5', priority: 4 }, // Annual discount
+    { questionKey: 'pricing.faq.q4', answerKey: 'pricing.faq.a4', priority: 5 }, // Cancellation
+    { questionKey: 'pricing.faq.q6', answerKey: 'pricing.faq.a6', priority: 6 }, // Training
   ];
+
+  // Filter FAQs based on search query
+  const filteredFaqs = faqs.filter(faq => {
+    if (!searchQuery.trim()) return true;
+    const question = t(faq.questionKey).toLowerCase();
+    const answer = t(faq.answerKey).toLowerCase();
+    const query = searchQuery.toLowerCase();
+    return question.includes(query) || answer.includes(query);
+  });
 
   return (
     <section ref={ref} className="py-20 bg-gradient-to-br from-gray-50 to-gray-100">
@@ -287,27 +298,57 @@ const FAQ: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
-          className="text-center mb-16"
+          className="text-center mb-12"
         >
           <h2 className="text-5xl font-bold mb-6">{t('pricing.faq.title')}</h2>
-          <p className="text-xl text-gray-600">
+          <p className="text-xl text-gray-600 mb-8">
             {t('pricing.faq.subtitle')}
           </p>
+
+          {/* Search Box */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={isInView ? { opacity: 1, scale: 1 } : {}}
+            transition={{ delay: 0.2 }}
+            className="max-w-2xl mx-auto"
+          >
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={24} />
+              <input
+                type="text"
+                placeholder="Search your questions..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-14 pr-6 py-4 rounded-2xl border-2 border-gray-200 focus:border-indigo-500 focus:outline-none text-lg transition-all shadow-sm focus:shadow-lg"
+              />
+            </div>
+          </motion.div>
         </motion.div>
 
         <div className="space-y-6">
-          {faqs.map((faq, index) => (
+          {filteredFaqs.length > 0 ? (
+            filteredFaqs.map((faq, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={isInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ delay: index * 0.1 }}
+                className="bg-white rounded-2xl p-8 hover:shadow-lg transition-all border-2 border-transparent hover:border-indigo-200"
+              >
+                <h3 className="text-xl font-bold mb-3 text-gray-800">{t(faq.questionKey)}</h3>
+                <p className="text-gray-600 leading-relaxed">{t(faq.answerKey)}</p>
+              </motion.div>
+            ))
+          ) : (
             <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-2xl p-8 hover:shadow-lg transition-all"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-12"
             >
-              <h3 className="text-xl font-bold mb-3">{t(faq.questionKey)}</h3>
-              <p className="text-gray-600 leading-relaxed">{t(faq.answerKey)}</p>
+              <p className="text-xl text-gray-500">No questions found matching "{searchQuery}"</p>
+              <p className="text-gray-400 mt-2">Try different keywords or browse all questions</p>
             </motion.div>
-          ))}
+          )}
         </div>
       </div>
     </section>

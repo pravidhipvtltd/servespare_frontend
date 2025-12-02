@@ -83,8 +83,8 @@ export const OrderCreationPanel: React.FC = () => {
     if (searchQuery.trim()) {
       const filtered = inventory.filter(
         (item) =>
-          item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.partNumber?.toLowerCase().includes(searchQuery.toLowerCase())
+          (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (item.partNumber || '').toLowerCase().includes(searchQuery.toLowerCase())
       );
       setFilteredItems(filtered.slice(0, 10));
     } else {

@@ -1,709 +1,784 @@
 import React, { useState, useEffect } from 'react';
-import {
-  ShoppingCart, TrendingDown, Calendar, Filter, Download,
-  Search, ArrowUpRight, ArrowDownLeft, Clock, User,
-  DollarSign, FileText, AlertCircle, CheckCircle, XCircle,
-  CreditCard, Wallet, ChevronRight, Package, Building2
+import { 
+  BookOpen, Search, Eye, ArrowLeft, Calendar, FileText, TrendingUp, 
+  TrendingDown, DollarSign, Package, RotateCcw, Users, Building2, 
+  Phone, Mail, ChevronRight, AlertCircle, CheckCircle, Clock, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { getFromStorage } from '../../utils/mockData';
 import { useAuth } from '../../contexts/AuthContext';
-import { Party, Order, Bill } from '../../types';
+import { Party, Bill } from '../../types';
 
 type LedgerType = 'purchase' | 'sales';
+
+interface LedgerEntry {
+  partyId: string;
+  partyName: string;
+  partyEmail?: string;
+  partyPhone?: string;
+  partyAddress?: string;
+  itemsPurchased: number;
+  itemsReturned: number;
+  grossAmount: number;
+  returnAmount: number;
+  netAmount: number;
+  dueRemaining: number;
+}
 
 interface Transaction {
   id: string;
   date: string;
-  type: 'purchase' | 'sale';
-  referenceNumber: string;
-  description: string;
-  debit: number;
-  credit: number;
-  balance: number;
-  paymentMethod?: string;
-  paymentStatus: 'paid' | 'pending' | 'partial';
-  items?: any[];
+  subject: string;
+  type: 'purchase' | 'sales' | 'return' | 'payment' | 'inventory';
+  credited: number;
+  debited: number;
+  netAmount: number;
+  balanceAmount: number;
+  billNumber?: string;
+  paymentStatus?: string;
+  items?: Array<{
+    name: string;
+    quantity: number;
+    price: number;
+    total: number;
+  }>;
 }
 
 export const LedgerPanel: React.FC = () => {
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<LedgerType>('purchase');
-  const [parties, setParties] = useState<Party[]>([]);
-  const [selectedParty, setSelectedParty] = useState<Party | null>(null);
+  const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'paid' | 'pending' | 'partial'>('all');
+  const [viewingParty, setViewingParty] = useState<LedgerEntry | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [showFilters, setShowFilters] = useState(false);
+  const [expandedTxn, setExpandedTxn] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState({
+    startDate: '',
+    endDate: '',
+  });
 
   useEffect(() => {
-    loadParties();
+    loadLedgerData();
   }, [activeTab]);
 
-  useEffect(() => {
-    if (activeTab === 'purchase' && selectedParty) {
-      loadTransactions();
-    } else if (activeTab === 'sales') {
-      loadTransactions();
-    }
-  }, [selectedParty, activeTab, dateFrom, dateTo, filterStatus]);
-
-  const loadParties = () => {
-    const allParties = getFromStorage('parties', []);
-    const workspaceParties = allParties.filter((p: Party) => p.workspaceId === currentUser?.workspaceId);
+  const loadLedgerData = () => {
+    const parties = getFromStorage('parties', [])
+      .filter((p: Party) => p.workspaceId === currentUser?.workspaceId);
+    const bills = getFromStorage('bills', [])
+      .filter((b: Bill) => b.workspaceId === currentUser?.workspaceId);
+    const purchaseOrders = getFromStorage('purchaseOrders', [])
+      .filter((o: any) => o.workspaceId === currentUser?.workspaceId);
+    const salesOrders = getFromStorage('salesOrders', [])
+      .filter((o: any) => o.workspaceId === currentUser?.workspaceId);
+    const returns = getFromStorage('returns', [])
+      .filter((r: any) => r.workspaceId === currentUser?.workspaceId);
     
-    // For Purchase Ledger - only show supplier type parties
-    if (activeTab === 'purchase') {
-      const supplierParties = workspaceParties.filter((p: Party) => 
-        p.type === 'supplier' || p.type === 'distributor' || p.type === 'wholesaler'
-      );
-      setParties(supplierParties);
-      if (supplierParties.length > 0 && !selectedParty) {
-        setSelectedParty(supplierParties[0]);
-      } else if (selectedParty && !supplierParties.find(p => p.id === selectedParty.id)) {
-        setSelectedParty(supplierParties[0] || null);
+    // Filter parties by type
+    const filteredParties = parties.filter((p: Party) => 
+      activeTab === 'purchase' ? p.type === 'supplier' : p.type === 'customer'
+    );
+
+    // Calculate ledger entries
+    const entries: LedgerEntry[] = filteredParties.map((party: Party) => {
+      let itemsPurchased = 0;
+      let itemsReturned = 0;
+      let grossAmount = 0;
+      let returnAmount = 0;
+      let paidAmount = 0;
+
+      if (activeTab === 'purchase') {
+        // Purchase ledger - supplier transactions from purchase orders only
+        const partyOrders = purchaseOrders.filter((o: any) => o.supplierId === party.id);
+        partyOrders.forEach((order: any) => {
+          const totalItems = order.items?.reduce((sum: number, item: any) => sum + item.orderedQuantity, 0) || 0;
+          itemsPurchased += totalItems;
+          grossAmount += order.totalAmount || 0;
+        });
+
+        // Check for purchase returns (items returned to supplier)
+        const partyReturns = returns.filter((r: any) => 
+          r.type === 'purchase' && r.partyId === party.id
+        );
+        partyReturns.forEach((ret: any) => {
+          const totalItems = ret.items?.reduce((sum: number, item: any) => sum + item.returnQuantity, 0) || 0;
+          itemsReturned += totalItems;
+          returnAmount += ret.refundAmount || 0;
+        });
+
+        // Calculate paid amount from bills
+        const partyBills = bills.filter((b: Bill) => 
+          b.customerId === party.id && b.paymentStatus === 'paid' && !b.billNumber?.includes('RET')
+        );
+        paidAmount = partyBills.reduce((sum: number, b: Bill) => sum + (b.total || 0), 0);
+      } else {
+        // Sales ledger - customer transactions from bills only
+        const partyBills = bills.filter((b: Bill) => b.customerId === party.id && !b.billNumber?.includes('RET'));
+        partyBills.forEach((bill: Bill) => {
+          const totalItems = bill.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0;
+          itemsPurchased += totalItems;
+          grossAmount += bill.total || 0;
+          if (bill.paymentStatus === 'paid') {
+            paidAmount += bill.total || 0;
+          }
+        });
+
+        // Check for returns from customers
+        const partyReturns = bills.filter((b: Bill) => 
+          b.customerId === party.id && b.billNumber?.includes('RET')
+        );
+        partyReturns.forEach((ret: Bill) => {
+          const totalItems = ret.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0;
+          itemsReturned += totalItems;
+          returnAmount += ret.total || 0;
+        });
       }
-    } else {
-      // For Sales Ledger - don't need party filtering
-      setParties([]);
-      setSelectedParty(null);
-    }
+
+      const netAmount = grossAmount - returnAmount;
+      const dueRemaining = netAmount - paidAmount;
+
+      return {
+        partyId: party.id,
+        partyName: party.name,
+        partyEmail: party.email,
+        partyPhone: party.phone,
+        partyAddress: party.address,
+        itemsPurchased,
+        itemsReturned,
+        grossAmount,
+        returnAmount,
+        netAmount,
+        dueRemaining,
+      };
+    });
+
+    setLedgerEntries(entries);
   };
 
-  const loadTransactions = () => {
-    const allOrders = getFromStorage('orders', []);
-    const allBills = getFromStorage('bills', []);
-    const allCustomerOrders = getFromStorage('customerOrders', []);
+  const loadPartyTransactions = (party: LedgerEntry) => {
+    const bills = getFromStorage('bills', [])
+      .filter((b: Bill) => b.workspaceId === currentUser?.workspaceId);
+    const purchaseOrders = getFromStorage('purchaseOrders', [])
+      .filter((o: any) => o.workspaceId === currentUser?.workspaceId);
+    const salesOrders = getFromStorage('salesOrders', [])
+      .filter((o: any) => o.workspaceId === currentUser?.workspaceId);
+    const returns = getFromStorage('returns', [])
+      .filter((r: any) => r.workspaceId === currentUser?.workspaceId);
 
-    let txns: Transaction[] = [];
+    const txns: Transaction[] = [];
     let runningBalance = 0;
 
     if (activeTab === 'purchase') {
-      if (!selectedParty) return;
-      
-      runningBalance = selectedParty.openingBalance || 0;
-      
-      // Purchase Ledger - Orders from supplier parties
-      const partyOrders = allOrders.filter(
-        (o: Order) => o.partyId === selectedParty.id && o.workspaceId === currentUser?.workspaceId
-      );
+      // Purchase transactions for this supplier
+      const partyOrders = purchaseOrders
+        .filter((o: any) => o.supplierId === party.partyId)
+        .sort((a: any, b: any) => new Date(a.createdAt || a.orderDate).getTime() - new Date(b.createdAt || b.orderDate).getTime());
 
-      txns = partyOrders.map((order: Order) => {
-        const total = order.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-        const debit = total;
-        runningBalance += debit;
-
-        return {
+      partyOrders.forEach((order: any) => {
+        const totalAmount = order.totalAmount || 0;
+        runningBalance += totalAmount;
+        
+        // Map Purchase Order items to match Transaction interface
+        const mappedItems = (order.items || []).map((item: any) => ({
+          name: item.itemName || item.name || 'Unknown Item',
+          quantity: item.orderedQuantity || item.quantity || 0,
+          price: item.unitPrice || item.price || 0,
+          total: item.totalAmount || item.total || 0,
+        }));
+        
+        txns.push({
           id: order.id,
-          date: order.createdAt,
-          type: 'purchase' as const,
-          referenceNumber: order.orderNumber,
-          description: `Purchase Order - ${order.items.length} items`,
-          debit: debit,
-          credit: 0,
-          balance: runningBalance,
-          paymentMethod: order.paymentMethod || 'pending',
-          paymentStatus: order.status === 'received' ? 'paid' : order.status === 'pending' ? 'pending' : 'pending',
-          items: order.items,
-        };
+          date: order.createdAt || order.orderDate,
+          subject: `Purchase Order #${order.poNumber}`,
+          type: 'purchase',
+          credited: 0,
+          debited: totalAmount,
+          netAmount: totalAmount,
+          balanceAmount: runningBalance,
+          billNumber: order.poNumber,
+          paymentStatus: order.status,
+          items: mappedItems,
+        });
+      });
+
+      // Returns to supplier
+      const partyReturns = returns
+        .filter((r: any) => r.type === 'purchase' && r.partyId === party.partyId)
+        .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+      partyReturns.forEach((ret: any) => {
+        runningBalance -= ret.refundAmount || 0;
+        
+        // Map return items to match Transaction interface
+        const mappedItems = (ret.items || []).map((item: any) => ({
+          name: item.itemName || 'Unknown Item',
+          quantity: item.returnQuantity || 0,
+          price: item.price || 0,
+          total: (item.returnQuantity || 0) * (item.price || 0),
+        }));
+        
+        txns.push({
+          id: ret.id,
+          date: ret.createdAt,
+          subject: `Purchase Return #${ret.returnNumber}`,
+          type: 'return',
+          credited: ret.refundAmount || 0,
+          debited: 0,
+          netAmount: -(ret.refundAmount || 0),
+          balanceAmount: runningBalance,
+          billNumber: ret.returnNumber,
+          items: mappedItems,
+        });
+      });
+
+      // Payments made
+      const payments = bills
+        .filter((b: Bill) => b.customerId === party.partyId && b.paymentStatus === 'paid' && !b.billNumber?.includes('RET'))
+        .sort((a: Bill, b: Bill) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+      payments.forEach((payment: Bill) => {
+        runningBalance -= payment.total || 0;
+        txns.push({
+          id: payment.id,
+          date: payment.createdAt,
+          subject: `Payment Bill #${payment.billNumber}`,
+          type: 'payment',
+          credited: payment.total || 0,
+          debited: 0,
+          netAmount: -(payment.total || 0),
+          balanceAmount: runningBalance,
+          billNumber: payment.billNumber,
+          items: payment.items || [],
+        });
       });
     } else {
-      // Sales Ledger - ALL Bills and Customer Orders from the system
-      const workspaceBills = allBills.filter(
-        (b: Bill) => b.workspaceId === currentUser?.workspaceId
-      );
+      // Sales transactions for this customer - from bills only
+      const partyBills = bills
+        .filter((b: Bill) => b.customerId === party.partyId && !b.billNumber?.includes('RET'))
+        .sort((a: Bill, b: Bill) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
-      const workspaceCustomerOrders = allCustomerOrders.filter(
-        (co: any) => co.workspaceId === currentUser?.workspaceId
-      );
+      partyBills.forEach((bill: Bill) => {
+        runningBalance += bill.total || 0;
+        txns.push({
+          id: bill.id,
+          date: bill.createdAt,
+          subject: `Sales Bill #${bill.billNumber}`,
+          type: 'sales',
+          credited: 0,
+          debited: bill.total || 0,
+          netAmount: bill.total || 0,
+          balanceAmount: runningBalance,
+          billNumber: bill.billNumber,
+          paymentStatus: bill.paymentStatus,
+          items: bill.items || [],
+        });
+      });
 
-      // Combine bills and customer orders
-      const billTxns = workspaceBills.map((bill: Bill) => ({
-        id: bill.id,
-        date: bill.createdAt,
-        type: 'sale' as const,
-        referenceNumber: bill.billNumber,
-        description: `Bill - ${bill.customerName}`,
-        debit: 0,
-        credit: bill.total,
-        balance: 0,
-        paymentMethod: bill.paymentMethod,
-        paymentStatus: 'paid' as const,
-        items: bill.items,
-      }));
+      // Returns from customer
+      const partyReturns = bills
+        .filter((b: Bill) => b.customerId === party.partyId && b.billNumber?.includes('RET'))
+        .sort((a: Bill, b: Bill) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
-      const orderTxns = workspaceCustomerOrders.map((order: any) => ({
-        id: order.id,
-        date: order.createdAt,
-        type: 'sale' as const,
-        referenceNumber: order.orderNumber,
-        description: `Order - ${order.customerName}`,
-        debit: 0,
-        credit: order.total,
-        balance: 0,
-        paymentMethod: order.paymentMethod,
-        paymentStatus: order.status === 'completed' ? 'paid' as const : 'pending' as const,
-        items: order.items,
-      }));
-
-      txns = [...billTxns, ...orderTxns];
-
-      // Calculate running balance for sales
-      txns.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      txns = txns.map(txn => {
-        runningBalance += txn.credit;
-        return { ...txn, balance: runningBalance };
+      partyReturns.forEach((ret: Bill) => {
+        runningBalance -= ret.total || 0;
+        txns.push({
+          id: ret.id,
+          date: ret.createdAt,
+          subject: `Product Return #${ret.billNumber}`,
+          type: 'return',
+          credited: ret.total || 0,
+          debited: 0,
+          netAmount: -(ret.total || 0),
+          balanceAmount: runningBalance,
+          billNumber: ret.billNumber,
+          items: ret.items || [],
+        });
       });
     }
 
-    // Apply date filters
-    if (dateFrom) {
-      txns = txns.filter(t => new Date(t.date) >= new Date(dateFrom));
-    }
-    if (dateTo) {
-      txns = txns.filter(t => new Date(t.date) <= new Date(dateTo));
-    }
+    // Sort all transactions by date
+    txns.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    // Apply status filter
-    if (filterStatus !== 'all') {
-      txns = txns.filter(t => t.paymentStatus === filterStatus);
-    }
-
-    // Sort by date descending
-    txns.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // Recalculate running balance
+    let balance = 0;
+    txns.forEach(txn => {
+      balance += txn.netAmount;
+      txn.balanceAmount = balance;
+    });
 
     setTransactions(txns);
+    setViewingParty(party);
   };
 
-  const filteredParties = parties.filter(party =>
-    party.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    party.contactPerson.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    party.phone.includes(searchQuery)
+  const filteredEntries = ledgerEntries.filter(entry =>
+    entry.partyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    entry.partyEmail?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Calculate summary statistics
-  const totalDebit = transactions.reduce((sum, t) => sum + t.debit, 0);
-  const totalCredit = transactions.reduce((sum, t) => sum + t.credit, 0);
-  const netBalance = activeTab === 'purchase' 
-    ? totalDebit - totalCredit 
-    : totalCredit - totalDebit;
-  const paidTransactions = transactions.filter(t => t.paymentStatus === 'paid').length;
-  const pendingTransactions = transactions.filter(t => t.paymentStatus === 'pending').length;
-
-  const exportLedger = () => {
-    if (!selectedParty) return;
-
-    const csvContent = [
-      ['Date', 'Reference', 'Description', 'Debit', 'Credit', 'Balance', 'Status'].join(','),
-      ...transactions.map(t => [
-        new Date(t.date).toLocaleDateString(),
-        t.referenceNumber,
-        t.description,
-        t.debit || '',
-        t.credit || '',
-        t.balance,
-        t.paymentStatus
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${selectedParty.name}_${activeTab}_ledger_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
+  const totalStats = {
+    totalParties: filteredEntries.length,
+    totalGross: filteredEntries.reduce((sum, e) => sum + e.grossAmount, 0),
+    totalReturns: filteredEntries.reduce((sum, e) => sum + e.returnAmount, 0),
+    totalNet: filteredEntries.reduce((sum, e) => sum + e.netAmount, 0),
+    totalDue: filteredEntries.reduce((sum, e) => sum + e.dueRemaining, 0),
   };
 
   return (
-    <div className="h-full flex">
-      {/* Left Sidebar - Party List (Only for Purchase Ledger) */}
-      {activeTab === 'purchase' && (
-        <div className="w-80 border-r border-gray-200 bg-gray-50 flex flex-col">
-          {/* Tab Switcher */}
-          <div className="p-4 border-b border-gray-200 bg-white">
-            <div className="flex space-x-2 bg-gray-100 rounded-lg p-1">
-              <button
-                onClick={() => setActiveTab('purchase')}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm transition-all ${
-                  activeTab === 'purchase'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <div className="flex items-center justify-center space-x-2">
-                  <ArrowDownLeft className="w-4 h-4" />
-                  <span>Purchase</span>
+    <div className="space-y-6">
+      {!viewingParty ? (
+        <>
+          {/* Header */}
+          <div>
+            <h3 className="text-gray-900 text-2xl flex items-center space-x-3">
+              <BookOpen className="w-8 h-8 text-blue-600" />
+              <span>Ledger Management</span>
+            </h3>
+            <p className="text-gray-500 text-sm mt-1">
+              Track all financial transactions with {activeTab === 'purchase' ? 'suppliers' : 'customers'}
+            </p>
+          </div>
+
+          {/* Tabs */}
+          <div className="bg-white rounded-xl border-2 border-gray-200 p-1 inline-flex">
+            <button
+              onClick={() => setActiveTab('purchase')}
+              className={`px-6 py-2.5 rounded-lg transition-all ${
+                activeTab === 'purchase'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <TrendingDown className="w-5 h-5" />
+                <span>Purchase Ledger</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('sales')}
+              className={`px-6 py-2.5 rounded-lg transition-all ${
+                activeTab === 'sales'
+                  ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <TrendingUp className="w-5 h-5" />
+                <span>Sales Ledger</span>
+              </div>
+            </button>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className={`${activeTab === 'purchase' ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gradient-to-br from-green-500 to-green-600'} rounded-xl p-4 text-white shadow-lg`}>
+              <div className="flex items-center justify-between mb-2">
+                <Users className="w-8 h-8 opacity-80" />
+                <div className="text-right">
+                  <p className={`${activeTab === 'purchase' ? 'text-blue-100' : 'text-green-100'} text-xs`}>
+                    {activeTab === 'purchase' ? 'Total Suppliers' : 'Total Customers'}
+                  </p>
+                  <p className="text-2xl font-bold">{totalStats.totalParties}</p>
                 </div>
-              </button>
-              <button
-                onClick={() => setActiveTab('sales')}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm transition-all ${
-                  activeTab === 'sales'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <div className="flex items-center justify-center space-x-2">
-                  <ArrowUpRight className="w-4 h-4" />
-                  <span>Sales</span>
+              </div>
+            </div>
+
+            <div className={`${activeTab === 'purchase' ? 'bg-gradient-to-br from-purple-500 to-purple-600' : 'bg-gradient-to-br from-teal-500 to-teal-600'} rounded-xl p-4 text-white shadow-lg`}>
+              <div className="flex items-center justify-between mb-2">
+                <DollarSign className="w-8 h-8 opacity-80" />
+                <div className="text-right">
+                  <p className={`${activeTab === 'purchase' ? 'text-purple-100' : 'text-teal-100'} text-xs`}>Gross Amount</p>
+                  <p className="text-2xl font-bold">रू{totalStats.totalGross.toLocaleString()}</p>
                 </div>
-              </button>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 text-white shadow-lg">
+              <div className="flex items-center justify-between mb-2">
+                <RotateCcw className="w-8 h-8 opacity-80" />
+                <div className="text-right">
+                  <p className="text-orange-100 text-xs">Return Amount</p>
+                  <p className="text-2xl font-bold">रू{totalStats.totalReturns.toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className={`${activeTab === 'purchase' ? 'bg-gradient-to-br from-indigo-500 to-indigo-600' : 'bg-gradient-to-br from-emerald-500 to-emerald-600'} rounded-xl p-4 text-white shadow-lg`}>
+              <div className="flex items-center justify-between mb-2">
+                <CheckCircle className="w-8 h-8 opacity-80" />
+                <div className="text-right">
+                  <p className={`${activeTab === 'purchase' ? 'text-indigo-100' : 'text-emerald-100'} text-xs`}>Net Amount</p>
+                  <p className="text-2xl font-bold">रू{totalStats.totalNet.toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-4 text-white shadow-lg">
+              <div className="flex items-center justify-between mb-2">
+                <AlertCircle className="w-8 h-8 opacity-80" />
+                <div className="text-right">
+                  <p className="text-red-100 text-xs">Due Remaining</p>
+                  <p className="text-2xl font-bold">रू{totalStats.totalDue.toLocaleString()}</p>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Search */}
-          <div className="p-4 border-b border-gray-200 bg-white">
+          <div className="bg-white rounded-xl border-2 border-gray-200 p-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search supplier parties..."
+                placeholder={`Search ${activeTab === 'purchase' ? 'supplier' : 'customer'} name or email...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
 
-          {/* Party List */}
-          <div className="flex-1 overflow-y-auto">
-            {filteredParties.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p>No supplier parties found</p>
+          {/* Ledger Table */}
+          <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden">
+            {filteredEntries.length === 0 ? (
+              <div className="text-center py-16">
+                <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-gray-900 text-xl mb-2">No Ledger Entries</h3>
+                <p className="text-gray-500">
+                  No transactions found for {activeTab === 'purchase' ? 'suppliers' : 'customers'}
+                </p>
               </div>
             ) : (
-              <div className="space-y-1 p-2">
-                {filteredParties.map((party) => {
-                  const isSelected = selectedParty?.id === party.id;
-                  return (
-                    <button
-                      key={party.id}
-                      onClick={() => setSelectedParty(party)}
-                      className={`w-full text-left p-4 rounded-lg transition-all ${
-                        isSelected
-                          ? 'bg-blue-50 border-2 border-blue-500 shadow-sm'
-                          : 'bg-white border border-gray-200 hover:border-blue-300 hover:shadow-sm'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <h3 className={`text-sm ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
-                              {party.name}
-                            </h3>
-                            <span className={`px-2 py-0.5 rounded text-xs ${
-                              party.type === 'distributor' ? 'bg-purple-100 text-purple-700' :
-                              party.type === 'wholesaler' ? 'bg-blue-100 text-blue-700' :
-                              'bg-green-100 text-green-700'
-                            }`}>
-                              {party.type}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-500 mb-2">{party.contactPerson}</p>
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-gray-500">{party.phone}</span>
-                            {party.currentBalance > 0 && (
-                              <span className="text-orange-600">
-                                ₹{party.currentBalance.toLocaleString()}
-                              </span>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b-2 border-gray-200">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-gray-900">S.N</th>
+                      <th className="px-6 py-4 text-left text-gray-900">
+                        {activeTab === 'purchase' ? 'Supplier Name' : 'Customer Name'}
+                      </th>
+                      <th className="px-6 py-4 text-left text-gray-900">Items Purchased</th>
+                      <th className="px-6 py-4 text-left text-gray-900">Items Returned</th>
+                      <th className="px-6 py-4 text-left text-gray-900">Gross Amount</th>
+                      <th className="px-6 py-4 text-left text-gray-900">Return Amount</th>
+                      <th className="px-6 py-4 text-left text-gray-900">Net Amount</th>
+                      <th className="px-6 py-4 text-left text-gray-900">Due Remaining</th>
+                      <th className="px-6 py-4 text-left text-gray-900">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {filteredEntries.map((entry, index) => (
+                      <tr key={entry.partyId} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 text-gray-900">{index + 1}</td>
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="font-semibold text-gray-900">{entry.partyName}</p>
+                            {entry.partyEmail && (
+                              <p className="text-sm text-gray-500">{entry.partyEmail}</p>
                             )}
                           </div>
-                        </div>
-                        {isSelected && (
-                          <ChevronRight className="w-5 h-5 text-blue-500 ml-2" />
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-yellow-100 text-yellow-700 font-bold">
+                            {entry.itemsPurchased}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-red-100 text-red-700 font-bold">
+                            {entry.itemsReturned}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-green-600 font-semibold">
+                            रू{entry.grossAmount.toLocaleString()}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-red-600 font-semibold">
+                            रू{entry.returnAmount.toLocaleString()}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-blue-600 font-semibold">
+                            रू{entry.netAmount.toLocaleString()}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`font-semibold ${entry.dueRemaining > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            रू{entry.dueRemaining.toLocaleString()}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => loadPartyTransactions(entry)}
+                            className="flex items-center space-x-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                          >
+                            <Eye className="w-4 h-4" />
+                            <span>View Details</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
-        </div>
-      )}
+        </>
+      ) : (
+        <>
+          {/* Detailed Party View */}
+          <div className="space-y-6">
+            {/* Back Button */}
+            <button
+              onClick={() => {
+                setViewingParty(null);
+                setTransactions([]);
+                setDateRange({ startDate: '', endDate: '' });
+              }}
+              className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span>Back to {activeTab === 'purchase' ? 'Purchase' : 'Sales'} Ledger</span>
+            </button>
 
-      {/* Main Content - Ledger Details */}
-      <div className="flex-1 flex flex-col bg-white">
-        {activeTab === 'purchase' && !selectedParty ? (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
-            <div className="text-center">
-              <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-lg mb-2">Select a party to view ledger</p>
-              <p className="text-sm">Choose a party from the list to see transaction history</p>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Header */}
-            <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-start space-x-4">
-                    <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg">
-                      {activeTab === 'purchase' ? (
-                        <Package className="w-7 h-7" />
-                      ) : (
-                        <ShoppingCart className="w-7 h-7" />
-                      )}
-                    </div>
-                    <div>
-                      <h2 className="text-xl text-gray-900 mb-1">
-                        {activeTab === 'purchase' ? selectedParty?.name : 'Sales Ledger'}
-                      </h2>
-                      {activeTab === 'purchase' && selectedParty ? (
-                        <>
-                          <div className="flex items-center space-x-4 text-sm text-gray-600">
-                            <span className="flex items-center space-x-1">
-                              <User className="w-4 h-4" />
-                              <span>{selectedParty.contactPerson}</span>
-                            </span>
-                            <span>•</span>
-                            <span>{selectedParty.phone}</span>
-                            <span>•</span>
-                            <span>{selectedParty.city}, {selectedParty.state}</span>
-                          </div>
-                          <div className="flex items-center space-x-2 mt-2">
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              selectedParty.type === 'distributor' ? 'bg-purple-100 text-purple-700' :
-                              selectedParty.type === 'wholesaler' ? 'bg-blue-100 text-blue-700' :
-                              'bg-green-100 text-green-700'
-                            }`}>
-                              {selectedParty.type}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              Payment Terms: {selectedParty.paymentTerms.replace('_', ' ').toUpperCase()}
-                            </span>
-                          </div>
-                        </>
-                      ) : (
-                        <p className="text-sm text-gray-600">All sales transactions across the workspace</p>
-                      )}
-                    </div>
+            {/* Party Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-6 text-white">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start space-x-4">
+                  <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center">
+                    <Building2 className="w-10 h-10" />
                   </div>
-                  <div className="flex items-center space-x-2">
-                    {/* Tab Switcher for Sales View */}
-                    {activeTab === 'sales' && (
-                      <div className="flex space-x-2 bg-gray-100 rounded-lg p-1 mr-2">
-                        <button
-                          onClick={() => setActiveTab('purchase')}
-                          className="py-2 px-4 rounded-lg text-sm text-gray-600 hover:text-gray-900 transition-all"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <ArrowDownLeft className="w-4 h-4" />
-                            <span>Purchase</span>
-                          </div>
-                        </button>
-                        <button
-                          className="py-2 px-4 rounded-lg text-sm bg-white text-gray-900 shadow-sm"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <ArrowUpRight className="w-4 h-4" />
-                            <span>Sales</span>
-                          </div>
-                        </button>
-                      </div>
-                    )}
-                    <button
-                      onClick={() => setShowFilters(!showFilters)}
-                      className={`px-4 py-2 rounded-lg border transition-all ${
-                        showFilters
-                          ? 'bg-blue-50 border-blue-500 text-blue-700'
-                          : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
-                      }`}
-                    >
-                      <Filter className="w-4 h-4" />
-                    </button>
-                    {activeTab === 'purchase' && selectedParty && (
-                      <button
-                        onClick={exportLedger}
-                        className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:border-gray-400 transition-all flex items-center space-x-2"
-                      >
-                        <Download className="w-4 h-4" />
-                        <span>Export</span>
-                      </button>
-                    )}
+                  <div>
+                    <h3 className="text-2xl font-bold mb-1">{viewingParty.partyName}</h3>
+                    <div className="space-y-1 text-blue-100">
+                      {viewingParty.partyEmail && (
+                        <p className="flex items-center space-x-2">
+                          <Mail className="w-4 h-4" />
+                          <span>{viewingParty.partyEmail}</span>
+                        </p>
+                      )}
+                      {viewingParty.partyPhone && (
+                        <p className="flex items-center space-x-2">
+                          <Phone className="w-4 h-4" />
+                          <span>{viewingParty.partyPhone}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-
-                {/* Summary Cards */}
-                <div className="grid grid-cols-4 gap-4">
-                  <div className="relative group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl opacity-10 group-hover:opacity-20 transition-opacity" />
-                    <div className="relative bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 p-4 hover:shadow-lg transition-all duration-300">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center">
-                          <TrendingDown className="w-4 h-4 text-white" />
-                        </div>
-                        <span className="text-xs text-gray-600 font-medium">
-                          {activeTab === 'purchase' ? 'Total Purchases' : 'Total Sales'}
-                        </span>
-                      </div>
-                      <p className="text-2xl text-gray-900 font-semibold">
-                        ₹{(activeTab === 'purchase' ? totalDebit : totalCredit).toLocaleString()}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">{transactions.length} transactions</p>
-                    </div>
+                <div className="grid grid-cols-2 gap-4 text-right">
+                  <div>
+                    <p className="text-blue-100 text-sm">Items Purchased</p>
+                    <p className="text-3xl font-bold">{viewingParty.itemsPurchased}</p>
                   </div>
-
-                  <div className="relative group">
-                    <div className={`absolute inset-0 bg-gradient-to-br ${netBalance >= 0 ? 'from-green-500 to-emerald-500' : 'from-red-500 to-pink-500'} rounded-xl opacity-10 group-hover:opacity-20 transition-opacity`} />
-                    <div className="relative bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 p-4 hover:shadow-lg transition-all duration-300">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <div className={`w-8 h-8 bg-gradient-to-br ${netBalance >= 0 ? 'from-green-500 to-emerald-500' : 'from-red-500 to-pink-500'} rounded-lg flex items-center justify-center`}>
-                          <DollarSign className="w-4 h-4 text-white" />
-                        </div>
-                        <span className="text-xs text-gray-600 font-medium">Net Balance</span>
-                      </div>
-                      <p className={`text-2xl font-semibold ${netBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {netBalance >= 0 ? '+' : '-'}₹{Math.abs(netBalance).toLocaleString()}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">{netBalance >= 0 ? 'Receivable' : 'Payable'}</p>
-                    </div>
+                  <div>
+                    <p className="text-blue-100 text-sm">Items Returned</p>
+                    <p className="text-3xl font-bold">{viewingParty.itemsReturned}</p>
                   </div>
-
-                  <div className="relative group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-green-500 to-teal-500 rounded-xl opacity-10 group-hover:opacity-20 transition-opacity" />
-                    <div className="relative bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 p-4 hover:shadow-lg transition-all duration-300">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-teal-500 rounded-lg flex items-center justify-center">
-                          <CheckCircle className="w-4 h-4 text-white" />
-                        </div>
-                        <span className="text-xs text-gray-600 font-medium">Paid</span>
-                      </div>
-                      <p className="text-2xl text-gray-900 font-semibold">{paidTransactions}</p>
-                      <p className="text-xs text-green-600 mt-1">
-                        ₹{transactions.filter(t => t.paymentStatus === 'paid').reduce((sum, t) => sum + (activeTab === 'purchase' ? t.debit : t.credit), 0).toLocaleString()}
-                      </p>
-                    </div>
+                  <div>
+                    <p className="text-blue-100 text-sm">Gross Amount</p>
+                    <p className="text-2xl font-bold">रू{viewingParty.grossAmount.toLocaleString()}</p>
                   </div>
-
-                  <div className="relative group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-xl opacity-10 group-hover:opacity-20 transition-opacity" />
-                    <div className="relative bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 p-4 hover:shadow-lg transition-all duration-300">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-lg flex items-center justify-center">
-                          <Clock className="w-4 h-4 text-white" />
-                        </div>
-                        <span className="text-xs text-gray-600 font-medium">Pending</span>
-                      </div>
-                      <p className="text-2xl text-gray-900 font-semibold">{pendingTransactions}</p>
-                      <p className="text-xs text-orange-600 mt-1">
-                        ₹{transactions.filter(t => t.paymentStatus === 'pending').reduce((sum, t) => sum + (activeTab === 'purchase' ? t.debit : t.credit), 0).toLocaleString()}
-                      </p>
-                    </div>
+                  <div>
+                    <p className="text-blue-100 text-sm">Net Amount</p>
+                    <p className="text-2xl font-bold">रू{viewingParty.netAmount.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Filters */}
-              {showFilters && (
-                <div className="px-6 pb-6">
-                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">From Date</label>
-                        <input
-                          type="date"
-                          value={dateFrom}
-                          onChange={(e) => setDateFrom(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">To Date</label>
-                        <input
-                          type="date"
-                          value={dateTo}
-                          onChange={(e) => setDateTo(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">Status</label>
-                        <select
-                          value={filterStatus}
-                          onChange={(e) => setFilterStatus(e.target.value as any)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="all">All Transactions</option>
-                          <option value="paid">Paid Only</option>
-                          <option value="pending">Pending Only</option>
-                          <option value="partial">Partial Only</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
+            {/* Date Range Filter */}
+            <div className="bg-white rounded-xl border-2 border-gray-200 p-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-700 mb-2">Start Date</label>
+                  <input
+                    type="date"
+                    value={dateRange.startDate}
+                    onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
-              )}
+                <div>
+                  <label className="block text-sm text-gray-700 mb-2">End Date</label>
+                  <input
+                    type="date"
+                    value={dateRange.endDate}
+                    onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button className="w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all">
+                    Filter by Date
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Transactions Table */}
-            <div className="flex-1 overflow-auto">
+            <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden">
               {transactions.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-gray-500">
-                  <div className="text-center">
-                    <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-lg mb-2">No transactions found</p>
-                    <p className="text-sm">
-                      {activeTab === 'purchase' 
-                        ? 'No purchase orders from this supplier party yet'
-                        : 'No sales to this party yet'}
-                    </p>
-                  </div>
+                <div className="text-center py-16">
+                  <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-gray-900 text-xl mb-2">No Transactions</h3>
+                  <p className="text-gray-500">
+                    No transaction history found for this {activeTab === 'purchase' ? 'supplier' : 'customer'}
+                  </p>
                 </div>
               ) : (
-                <div className="p-6">
-                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-gray-50 border-b border-gray-200">
-                        <tr>
-                          <th className="text-left py-3 px-4 text-xs text-gray-600 uppercase">Date</th>
-                          <th className="text-left py-3 px-4 text-xs text-gray-600 uppercase">Reference</th>
-                          <th className="text-left py-3 px-4 text-xs text-gray-600 uppercase">Description</th>
-                          <th className="text-right py-3 px-4 text-xs text-gray-600 uppercase">
-                            {activeTab === 'purchase' ? 'Purchase Amount' : 'Sale Amount'}
-                          </th>
-                          <th className="text-right py-3 px-4 text-xs text-gray-600 uppercase">Balance</th>
-                          <th className="text-center py-3 px-4 text-xs text-gray-600 uppercase">Payment</th>
-                          <th className="text-center py-3 px-4 text-xs text-gray-600 uppercase">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {transactions.map((txn, index) => (
-                          <tr key={txn.id} className="hover:bg-gray-50 transition-colors">
-                            <td className="py-4 px-4">
-                              <div className="flex items-center space-x-2">
-                                <Calendar className="w-4 h-4 text-gray-400" />
-                                <span className="text-sm text-gray-900">
-                                  {new Date(txn.date).toLocaleDateString('en-US', {
-                                    day: '2-digit',
-                                    month: 'short',
-                                    year: 'numeric'
-                                  })}
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b-2 border-gray-200">
+                      <tr>
+                        <th className="px-6 py-4 text-left text-gray-900">S.N</th>
+                        <th className="px-6 py-4 text-left text-gray-900">Date</th>
+                        <th className="px-6 py-4 text-left text-gray-900">Subject</th>
+                        <th className="px-6 py-4 text-left text-gray-900">Credited</th>
+                        <th className="px-6 py-4 text-left text-gray-900">Debited</th>
+                        <th className="px-6 py-4 text-left text-gray-900">Net Amount</th>
+                        <th className="px-6 py-4 text-left text-gray-900">Balance Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {transactions.map((txn, index) => (
+                        <React.Fragment key={txn.id}>
+                          <tr className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setExpandedTxn(expandedTxn === txn.id ? null : txn.id)}>
+                            <td className="px-6 py-4 text-gray-900">{index + 1}</td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center space-x-2 text-gray-600">
+                                <Calendar className="w-4 h-4" />
+                                <span className="text-sm">
+                                  {new Date(txn.date).toLocaleDateString('en-NP')}
                                 </span>
                               </div>
                             </td>
-                            <td className="py-4 px-4">
-                              <span className="text-sm text-blue-600">{txn.referenceNumber}</span>
-                            </td>
-                            <td className="py-4 px-4">
-                              <div>
-                                <p className="text-sm text-gray-900">{txn.description}</p>
-                                {txn.items && (
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    {txn.items.length} item(s)
-                                  </p>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-gray-900">{txn.subject}</p>
+                                  {txn.billNumber && (
+                                    <p className="text-sm text-gray-500 font-mono">{txn.billNumber}</p>
+                                  )}
+                                  {txn.items && txn.items.length > 0 && (
+                                    <p className="text-xs text-blue-600 mt-1 flex items-center space-x-1">
+                                      <Package className="w-3 h-3" />
+                                      <span>{txn.items.length} item(s) - Click to view details</span>
+                                    </p>
+                                  )}
+                                </div>
+                                {txn.items && txn.items.length > 0 && (
+                                  <div>
+                                    {expandedTxn === txn.id ? (
+                                      <ChevronUp className="w-5 h-5 text-gray-400" />
+                                    ) : (
+                                      <ChevronDown className="w-5 h-5 text-gray-400" />
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             </td>
-                            <td className="py-4 px-4 text-right">
-                              <span className={`text-sm ${
-                                activeTab === 'purchase' 
-                                  ? 'text-red-600' 
-                                  : 'text-green-600'
-                              }`}>
-                                {activeTab === 'purchase' 
-                                  ? `-₹${txn.debit.toLocaleString()}`
-                                  : `+₹${txn.credit.toLocaleString()}`}
-                              </span>
-                            </td>
-                            <td className="py-4 px-4 text-right">
-                              <span className="text-sm text-gray-900">
-                                ₹{txn.balance.toLocaleString()}
-                              </span>
-                            </td>
-                            <td className="py-4 px-4 text-center">
-                              {txn.paymentMethod && (
-                                <span className={`px-3 py-1 rounded-full text-xs ${
-                                  txn.paymentMethod === 'cash' ? 'bg-green-100 text-green-700' :
-                                  txn.paymentMethod === 'card' ? 'bg-blue-100 text-blue-700' :
-                                  txn.paymentMethod === 'esewa' ? 'bg-purple-100 text-purple-700' :
-                                  txn.paymentMethod === 'fonepay' ? 'bg-indigo-100 text-indigo-700' :
-                                  txn.paymentMethod === 'credit' ? 'bg-orange-100 text-orange-700' :
-                                  'bg-gray-100 text-gray-700'
-                                }`}>
-                                  {txn.paymentMethod === 'esewa' ? 'eSewa' :
-                                   txn.paymentMethod === 'fonepay' ? 'FonePay' :
-                                   txn.paymentMethod.charAt(0).toUpperCase() + txn.paymentMethod.slice(1)}
+                            <td className="px-6 py-4">
+                              {txn.credited > 0 ? (
+                                <span className="text-green-600 font-semibold">
+                                  रू{txn.credited.toLocaleString()}
                                 </span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
                               )}
                             </td>
-                            <td className="py-4 px-4 text-center">
-                              <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs ${
-                                txn.paymentStatus === 'paid' 
-                                  ? 'bg-green-100 text-green-700' 
-                                  : txn.paymentStatus === 'partial'
-                                  ? 'bg-yellow-100 text-yellow-700'
-                                  : 'bg-orange-100 text-orange-700'
-                              }`}>
-                                {txn.paymentStatus === 'paid' ? (
-                                  <CheckCircle className="w-3 h-3" />
-                                ) : txn.paymentStatus === 'partial' ? (
-                                  <AlertCircle className="w-3 h-3" />
-                                ) : (
-                                  <Clock className="w-3 h-3" />
-                                )}
-                                <span className="capitalize">{txn.paymentStatus}</span>
+                            <td className="px-6 py-4">
+                              {txn.debited > 0 ? (
+                                <span className="text-red-600 font-semibold">
+                                  रू{txn.debited.toLocaleString()}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`font-semibold ${txn.netAmount >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                                रू{txn.netAmount.toLocaleString()}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="font-bold text-gray-900">
+                                रू{txn.balanceAmount.toLocaleString()}
                               </span>
                             </td>
                           </tr>
-                        ))}
-                      </tbody>
-                      <tfoot className="bg-gray-50 border-t-2 border-gray-300">
-                        <tr>
-                          <td colSpan={3} className="py-4 px-4 text-right">
-                            <span className="text-sm text-gray-900">Total:</span>
-                          </td>
-                          <td className="py-4 px-4 text-right">
-                            <span className={`text-sm ${
-                              activeTab === 'purchase' 
-                                ? 'text-red-600' 
-                                : 'text-green-600'
-                            }`}>
-                              {activeTab === 'purchase' 
-                                ? `-₹${totalDebit.toLocaleString()}`
-                                : `+₹${totalCredit.toLocaleString()}`}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4 text-right">
-                            <span className={`text-sm ${
-                              netBalance >= 0 ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              ₹{Math.abs(netBalance).toLocaleString()}
-                            </span>
-                          </td>
-                          <td colSpan={2}></td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-
-                  {/* Additional Info */}
-                  <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="flex items-start space-x-3">
-                      <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-sm text-blue-900 mb-1">
-                          {activeTab === 'purchase' 
-                            ? 'Purchase Ledger Information'
-                            : 'Sales Ledger Information'}
-                        </p>
-                        <p className="text-xs text-blue-700">
-                          {activeTab === 'purchase' 
-                            ? `This ledger tracks all purchases made from ${selectedParty.name}. Debit entries represent money owed to the supplier.`
-                            : `This ledger tracks all sales made to retailers and parties. Credit entries represent revenue earned.`}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                          
+                          {/* Expandable Item Details Row */}
+                          {expandedTxn === txn.id && txn.items && txn.items.length > 0 && (
+                            <tr className="bg-blue-50">
+                              <td colSpan={7} className="px-6 py-4">
+                                <div className="bg-white rounded-lg border-2 border-blue-200 p-4">
+                                  <div className="flex items-center space-x-2 mb-3">
+                                    <Package className="w-5 h-5 text-blue-600" />
+                                    <h4 className="font-semibold text-gray-900">Item Details</h4>
+                                  </div>
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                      <thead className="bg-gray-50">
+                                        <tr>
+                                          <th className="px-4 py-2 text-left text-xs text-gray-700">Item Name</th>
+                                          <th className="px-4 py-2 text-left text-xs text-gray-700">Quantity</th>
+                                          <th className="px-4 py-2 text-left text-xs text-gray-700">Unit Price</th>
+                                          <th className="px-4 py-2 text-left text-xs text-gray-700">Total Price</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-gray-200">
+                                        {txn.items.map((item, idx) => (
+                                          <tr key={idx} className="hover:bg-gray-50">
+                                            <td className="px-4 py-2 text-sm text-gray-900">{item.name}</td>
+                                            <td className="px-4 py-2">
+                                              <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-sm font-semibold">
+                                                {item.quantity}
+                                              </span>
+                                            </td>
+                                            <td className="px-4 py-2 text-sm text-gray-900">रू{item.price.toLocaleString()}</td>
+                                            <td className="px-4 py-2 font-semibold text-blue-600">रू{item.total.toLocaleString()}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                      <tfoot className="bg-gray-50 font-semibold">
+                                        <tr>
+                                          <td colSpan={3} className="px-4 py-2 text-right text-gray-900">Total Amount:</td>
+                                          <td className="px-4 py-2 text-blue-600">
+                                            रू{txn.items.reduce((sum, item) => sum + item.total, 0).toLocaleString()}
+                                          </td>
+                                        </tr>
+                                      </tfoot>
+                                    </table>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+                      <tr>
+                        <td colSpan={3} className="px-6 py-4 text-right font-bold text-gray-900">
+                          Final Balance:
+                        </td>
+                        <td colSpan={4} className="px-6 py-4">
+                          <span className={`text-xl font-bold ${
+                            transactions[transactions.length - 1]?.balanceAmount >= 0 
+                              ? 'text-green-600' 
+                              : 'text-red-600'
+                          }`}>
+                            रू{transactions[transactions.length - 1]?.balanceAmount.toLocaleString() || '0'}
+                          </span>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
                 </div>
               )}
             </div>
-          </>
-        )}
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

@@ -55,7 +55,7 @@ export const EnhancedDashboardPanel: React.FC = () => {
       (i: InventoryItem) => i.workspaceId === currentUser?.workspaceId
     );
     const bills = getFromStorage('bills', []).filter(
-      (b: Bill) => b.workspaceId === currentUser?.workspaceId && b.status === 'paid'
+      (b: Bill) => b.workspaceId === currentUser?.workspaceId && b.paymentStatus === 'paid'
     );
 
     // Calculate velocities and insights
@@ -248,9 +248,12 @@ export const EnhancedDashboardPanel: React.FC = () => {
     for (let i = 6; i >= 0; i--) {
       const date = new Date(Date.now() - (i * 24 * 60 * 60 * 1000));
       const dateStr = date.toISOString().split('T')[0];
-      const dayBills = bills.filter(b => 
-        new Date(b.createdAt).toISOString().split('T')[0] === dateStr
-      );
+      const dayBills = bills.filter(b => {
+        if (!b.createdAt) return false;
+        const billDate = new Date(b.createdAt);
+        if (isNaN(billDate.getTime())) return false;
+        return billDate.toISOString().split('T')[0] === dateStr;
+      });
       const revenue = dayBills.reduce((sum, b) => sum + b.total, 0);
       
       last7Days.push({

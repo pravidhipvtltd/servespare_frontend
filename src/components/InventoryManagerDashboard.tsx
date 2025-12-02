@@ -14,7 +14,6 @@ import { InventoryItem, Transaction } from '../types';
 import { getFromStorage, saveToStorage } from '../utils/mockData';
 import { BillingSystem } from './BillingSystem';
 import { BulkImportPanel } from './panels/BulkImportPanel';
-import { BulkBarcodePanel } from './panels/BulkBarcodePanel';
 import { getPermissionForPanel } from '../utils/permissionMapping';
 
 type MenuItem = {
@@ -27,7 +26,6 @@ type MenuItem = {
 const menuItems: MenuItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, panel: 'dashboard' },
   { id: 'inventory', label: 'Inventory', icon: Package, panel: 'inventory' },
-  { id: 'barcode-scanner', label: 'Barcode Scanner', icon: Scan, panel: 'barcode-scanner' },
   { id: 'bulk-import', label: 'Bulk Import', icon: Upload, panel: 'bulk-import' },
   { id: 'billing', label: 'Billing & Sales', icon: ShoppingCart, panel: 'billing' },
   { id: 'transactions', label: 'Transactions', icon: History, panel: 'transactions' },
@@ -104,8 +102,8 @@ export const InventoryManagerDashboard: React.FC = () => {
   };
 
   const filteredInventory = inventory.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         item.partNumber.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (item.partNumber || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = filterCategory === 'all' || item.category === filterCategory;
     const matchesVehicle = filterVehicle === 'all' || item.vehicleType === filterVehicle;
     return matchesSearch && matchesCategory && matchesVehicle;
@@ -152,8 +150,6 @@ export const InventoryManagerDashboard: React.FC = () => {
           }}
           onDeleteItem={handleDeleteItem}
         />;
-      case 'barcode-scanner':
-        return <BulkBarcodePanel />;
       case 'bulk-import':
         return <BulkImportPanel />;
       case 'billing':
