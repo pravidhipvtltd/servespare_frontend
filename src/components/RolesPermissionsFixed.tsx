@@ -44,13 +44,6 @@ const ALL_PERMISSIONS: Permission[] = [
   { id: 'delete_bills', name: 'Delete Bills', description: 'Remove bills', category: 'Billing' },
   { id: 'process_refunds', name: 'Process Refunds', description: 'Handle refunds', category: 'Billing' },
   
-  // Finance Permissions
-  { id: 'view_finance', name: 'View Finance', description: 'View financial data', category: 'Finance' },
-  { id: 'view_expenses', name: 'View Expenses', description: 'View expense records', category: 'Finance' },
-  { id: 'create_expenses', name: 'Add Expenses', description: 'Record new expenses', category: 'Finance' },
-  { id: 'approve_expenses', name: 'Approve Expenses', description: 'Approve expense claims', category: 'Finance' },
-  { id: 'view_profit_loss', name: 'View P&L', description: 'View profit & loss', category: 'Finance' },
-  
   // Parties Permissions
   { id: 'view_parties', name: 'View Parties', description: 'View customers/suppliers', category: 'Parties' },
   { id: 'create_parties', name: 'Add Parties', description: 'Add customers/suppliers', category: 'Parties' },
@@ -71,7 +64,6 @@ const DEFAULT_ROLE_PERMISSIONS: RolePermissions = {
     'view_users', 'create_users', 'edit_users',
     'view_inventory', 'create_inventory', 'edit_inventory', 'delete_inventory', 'adjust_stock',
     'view_bills', 'create_bills', 'edit_bills', 'delete_bills',
-    'view_finance', 'view_expenses',
     'view_parties', 'create_parties', 'edit_parties', 'delete_parties',
     'view_settings'
   ],
@@ -85,12 +77,6 @@ const DEFAULT_ROLE_PERMISSIONS: RolePermissions = {
     'view_inventory',
     'view_bills', 'create_bills',
     'view_parties', 'create_parties',
-  ],
-  finance: [
-    'view_dashboard', 'view_analytics',
-    'view_bills',
-    'view_finance', 'view_expenses', 'create_expenses', 'approve_expenses', 'view_profit_loss',
-    'view_parties',
   ],
 };
 
@@ -143,18 +129,6 @@ const ROLE_CONFIG = {
     iconColor: 'text-green-600',
     badgeBg: 'bg-green-100',
     badgeText: 'text-green-700'
-  },
-  finance: {
-    name: 'Finance',
-    icon: FileText,
-    description: 'Financial management',
-    bgColor: 'bg-blue-50',
-    borderColor: 'border-blue-500',
-    textColor: 'text-blue-700',
-    iconBg: 'bg-blue-100',
-    iconColor: 'text-blue-600',
-    badgeBg: 'bg-blue-100',
-    badgeText: 'text-blue-700'
   }
 };
 
@@ -427,7 +401,7 @@ export const RolesPermissionsFixed: React.FC<RolesPermissionsFixedProps> = ({ us
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {Object.entries(ROLE_CONFIG).map(([roleId, config]) => {
           const permissions = getPermissionCount(roleId);
           const userCount = getUserCountByRole(roleId);

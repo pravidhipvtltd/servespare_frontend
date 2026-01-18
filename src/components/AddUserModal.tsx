@@ -29,8 +29,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onS
     { id: 'super_admin', name: 'Super Admin', icon: Shield, color: 'red', description: 'Full system access' },
     { id: 'admin', name: 'Admin', icon: Shield, color: 'purple', description: 'Manage store operations' },
     { id: 'inventory_manager', name: 'Inventory Manager', icon: Shield, color: 'orange', description: 'Manage inventory' },
-    { id: 'cashier', name: 'Cashier', icon: Shield, color: 'green', description: 'Process sales' },
-    { id: 'finance', name: 'Finance', icon: Shield, color: 'blue', description: 'Financial management' }
+    { id: 'cashier', name: 'Cashier', icon: Shield, color: 'green', description: 'Process sales' }
   ];
 
   const validate = () => {

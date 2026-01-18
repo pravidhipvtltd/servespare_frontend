@@ -4,6 +4,8 @@ import {
   UserCheck, UserX, Search, Filter, Clock, Mail, Phone, Store, 
   Shield, CheckCircle, XCircle, AlertTriangle, Eye, User, Bot
 } from 'lucide-react';
+import { PopupContainer } from '../PopupContainer';
+import { useCustomPopup } from '../../hooks/useCustomPopup';
 
 interface PendingUser {
   id: string;
@@ -20,6 +22,7 @@ interface PendingUser {
 }
 
 export const PendingVerificationsPanel: React.FC = () => {
+  const popup = useCustomPopup();
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState<string>('all');
@@ -36,49 +39,51 @@ export const PendingVerificationsPanel: React.FC = () => {
   };
 
   const handleApprove = (user: PendingUser) => {
-    if (!confirm(`Approve account for ${user.name}?\n\nEmail: ${user.email}\nRole: ${user.role}\nShop: ${user.shopName}`)) {
-      return;
-    }
+    popup.showConfirm(
+      'Approve Account',
+      `Approve account for ${user.name}?\n\nEmail: ${user.email}\nRole: ${user.role}\nShop: ${user.shopName}`,
+      () => {
+        // Add to users
+        const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
+        const newUser = {
+          id: Date.now().toString(),
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          shopName: user.shopName,
+          password: user.password,
+          role: user.role.toLowerCase().replace(/ /g, '_'),
+          createdAt: new Date().toISOString(),
+          status: 'active',
+          plan: 'trial',
+          approvedBy: 'Super Admin',
+          approvedAt: new Date().toISOString()
+        };
 
-    // Add to users
-    const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    const newUser = {
-      id: Date.now().toString(),
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      shopName: user.shopName,
-      password: user.password,
-      role: user.role.toLowerCase().replace(/ /g, '_'),
-      createdAt: new Date().toISOString(),
-      status: 'active',
-      plan: 'trial',
-      approvedBy: 'Super Admin',
-      approvedAt: new Date().toISOString()
-    };
+        existingUsers.push(newUser);
+        localStorage.setItem('users', JSON.stringify(existingUsers));
 
-    existingUsers.push(newUser);
-    localStorage.setItem('users', JSON.stringify(existingUsers));
+        // Remove from pending
+        const updatedPending = pendingUsers.filter(u => u.id !== user.id);
+        localStorage.setItem('pending_user_verifications', JSON.stringify(updatedPending));
+        setPendingUsers(updatedPending);
 
-    // Remove from pending
-    const updatedPending = pendingUsers.filter(u => u.id !== user.id);
-    localStorage.setItem('pending_user_verifications', JSON.stringify(updatedPending));
-    setPendingUsers(updatedPending);
+        // Log activity
+        const activityLog = {
+          id: Date.now().toString(),
+          type: 'user_verification_approved',
+          description: `Approved account for ${user.name} (${user.email}) with role ${user.role}`,
+          user: 'Super Admin',
+          timestamp: new Date().toISOString(),
+          severity: 'success'
+        };
+        const logs = JSON.parse(localStorage.getItem('activity_logs') || '[]');
+        logs.unshift(activityLog);
+        localStorage.setItem('activity_logs', JSON.stringify(logs.slice(0, 1000)));
 
-    // Log activity
-    const activityLog = {
-      id: Date.now().toString(),
-      type: 'user_verification_approved',
-      description: `Approved account for ${user.name} (${user.email}) with role ${user.role}`,
-      user: 'Super Admin',
-      timestamp: new Date().toISOString(),
-      severity: 'success'
-    };
-    const logs = JSON.parse(localStorage.getItem('activity_logs') || '[]');
-    logs.unshift(activityLog);
-    localStorage.setItem('activity_logs', JSON.stringify(logs.slice(0, 1000)));
-
-    alert(`✅ Account Approved!\n\n${user.name} can now log in with their email and password.`);
+        popup.showSuccess('Account Approved!', `${user.name} can now log in with their email and password.`);
+      }
+    );
   };
 
   const handleReject = (user: PendingUser) => {
@@ -104,7 +109,7 @@ export const PendingVerificationsPanel: React.FC = () => {
     logs.unshift(activityLog);
     localStorage.setItem('activity_logs', JSON.stringify(logs.slice(0, 1000)));
 
-    alert(`❌ Account Rejected\n\nReason: ${reason}\n\nThe user will be notified via email.`);
+    popup.showError(`Reason: ${reason}\n\nThe user will be notified via email.`, 'Account Rejected', 'warning');
   };
 
   const filteredUsers = pendingUsers.filter(user => {
@@ -138,7 +143,6 @@ export const PendingVerificationsPanel: React.FC = () => {
       case 'Admin': return 'from-blue-500 to-indigo-600';
       case 'Inventory Manager': return 'from-purple-500 to-pink-600';
       case 'Cashier': return 'from-green-500 to-emerald-600';
-      case 'Finance': return 'from-orange-500 to-red-600';
       default: return 'from-gray-500 to-gray-600';
     }
   };
@@ -169,7 +173,7 @@ export const PendingVerificationsPanel: React.FC = () => {
               <h3 className="font-bold text-purple-900 mb-1">AI ChatBot Registrations</h3>
               <p className="text-purple-800 text-sm">
                 These accounts were created through our ChatGPT-powered AI assistant. Review each request carefully before approval.
-                <strong className="block mt-1">🔒 Security Note: AI can only create Admin, Manager, Cashier, or Finance roles - never Super Admin.</strong>
+                <strong className="block mt-1">🔒 Security Note: AI can only create Admin, Inventory Manager, or Cashier roles - never Super Admin.</strong>
               </p>
             </div>
           </div>
@@ -249,7 +253,6 @@ export const PendingVerificationsPanel: React.FC = () => {
                 <option value="Admin">Admin</option>
                 <option value="Inventory Manager">Inventory Manager</option>
                 <option value="Cashier">Cashier</option>
-                <option value="Finance">Finance</option>
               </select>
             </div>
           </div>
@@ -468,6 +471,22 @@ export const PendingVerificationsPanel: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Popup Container */}
+        <PopupContainer
+          showSuccessPopup={popup.showSuccessPopup}
+          successTitle={popup.successTitle}
+          successMessage={popup.successMessage}
+          onSuccessClose={popup.hideSuccess}
+          showErrorPopup={popup.showErrorPopup}
+          errorTitle={popup.errorTitle}
+          errorMessage={popup.errorMessage}
+          errorType={popup.errorType}
+          onErrorClose={popup.hideError}
+          showConfirmDialog={popup.showConfirmDialog}
+          confirmConfig={popup.confirmConfig}
+          onConfirmCancel={popup.hideConfirm}
+        />
       </div>
     </div>
   );

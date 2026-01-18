@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Super Admin - Serve Spares</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+    }
+    
+    h1 {
+      color: #2d3748;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+    
+    .subtitle {
+      color: #718096;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    
+    .info-box {
+      background: #ebf8ff;
+      border-left: 4px solid #3182ce;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    
+    .info-box h3 {
+      color: #2c5282;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    
+    .info-box p {
+      color: #2d3748;
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+    
+    .credentials {
+      background: #f7fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    
+    .credentials p {
+      margin: 8px 0;
+      font-family: 'Courier New', monospace;
+      color: #2d3748;
+    }
+    
+    .credentials strong {
+      color: #1a202c;
+      display: inline-block;
+      min-width: 100px;
+    }
+    
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 10px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    button.secondary {
+      background: #e2e8f0;
+      color: #2d3748;
+    }
+    
+    button.secondary:hover {
+      background: #cbd5e0;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      font-weight: 500;
+      display: none;
+    }
+    
+    .status.success {
+      background: #c6f6d5;
+      border: 2px solid #48bb78;
+      color: #22543d;
+      display: block;
+    }
+    
+    .status.error {
+      background: #fed7d7;
+      border: 2px solid #f56565;
+      color: #742a2a;
+      display: block;
+    }
+    
+    .status.info {
+      background: #bee3f8;
+      border: 2px solid #4299e1;
+      color: #2c5282;
+      display: block;
+    }
+    
+    .console-output {
+      background: #1a202c;
+      color: #68d391;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      display: none;
+    }
+    
+    .console-output.show {
+      display: block;
+    }
+    
+    .console-output div {
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 Create Super Admin</h1>
+    <p class="subtitle">Serve Spares - Inventory System</p>
+    
+    <div class="info-box">
+      <h3>📝 What This Does</h3>
+      <p>This tool creates a Super Admin account in your browser's localStorage.</p>
+      <p>Use this if you're having trouble logging in and the automatic initialization isn't working.</p>
+    </div>
+    
+    <div class="credentials">
+      <p><strong>Email:</strong> superadmin@servespares.com</p>
+      <p><strong>Password:</strong> SuperAdmin@123</p>
+    </div>
+    
+    <button onclick="createSuperAdmin()">✅ Create Super Admin</button>
+    <button class="secondary" onclick="viewUsers()">👥 View All Users</button>
+    <button class="secondary" onclick="resetAll()">🔄 Reset Everything</button>
+    <button class="secondary" onclick="goToApp()">🚀 Go to App</button>
+    
+    <div id="status" class="status"></div>
+    <div id="console" class="console-output"></div>
+  </div>
+  
+  <script>
+    function log(message, type = 'info') {
+      const consoleEl = document.getElementById('console');
+      const timestamp = new Date().toLocaleTimeString();
+      const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+      consoleEl.innerHTML += `<div>${icon} [${timestamp}] ${message}</div>`;
+      consoleEl.classList.add('show');
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+    
+    function showStatus(message, type) {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = message;
+      statusEl.className = 'status ' + type;
+    }
+    
+    function createSuperAdmin() {
+      try {
+        log('Starting Super Admin creation...');
+        
+        // Get existing users
+        const usersJson = localStorage.getItem('users');
+        const users = usersJson ? JSON.parse(usersJson) : [];
+        log(`Found ${users.length} existing user(s)`);
+        
+        // Check if Super Admin already exists
+        const superAdminExists = users.some(u => 
+          u.email.toLowerCase() === 'superadmin@servespares.com'
+        );
+        
+        if (superAdminExists) {
+          log('Super Admin already exists!', 'error');
+          showStatus('ℹ️ Super Admin already exists. No action needed.', 'info');
+          return;
+        }
+        
+        // Create Super Admin
+        const superAdmin = {
+          id: 'super_admin_1',
+          email: 'superadmin@servespares.com',
+          password: 'SuperAdmin@123',
+          name: 'Super Admin',
+          role: 'super_admin',
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          branch: ''
+        };
+        
+        // Add to users array
+        users.push(superAdmin);
+        
+        // Save back to localStorage
+        localStorage.setItem('users', JSON.stringify(users));
+        
+        log('Super Admin created successfully!', 'success');
+        log('Email: superadmin@servespares.com');
+        log('Password: SuperAdmin@123');
+        log(`Total users: ${users.length}`);
+        
+        showStatus('✅ Super Admin created successfully! You can now login.', 'success');
+        
+      } catch (error) {
+        log('Failed to create Super Admin: ' + error.message, 'error');
+        showStatus('❌ Error: ' + error.message, 'error');
+      }
+    }
+    
+    function viewUsers() {
+      try {
+        log('Loading users from localStorage...');
+        
+        const usersJson = localStorage.getItem('users');
+        const users = usersJson ? JSON.parse(usersJson) : [];
+        
+        log('─────────────────────────────────────');
+        log(`Found ${users.length} user(s):`);
+        log('─────────────────────────────────────');
+        
+        if (users.length === 0) {
+          log('No users found in localStorage');
+        } else {
+          users.forEach((user, index) => {
+            log(`${index + 1}. ${user.name}`);
+            log(`   Email: ${user.email}`);
+            log(`   Role: ${user.role}`);
+            log(`   Active: ${user.isActive ? '✅' : '❌'}`);
+            log(`   ID: ${user.id}`);
+            log('');
+          });
+        }
+        
+        log('─────────────────────────────────────');
+        
+        showStatus(`Found ${users.length} user(s). Check console output below.`, 'info');
+        
+      } catch (error) {
+        log('Failed to view users: ' + error.message, 'error');
+        showStatus('❌ Error: ' + error.message, 'error');
+      }
+    }
+    
+    function resetAll() {
+      if (!confirm('Are you sure you want to delete ALL users and data?\n\nThis action cannot be undone!')) {
+        log('Reset cancelled by user');
+        showStatus('❌ Reset cancelled', 'info');
+        return;
+      }
+      
+      try {
+        log('Clearing all data...');
+        
+        // Clear all relevant localStorage items
+        localStorage.removeItem('users');
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('tenant_id');
+        localStorage.removeItem('user_role');
+        localStorage.removeItem('user_email');
+        
+        log('All data cleared!', 'success');
+        log('Creating fresh Super Admin...');
+        
+        // Create fresh Super Admin
+        const superAdmin = {
+          id: 'super_admin_1',
+          email: 'superadmin@servespares.com',
+          password: 'SuperAdmin@123',
+          name: 'Super Admin',
+          role: 'super_admin',
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          branch: ''
+        };
+        
+        localStorage.setItem('users', JSON.stringify([superAdmin]));
+        
+        log('Super Admin created!', 'success');
+        log('Email: superadmin@servespares.com');
+        log('Password: SuperAdmin@123');
+        
+        showStatus('✅ Reset complete! Super Admin created. You can now login.', 'success');
+        
+      } catch (error) {
+        log('Failed to reset: ' + error.message, 'error');
+        showStatus('❌ Error: ' + error.message, 'error');
+      }
+    }
+    
+    function goToApp() {
+      window.location.href = '/';
+    }
+    
+    // Auto-run on page load
+    window.addEventListener('load', () => {
+      log('Super Admin Creation Tool Loaded');
+      log('Click "Create Super Admin" to get started');
+    });
+  </script>
+</body>
+</html>

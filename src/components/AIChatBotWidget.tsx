@@ -36,7 +36,7 @@ You are an AI assistant for Serve Spares - an advanced auto parts inventory mana
 SYSTEM FEATURES:
 - Inventory Management: Real-time stock tracking, low stock alerts, barcode scanning
 - Billing & Invoicing: POS system with eSewa/FonePay integration for Nepal
-- Multi-User System: 5 role types (Super Admin, Admin, Inventory Manager, Cashier, Finance)
+- Multi-User System: 4 role types (Super Admin, Admin, Inventory Manager, Cashier)
 - Reports: Sales, inventory, financial reports with Excel/PDF export
 - Multi-Branch Support: Manage multiple store locations
 - 8 Language Support: English, Nepali, Hindi, Spanish, French, German, Chinese, Japanese
@@ -55,7 +55,6 @@ USER ROLES (from highest to lowest access):
 2. Admin - Manage inventory, users, reports (cannot modify Super Admin)
 3. Inventory Manager - Stock management, suppliers
 4. Cashier/Reception - Sales, billing, customer service
-5. Finance - Financial reports, payments, accounting
 
 ACCOUNT CREATION RESTRICTIONS:
 - AI can ONLY create accounts with maximum role of "Admin"
@@ -75,7 +74,7 @@ IMPORTANT GUIDELINES:
 
 When helping users register:
 1. Collect: Name, Email, Phone, Shop Name, Password
-2. Ask what role they need (Admin, Manager, Cashier, or Finance)
+2. Ask what role they need (Admin, Manager, or Cashier)
 3. Explain that Super Admin will verify their account
 4. Create account in pending status
 5. Provide next steps for approval
@@ -296,7 +295,7 @@ export const AIChatBotWidget: React.FC = () => {
         }
         setRegistrationData({ ...registrationData, password: trimmedMessage });
         setRegistrationStep('role');
-        return `🔐 Password set securely!\n\n👥 What role do you need?\n\n1️⃣ Admin - Manage inventory, users, reports\n2️⃣ Inventory Manager - Stock management\n3️⃣ Cashier - Sales and billing\n4️⃣ Finance - Financial reports\n\n⚠️ Note: Super Admin accounts can only be created by existing Super Admins.\n\nPlease type the role name you need:`;
+        return `🔐 Password set securely!\n\n👥 What role do you need?\n\n1️⃣ Admin - Manage inventory, users, reports\n2️⃣ Inventory Manager - Stock management\n3️⃣ Cashier - Sales and billing\n\n⚠️ Note: Super Admin accounts can only be created by existing Super Admins.\n\nPlease type the role name you need:`;
 
       case 'role':
         const roleLower = trimmedMessage.toLowerCase();
@@ -309,10 +308,8 @@ export const AIChatBotWidget: React.FC = () => {
           selectedRole = 'Inventory Manager';
         } else if (roleLower.includes('cashier') || roleLower.includes('reception')) {
           selectedRole = 'Cashier';
-        } else if (roleLower.includes('finance') || roleLower.includes('accounting')) {
-          selectedRole = 'Finance';
         } else if (roleLower.includes('super')) {
-          return `⚠️ Sorry, I cannot create Super Admin accounts. This is a security restriction.\n\nSuper Admin accounts can only be created by existing Super Admins through the admin panel.\n\nPlease choose from:\n- Admin\n- Inventory Manager\n- Cashier\n- Finance`;
+          return `⚠️ Sorry, I cannot create Super Admin accounts. This is a security restriction.\n\nSuper Admin accounts can only be created by existing Super Admins through the admin panel.\n\nPlease choose from:\n- Admin\n- Inventory Manager\n- Cashier`;
         }
         
         setRegistrationData({ ...registrationData, role: selectedRole });
@@ -351,7 +348,7 @@ export const AIChatBotWidget: React.FC = () => {
           setRegistrationData({});
         }, 2000);
 
-        return `✅ Registration Request Submitted!\n\n👤 Name: ${registrationData.name}\n📧 Email: ${registrationData.email}\n📱 Phone: ${registrationData.phone}\n🏪 Shop: ${registrationData.shopName}\n👔 Role: ${selectedRole}\n\n⏳ PENDING VERIFICATION\n\n🔒 Security Note: For your protection, all new accounts require Super Admin approval before you can log in.\n\n📋 Next Steps:\n1️⃣ Super Admin will review your request\n2️⃣ You'll receive confirmation via email\n3️⃣ Once approved, you can log in\n\n⏱️ Typical approval time: 1-24 hours\n\n✉️ Check your email (${registrationData.email}) for updates!\n\nThank you for choosing Serve Spares! 🎊`;
+        return `✅ Registration Request Submitted!\n\n👤 Name: ${registrationData.name}\n📧 Email: ${registrationData.email}\n📱 Phone: ${registrationData.phone}\n🏪 Shop: ${registrationData.shopName}\n👔 Role: ${selectedRole}\n\n⏳ PENDING VERIFICATION\n\n🔒 Security Note: For your protection, all new accounts require Super Admin approval before you can log in.\n\n📋 Next Steps:\n1️⃣ Super Admin will review your request\n2️⃣ You will receive confirmation via email\n3️⃣ Once approved, you can log in\n\n⏱️ Typical approval time: 1-24 hours\n\n✉️ Check your email (${registrationData.email}) for updates!\n\nThank you for choosing Serve Spares! 🎊`;
 
       default:
         return await callChatGPT(userMessage, messages);

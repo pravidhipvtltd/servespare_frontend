@@ -4,10 +4,12 @@ import {
   DollarSign, TrendingUp, Building2, Search, Filter, X, 
   CheckCircle, XCircle, AlertCircle, BarChart3, Activity,
   MapPin, Phone, Mail, Calendar, Settings, RefreshCw,
-  ArrowRight, FileText, ShoppingCart, Wallet
+  ArrowRight, FileText, ShoppingCart, Wallet, ArrowUpDown
 } from 'lucide-react';
 import { getFromStorage, saveToStorage } from '../../utils/mockData';
 import { useAuth } from '../../contexts/AuthContext';
+import { PopupContainer } from '../PopupContainer';
+import { useCustomPopup } from '../../hooks/useCustomPopup';
 
 interface Vendor {
   id: string;
@@ -40,6 +42,7 @@ interface VendorStats {
 
 export const MultiVendorPanel: React.FC = () => {
   const { currentUser } = useAuth();
+  const popup = useCustomPopup();
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [showAddVendor, setShowAddVendor] = useState(false);
@@ -163,31 +166,35 @@ export const MultiVendorPanel: React.FC = () => {
   };
 
   const handleDeleteVendor = (vendorId: string) => {
-    if (!confirm('Are you sure you want to delete this vendor? All associated data will be removed.')) {
-      return;
-    }
+    popup.showConfirm(
+      'Delete Vendor',
+      'Are you sure you want to delete this vendor? All associated data will be removed.',
+      () => {
+        // Remove vendor
+        const allVendors = vendors.filter(v => v.id !== vendorId);
+        setVendors(allVendors);
+        saveToStorage('vendors', allVendors);
 
-    // Remove vendor
-    const allVendors = vendors.filter(v => v.id !== vendorId);
-    setVendors(allVendors);
-    saveToStorage('vendors', allVendors);
+        // Remove vendor's users
+        const allUsers = getFromStorage('users', []);
+        const filteredUsers = allUsers.filter((u: any) => u.workspaceId !== vendorId);
+        saveToStorage('users', filteredUsers);
 
-    // Remove vendor's users
-    const allUsers = getFromStorage('users', []);
-    const filteredUsers = allUsers.filter((u: any) => u.workspaceId !== vendorId);
-    saveToStorage('users', filteredUsers);
+        // Remove vendor's inventory
+        const allInventory = getFromStorage('inventory', []);
+        const filteredInventory = allInventory.filter((i: any) => i.workspaceId !== vendorId);
+        saveToStorage('inventory', filteredInventory);
 
-    // Remove vendor's inventory
-    const allInventory = getFromStorage('inventory', []);
-    const filteredInventory = allInventory.filter((i: any) => i.workspaceId !== vendorId);
-    saveToStorage('inventory', filteredInventory);
+        // Remove vendor's transactions
+        const allTransactions = getFromStorage('transactions', []);
+        const filteredTransactions = allTransactions.filter((t: any) => t.workspaceId !== vendorId);
+        saveToStorage('transactions', filteredTransactions);
 
-    // Remove vendor's transactions
-    const allTransactions = getFromStorage('transactions', []);
-    const filteredTransactions = allTransactions.filter((t: any) => t.workspaceId !== vendorId);
-    saveToStorage('transactions', filteredTransactions);
-
-    loadVendors();
+        loadVendors();
+        popup.showSuccess('Vendor Deleted', 'Vendor and all associated data have been removed successfully.');
+      },
+      'destructive'
+    );
   };
 
   const handleToggleStatus = (vendorId: string) => {
@@ -547,6 +554,22 @@ export const MultiVendorPanel: React.FC = () => {
           }}
         />
       )}
+
+      {/* Popup Container */}
+      <PopupContainer
+        showSuccessPopup={popup.showSuccessPopup}
+        successTitle={popup.successTitle}
+        successMessage={popup.successMessage}
+        onSuccessClose={popup.hideSuccess}
+        showErrorPopup={popup.showErrorPopup}
+        errorTitle={popup.errorTitle}
+        errorMessage={popup.errorMessage}
+        errorType={popup.errorType}
+        onErrorClose={popup.hideError}
+        showConfirmDialog={popup.showConfirmDialog}
+        confirmConfig={popup.confirmConfig}
+        onConfirmCancel={popup.hideConfirm}
+      />
     </div>
   );
 };
@@ -683,7 +706,7 @@ const VendorFormModal: React.FC<{
                 value={formData.city}
                 onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="Kathmandu"
+                placeholder="Pokhara"
               />
             </div>
 
@@ -760,11 +783,26 @@ const VendorDetailsModal: React.FC<{
   stats: VendorStats;
   onClose: () => void;
 }> = ({ vendor, stats, onClose }) => {
+  const popup = useCustomPopup();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'inventory' | 'transactions'>('overview');
+  const [showSubscriptionManager, setShowSubscriptionManager] = useState(false);
   
   const allUsers = getFromStorage('users', []).filter((u: any) => u.workspaceId === vendor.id);
   const allInventory = getFromStorage('inventory', []).filter((i: any) => i.workspaceId === vendor.id);
   const allTransactions = getFromStorage('transactions', []).filter((t: any) => t.workspaceId === vendor.id);
+
+  const handleSubscriptionUpdate = (newPlan: string) => {
+    const allVendors = getFromStorage('vendors', []);
+    const updatedVendors = allVendors.map((v: Vendor) => 
+      v.id === vendor.id ? { ...v, subscriptionPlan: newPlan } : v
+    );
+    saveToStorage('vendors', updatedVendors);
+    setShowSubscriptionManager(false);
+    popup.showSuccess('Subscription Updated', `Subscription successfully updated to ${newPlan.toUpperCase()} plan!`);
+    setTimeout(() => {
+      window.location.reload(); // Reload to show updated data
+    }, 1500);
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -856,7 +894,16 @@ const VendorDetailsModal: React.FC<{
 
               {/* Vendor Info */}
               <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                <h4 className="font-semibold text-gray-900">Vendor Information</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-gray-900">Vendor Information</h4>
+                  <button
+                    onClick={() => setShowSubscriptionManager(true)}
+                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all text-sm font-semibold"
+                  >
+                    <ArrowUpDown className="w-4 h-4" />
+                    <span>Manage Subscription</span>
+                  </button>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-600">Owner</p>
@@ -1009,6 +1056,51 @@ const VendorDetailsModal: React.FC<{
           )}
         </div>
       </div>
+      
+      {/* Subscription Manager Modal */}
+      {showSubscriptionManager && (
+        <SubscriptionManagerModal
+          currentPlan={vendor.subscriptionPlan}
+          onClose={() => setShowSubscriptionManager(false)}
+          onUpdate={handleSubscriptionUpdate}
+        />
+      )}
     </div>
   );
 };
+
+// Subscription Manager Modal
+const SubscriptionManagerModal: React.FC<{
+  currentPlan: string;
+  onClose: () => void;
+  onUpdate: (newPlan: string) => void;
+}> = ({ currentPlan, onClose, onUpdate }) => {
+  const [selectedPlan, setSelectedPlan] = useState(currentPlan);
+
+  const plans = [
+    { id: 'free', name: 'Free', price: 'NPR 0', color: 'gray' },
+    { id: 'basic', name: 'Basic', price: 'NPR 999/mo', color: 'blue' },
+    { id: 'premium', name: 'Premium', price: 'NPR 2,499/mo', color: 'purple' },
+    { id: 'enterprise', name: 'Enterprise', price: 'NPR 4,999/mo', color: 'orange' },
+  ];
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-bold text-gray-900">Manage Subscription</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+          <p className="text-sm text-gray-600 mt-1">Upgrade or downgrade your subscription plan</p>
+        </div>
+
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {plans.map((plan) => (
+              <button
+                key={plan.id}
+                onClick={() => setSelectedPlan(plan.id)}
+                className={`relative p-6 rounded-xl border-2 transition-all text-left ${\n                  selectedPlan === plan.id\n                    ? `border-${plan.color}-500 bg-${plan.color}-50 shadow-lg`\n                    : 'border-gray-200 hover:border-gray-300 hover:shadow-md'\n                }`}\n              >\n                <div className="flex items-center justify-between mb-3">\n                  <h4 className="text-lg font-bold text-gray-900">{plan.name}</h4>\n                  {selectedPlan === plan.id && (\n                    <CheckCircle className={`w-6 h-6 text-${plan.color}-600`} />\n                  )}\n                  {currentPlan === plan.id && selectedPlan !== plan.id && (\n                    <span className="px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs font-semibold">\n                      Current\n                    </span>\n                  )}\n                </div>\n                <p className={`text-2xl font-bold mb-2 ${\n                  selectedPlan === plan.id ? `text-${plan.color}-900` : 'text-gray-900'\n                }`}>\n                  {plan.price}\n                </p>\n                {currentPlan === plan.id && selectedPlan === plan.id && (\n                  <p className="text-sm text-gray-600 mt-2">✓ Current active plan</p>\n                )}\n                {currentPlan !== plan.id && selectedPlan === plan.id && (\n                  <p className="text-sm font-semibold mt-2">\n                    {plans.findIndex(p => p.id === currentPlan) < plans.findIndex(p => p.id === plan.id)\n                      ? `⬆️ Upgrade to ${plan.name}`\n                      : `⬇️ Downgrade to ${plan.name}`}\n                  </p>\n                )}\n              </button>\n            ))}\n          </div>\n\n          <div className="mt-6 p-4 bg-blue-50 rounded-lg">\n            <div className="flex items-start space-x-3">\n              <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />\n              <div className="text-sm text-blue-900">\n                <p className="font-semibold mb-1">Plan Change Information:</p>\n                <ul className="space-y-1 text-blue-800">\n                  <li>• Upgrades take effect immediately</li>\n                  <li>• Downgrades will be processed at the end of the current billing period</li>\n                  <li>• You can change your plan at any time</li>\n                </ul>\n              </div>\n            </div>\n          </div>\n        </div>\n\n        <div className="p-6 bg-gray-50 rounded-b-2xl flex items-center justify-end space-x-3">\n          <button\n            onClick={onClose}\n            className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-semibold"\n          >\n            Cancel\n          </button>\n          <button\n            onClick={() => onUpdate(selectedPlan)}\n            disabled={selectedPlan === currentPlan}\n            className={`px-6 py-2.5 rounded-lg font-semibold transition-all ${\n              selectedPlan === currentPlan\n                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'\n                : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-lg'\n            }`}\n          >\n            {selectedPlan === currentPlan ? 'Already on this plan' : 'Confirm Change'}\n          </button>\n        </div>\n      </div>\n    </div>\n  );\n};\n

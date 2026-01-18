@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { LogIn, Package, Shield, Users, Zap, Settings, Sparkles, ChevronRight, Lock, Mail } from 'lucide-react';
+import React, { useState } from 'react';
+import { Shield, Mail, Lock, Sparkles, ChevronRight, Package, Users, Zap } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export const LoginPage: React.FC = () => {
@@ -7,7 +7,6 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [hoveredDemo, setHoveredDemo] = useState<number | null>(null);
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,30 +22,6 @@ export const LoginPage: React.FC = () => {
     
     setIsLoading(false);
   };
-
-  const handleQuickLogin = async (email: string, password: string) => {
-    setEmail(email);
-    setPassword(password);
-    setError('');
-    setIsLoading(true);
-
-    const result = await login(email, password);
-    
-    if (!result.success) {
-      setError(result.message || 'Login failed');
-    }
-    
-    setIsLoading(false);
-  };
-
-  const demoAccounts = [
-    { email: 'superadmin@autoparts.com', password: 'super123', role: 'Super Admin', icon: Shield, color: 'from-red-500 to-pink-600', glow: 'shadow-red-500/50' },
-    { email: 'admin.chief@servespares.com', password: 'ChiefAdmin@2024', role: 'Chief Admin', icon: Shield, color: 'from-orange-500 to-red-600', glow: 'shadow-orange-500/50', badge: 'NEW' },
-    { email: 'admin@autoparts.com', password: 'admin123', role: 'Admin', icon: Users, color: 'from-blue-500 to-indigo-600', glow: 'shadow-blue-500/50' },
-    { email: 'manager@autoparts.com', password: 'manager123', role: 'Inventory Manager', icon: Package, color: 'from-green-500 to-emerald-600', glow: 'shadow-green-500/50' },
-    { email: 'cashier@autoparts.com', password: 'cashier123', role: 'Cashier', icon: Zap, color: 'from-yellow-500 to-orange-600', glow: 'shadow-yellow-500/50' },
-    { email: 'finance@autoparts.com', password: 'finance123', role: 'Finance', icon: Settings, color: 'from-purple-500 to-pink-600', glow: 'shadow-purple-500/50' },
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4 overflow-hidden relative">
@@ -154,7 +129,7 @@ export const LoginPage: React.FC = () => {
         ))}
 
         {/* Grid Pattern Overlay */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black,transparent)]"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,250,0.02)_1px,transparent_1px)] bg-[size:50px_50px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black,transparent)]"></div>
       </div>
 
       {/* Main Content */}
@@ -230,7 +205,7 @@ export const LoginPage: React.FC = () => {
                 { 
                   icon: Shield, 
                   title: 'Multi-Role Security', 
-                  desc: 'Super Admin, Admin, Manager, Cashier & Finance roles',
+                  desc: 'Super Admin, Admin, Manager & Cashier roles with granular permissions',
                   gradient: 'from-red-500/20 to-pink-500/20',
                   iconColor: 'text-red-400',
                   border: 'border-red-500/30'
@@ -368,8 +343,35 @@ export const LoginPage: React.FC = () => {
 
                 {/* Error Message */}
                 {error && (
-                  <div className="p-4 bg-red-500/10 border-2 border-red-500/50 rounded-xl text-red-400 text-sm animate-shake">
-                    {error}
+                  <div className="space-y-3">
+                    <div className="p-4 bg-red-500/10 border-2 border-red-500/50 rounded-xl text-red-400 text-sm animate-shake">
+                      {error}
+                    </div>
+                    
+                    {/* Emergency Reset Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        console.log('🔄 Emergency Reset: Creating demo users...');
+                        
+                        import('../utils/initializeSuperAdmin').then(module => {
+                          module.resetDemoUsers();
+                          
+                          // Clear error and show success message
+                          setError('');
+                         
+                          
+                          // Reload page after 1 second
+                          setTimeout(() => {
+                            window.location.reload();
+                          }, 1000);
+                        });
+                      }}
+                      className="w-full py-3 bg-yellow-600/20 border-2 border-yellow-500/50 text-yellow-400 rounded-xl hover:bg-yellow-600/30 transition-all text-sm font-semibold flex items-center justify-center gap-2"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      Reset Demo Users (Emergency Fix)
+                    </button>
                   </div>
                 )}
 
@@ -401,58 +403,6 @@ export const LoginPage: React.FC = () => {
                   </span>
                 </button>
               </form>
-
-              {/* Divider */}
-              <div className="relative my-8">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-700"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-slate-900 text-slate-400">Quick Login Demo Accounts</span>
-                </div>
-              </div>
-
-              {/* Demo Accounts */}
-              <div className="space-y-3">
-                {demoAccounts.map((account, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleQuickLogin(account.email, account.password)}
-                    onMouseEnter={() => setHoveredDemo(idx)}
-                    onMouseLeave={() => setHoveredDemo(null)}
-                    className={`group relative w-full p-4 bg-gradient-to-r ${account.color} rounded-xl text-white font-semibold transition-all duration-300 hover:scale-105 hover:shadow-xl ${account.glow} overflow-hidden`}
-                  >
-                    {/* Shimmer Effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                    
-                    {/* Content */}
-                    <div className="relative flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                          <account.icon className="w-5 h-5" />
-                        </div>
-                        <div className="text-left">
-                          <div className="font-bold flex items-center gap-2">
-                            {account.role}
-                            {account.badge && (
-                              <span className="px-2 py-0.5 bg-yellow-400 text-slate-900 text-xs rounded-full font-bold animate-pulse">
-                                {account.badge}
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-xs opacity-80">{account.email}</div>
-                        </div>
-                      </div>
-                      <ChevronRight className={`w-5 h-5 transition-transform ${hoveredDemo === idx ? 'translate-x-1' : ''}`} />
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              {/* Footer Note */}
-              <p className="mt-6 text-center text-slate-500 text-sm">
-                Click any demo account to quick login
-              </p>
             </div>
           </div>
 

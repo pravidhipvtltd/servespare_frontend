@@ -28,12 +28,18 @@ import { NotificationsSimple } from './NotificationsSimple';
 import { SystemSettingsFixed } from './SystemSettingsFixed';
 import { AuditLogDetailed } from './AuditLogDetailed';
 import { MaintenanceCRM } from './MaintenanceCRM';
+import { SuccessPopup } from './SuccessPopup';
+import { ErrorPopup } from './ErrorPopup';
+import { ConfirmDialog } from './ConfirmDialog';
+import { PopupContainer } from './PopupContainer';
+import { useCustomPopup } from '../hooks/useCustomPopup';
 import { CRMSystem } from './CRMSystem';
 import { MultiVendorPanel } from './panels/MultiVendorPanel';
 import { AccessControlPanel } from './panels/AccessControlPanel';
 import { BranchVendorManagement } from './panels/BranchVendorManagement';
 import { IntegratedBranchManagement } from './panels/IntegratedBranchManagement';
 import { PendingVerificationsPanel } from './panels/PendingVerificationsPanel';
+import { ChequeManagementPanel } from './panels/ChequeManagementPanel';
 
 type MenuItem = {
   id: string;
@@ -50,7 +56,6 @@ const menuItems: MenuItem[] = [
   { id: 'vendors', label: 'Multi-Vendor', icon: Store, panel: 'vendors' },
   { id: 'access_control', label: 'Access Control', icon: Key, panel: 'access_control' },
   { id: 'branches', label: 'Branch Management', icon: Building2, panel: 'branches' },
-  { id: 'finance', label: 'Finance Oversight', icon: DollarSign, panel: 'finance' },
   { id: 'inventory', label: 'Inventory Master', icon: Package, panel: 'inventory' },
   { id: 'reports', label: 'Reports & Analytics', icon: FileText, panel: 'reports' },
   { id: 'settings', label: 'System Settings', icon: Settings, panel: 'settings' },
@@ -60,6 +65,7 @@ const menuItems: MenuItem[] = [
   { id: 'maintenance', label: 'Maintenance CRM', icon: Wrench, panel: 'maintenance' },
   { id: 'crm', label: 'CRM', icon: Users, panel: 'crm' },
   { id: 'suppliers', label: 'Suppliers', icon: Building2, panel: 'suppliers' },
+  { id: 'cheques', label: 'Cheque Management', icon: CreditCard, panel: 'cheques' },
   { id: 'advanced', label: 'Advanced', icon: Zap, panel: 'advanced' },
 ];
 
@@ -77,6 +83,9 @@ export const SuperAdminDashboard: React.FC = () => {
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [pendingVerificationsCount, setPendingVerificationsCount] = useState(0);
+
+  // Use the custom popup hook
+  const popup = useCustomPopup();
 
   useEffect(() => {
     loadData();
@@ -124,8 +133,6 @@ export const SuperAdminDashboard: React.FC = () => {
         return <AccessControlPanel />;
       case 'branches':
         return <IntegratedBranchManagement users={users} bills={bills} onUpdate={loadData} />;
-      case 'finance':
-        return <FinanceOversightView bills={bills} parties={parties} bankAccounts={bankAccounts} expenses={expenses} inventory={inventory} />;
       case 'inventory':
         return <InventoryMasterView inventory={inventory} parties={parties} onUpdate={loadData} />;
       case 'reports':
@@ -144,6 +151,8 @@ export const SuperAdminDashboard: React.FC = () => {
         return <CRMSystem parties={parties} bills={bills} onUpdate={loadData} />;
       case 'suppliers':
         return <SuppliersView parties={parties} inventory={inventory} onUpdate={loadData} />;
+      case 'cheques':
+        return <ChequeManagementPanel />;
       case 'advanced':
         return <AdvancedView />;
       default:
@@ -302,6 +311,25 @@ export const SuperAdminDashboard: React.FC = () => {
           {renderPanel()}
         </main>
       </div>
+
+      {/* Success Popup */}
+      <SuccessPopup
+        isOpen={popup.isSuccessOpen}
+        onClose={() => popup.closeSuccess()}
+        title={popup.successTitle}
+        message={popup.successMessage}
+        autoClose={true}
+        autoCloseDelay={3000}
+      />
+
+      {/* Error Popup */}
+      <ErrorPopup
+        isOpen={popup.isErrorOpen}
+        onClose={() => popup.closeError()}
+        title={popup.errorTitle}
+        message={popup.errorMessage}
+        type={popup.errorType}
+      />
     </div>
   );
 };
@@ -477,21 +505,6 @@ const DashboardView: React.FC<any> = ({ users, workspaces, bills, inventory, par
         </button>
 
         <button
-          onClick={() => onNavigate('finance')}
-          className="group bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white hover:shadow-2xl hover:shadow-green-500/50 transition-all text-left hover:scale-105"
-        >
-          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-white/30 transition-all">
-            <DollarSign className="w-6 h-6" />
-          </div>
-          <h3 className="text-lg font-bold mb-2">Finance Oversight</h3>
-          <p className="text-green-100 text-sm mb-4">Monitor all financial transactions and reports</p>
-          <div className="flex items-center text-white font-semibold">
-            <span>View Finance</span>
-            <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </button>
-
-        <button
           onClick={() => onNavigate('audit')}
           className="group bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl p-6 text-white hover:shadow-2xl hover:shadow-orange-500/50 transition-all text-left hover:scale-105"
         >
@@ -602,30 +615,24 @@ const UserManagementView: React.FC<any> = ({ users, workspaces, onUpdate }) => {
     );
     saveToStorage('users', updatedUsers);
     onUpdate();
-    alert('✅ User status updated successfully!');
+    popup.showSuccess('User status updated successfully!');
   };
 
   const deleteUser = (userId: string) => {
-    if (window.confirm('⚠️ Are you sure you want to delete this user? This action cannot be undone.')) {
-      const allUsers: User[] = getFromStorage('users', []);
-      const updatedUsers = allUsers.filter(u => u.id !== userId);
-      saveToStorage('users', updatedUsers);
-      onUpdate();
-      alert('✅ User deleted successfully!');
-    }
-  };
-
-  const resetPassword = (userId: string) => {
-    if (window.confirm('Reset password for this user to "password123"?')) {
-      const allUsers: User[] = getFromStorage('users', []);
-      const updatedUsers = allUsers.map(u => 
-        u.id === userId ? { ...u, password: 'password123' } : u
-      );
-      saveToStorage('users', updatedUsers);
-      onUpdate();
-      alert('✅ Password reset to: password123');
-    }
-  };
+    popup.showConfirm(
+      'Delete User',
+      'Are you sure you want to delete this user?',
+      () => {
+        const allUsers: User[] = getFromStorage('users', []);\n        const updatedUsers = allUsers.filter(u => u.id !== userId);\n        saveToStorage('users', updatedUsers);\n        onUpdate();\n        popup.showSuccess('User deleted successfully!');\n      },
+      { type: 'danger', details: ['This action cannot be undone', 'All user data will be permanently removed'] }\n    );\n  };\n\n  const resetPassword = (userId: string) => {
+    popup.showConfirm(
+      'Reset Password',
+      'Reset password for this user to "password123"?',
+      () => {
+        const allUsers: User[] = getFromStorage('users', []);\n        const updatedUsers = allUsers.map(u => 
+          u.id === userId ? { ...u, password: 'password123' } : u
+        );\n        saveToStorage('users', updatedUsers);\n        onUpdate();\n        popup.showSuccess('Password reset to: password123', 'Password Reset Complete');\n      },
+      { type: 'info' }\n    );\n  };\n
 
   return (
     <div className="space-y-6">
@@ -703,7 +710,6 @@ const UserManagementView: React.FC<any> = ({ users, workspaces, onUpdate }) => {
             <option value="admin">Admin</option>
             <option value="inventory_manager">Inventory Manager</option>
             <option value="cashier">Cashier</option>
-            <option value="finance">Finance</option>
           </select>
           <select
             value={statusFilter}
@@ -754,7 +760,6 @@ const UserManagementView: React.FC<any> = ({ users, workspaces, onUpdate }) => {
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                         user.role === 'super_admin' ? 'bg-red-100 text-red-700' :
                         user.role === 'admin' ? 'bg-purple-100 text-purple-700' :
-                        user.role === 'finance' ? 'bg-green-100 text-green-700' :
                         user.role === 'cashier' ? 'bg-blue-100 text-blue-700' :
                         'bg-gray-100 text-gray-700'
                       }`}>
@@ -846,7 +851,7 @@ const BranchManagementView: React.FC<any> = ({ workspaces, users, bills, onUpdat
     onUpdate();
     setShowAddModal(false);
     setFormData({ name: '', contactEmail: '', contactPhone: '', address: '' });
-    alert('✅ Branch created successfully!');
+    popup.showSuccess('Branch created successfully!');
   };
 
   const deleteBranch = (workspaceId: string) => {
@@ -855,7 +860,7 @@ const BranchManagementView: React.FC<any> = ({ workspaces, users, bills, onUpdat
       const updatedWorkspaces = allWorkspaces.filter(w => w.id !== workspaceId);
       saveToStorage('workspaces', updatedWorkspaces);
       onUpdate();
-      alert('✅ Branch deleted successfully!');
+      popup.showSuccess('Branch deleted successfully!');
     }
   };
 
@@ -1031,197 +1036,6 @@ const BranchManagementView: React.FC<any> = ({ workspaces, users, bills, onUpdat
           </div>
         </div>
       )}
-    </div>
-  );
-};
-
-// 4. Finance Oversight View - FULLY FUNCTIONAL
-const FinanceOversightView: React.FC<any> = ({ bills, parties, bankAccounts, expenses, inventory }) => {
-  const [dateFilter, setDateFilter] = useState('all');
-  
-  const totalRevenue = bills.reduce((sum: number, b: Bill) => sum + b.total, 0);
-  const totalExpenses = expenses.reduce((sum: number, e: any) => sum + e.amount, 0);
-  const netProfit = totalRevenue - totalExpenses;
-  const suppliers = parties.filter((p: Party) => p.type === 'supplier');
-  const customers = parties.filter((p: Party) => p.type === 'customer');
-  const supplierDues = suppliers.reduce((sum: number, s: Party) => sum + (s.balance || 0), 0);
-  const customerDues = customers.reduce((sum: number, c: Party) => sum + (c.balance || 0), 0);
-  const totalBankBalance = bankAccounts.reduce((sum: number, b: BankAccount) => sum + b.balance, 0);
-  const inventoryValue = inventory.reduce((sum: number, i: InventoryItem) => sum + (i.price * i.quantity), 0);
-
-  const cashSales = bills.filter(b => b.paymentMethod === 'cash').reduce((sum, b) => sum + b.total, 0);
-  const creditSales = bills.filter(b => b.paymentMethod === 'credit').reduce((sum, b) => sum + b.total, 0);
-  const digitalSales = bills.filter(b => ['esewa', 'khalti', 'fonepay'].includes(b.paymentMethod)).reduce((sum, b) => sum + b.total, 0);
-
-  const exportToCSV = () => {
-    alert('📥 Exporting financial data to CSV...');
-  };
-
-  const exportToPDF = () => {
-    alert('📥 Exporting financial report to PDF...');
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-gray-900 text-2xl font-bold">Finance Oversight</h2>
-          <p className="text-gray-600">Complete financial monitoring and control across all operations</p>
-        </div>
-        <div className="flex space-x-3">
-          <button 
-            onClick={exportToCSV}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center space-x-2"
-          >
-            <Download className="w-4 h-4" />
-            <span>CSV</span>
-          </button>
-          <button 
-            onClick={exportToPDF}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
-          >
-            <Download className="w-4 h-4" />
-            <span>PDF</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-8 text-white">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-semibold text-green-100 mb-2">Net Profit</h2>
-            <p className="text-4xl font-bold">NPR {netProfit.toLocaleString()}</p>
-            <p className="text-green-100 mt-2">Revenue - Expenses = Profit</p>
-          </div>
-          <TrendingUp className="w-20 h-20 opacity-30" />
-        </div>
-      </div>
-
-      {/* Financial KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-              <ArrowUpCircle className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-          <h4 className="text-gray-600 mb-2">Total Revenue</h4>
-          <p className="text-green-600 text-3xl font-bold">NPR {totalRevenue.toLocaleString()}</p>
-          <p className="text-gray-500 text-sm mt-1">{bills.length} transactions</p>
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-              <ArrowDownCircle className="w-6 h-6 text-red-600" />
-            </div>
-          </div>
-          <h4 className="text-gray-600 mb-2">Total Expenses</h4>
-          <p className="text-red-600 text-3xl font-bold">NPR {totalExpenses.toLocaleString()}</p>
-          <p className="text-gray-500 text-sm mt-1">{expenses.length} expense items</p>
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-              <Building2 className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-          <h4 className="text-gray-600 mb-2">Bank Balance</h4>
-          <p className="text-blue-600 text-3xl font-bold">NPR {totalBankBalance.toLocaleString()}</p>
-          <p className="text-gray-500 text-sm mt-1">{bankAccounts.length} accounts</p>
-        </div>
-      </div>
-
-      {/* Receivables & Payables */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="text-gray-900 font-bold text-lg mb-4 flex items-center">
-            <Users className="w-5 h-5 text-yellow-600 mr-2" />
-            Accounts Receivable
-          </h3>
-          <div className="mb-4">
-            <p className="text-yellow-600 text-4xl font-bold">NPR {customerDues.toLocaleString()}</p>
-            <p className="text-gray-600 text-sm mt-1">{customers.filter((c: Party) => c.balance > 0).length} customers with pending dues</p>
-          </div>
-          <div className="space-y-2">
-            {customers.filter((c: Party) => c.balance > 0).slice(0, 5).map((customer: Party) => (
-              <div key={customer.id} className="flex justify-between p-3 bg-yellow-50 rounded-lg">
-                <span className="text-gray-700 font-semibold">{customer.name}</span>
-                <span className="text-yellow-600 font-bold">NPR {customer.balance.toLocaleString()}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="text-gray-900 font-bold text-lg mb-4 flex items-center">
-            <Building2 className="w-5 h-5 text-red-600 mr-2" />
-            Accounts Payable
-          </h3>
-          <div className="mb-4">
-            <p className="text-red-600 text-4xl font-bold">NPR {supplierDues.toLocaleString()}</p>
-            <p className="text-gray-600 text-sm mt-1">{suppliers.filter((s: Party) => s.balance > 0).length} suppliers with pending payments</p>
-          </div>
-          <div className="space-y-2">
-            {suppliers.filter((s: Party) => s.balance > 0).slice(0, 5).map((supplier: Party) => (
-              <div key={supplier.id} className="flex justify-between p-3 bg-red-50 rounded-lg">
-                <span className="text-gray-700 font-semibold">{supplier.name}</span>
-                <span className="text-red-600 font-bold">NPR {supplier.balance.toLocaleString()}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Payment Methods Breakdown */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <h3 className="text-gray-900 font-bold text-lg mb-4">Payment Methods Breakdown</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 bg-green-50 rounded-xl border border-green-200">
-            <Wallet className="w-6 h-6 text-green-600 mb-2" />
-            <div className="text-green-700 text-sm font-semibold mb-1">Cash Sales</div>
-            <div className="text-green-600 text-2xl font-bold">NPR {cashSales.toLocaleString()}</div>
-          </div>
-          <div className="p-4 bg-purple-50 rounded-xl border border-purple-200">
-            <CreditCard className="w-6 h-6 text-purple-600 mb-2" />
-            <div className="text-purple-700 text-sm font-semibold mb-1">Digital Payments</div>
-            <div className="text-purple-600 text-2xl font-bold">NPR {digitalSales.toLocaleString()}</div>
-          </div>
-          <div className="p-4 bg-yellow-50 rounded-xl border border-yellow-200">
-            <Clock className="w-6 h-6 text-yellow-600 mb-2" />
-            <div className="text-yellow-700 text-sm font-semibold mb-1">Credit Sales</div>
-            <div className="text-yellow-600 text-2xl font-bold">NPR {creditSales.toLocaleString()}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Asset Overview */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <h3 className="text-gray-900 font-bold text-lg mb-4">Total Assets</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="p-4 bg-blue-50 rounded-xl text-center">
-            <Building2 className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-            <div className="text-blue-700 text-xs font-semibold mb-1">Bank</div>
-            <div className="text-blue-600 font-bold">NPR {totalBankBalance.toLocaleString()}</div>
-          </div>
-          <div className="p-4 bg-orange-50 rounded-xl text-center">
-            <Package className="w-6 h-6 text-orange-600 mx-auto mb-2" />
-            <div className="text-orange-700 text-xs font-semibold mb-1">Inventory</div>
-            <div className="text-orange-600 font-bold">NPR {inventoryValue.toLocaleString()}</div>
-          </div>
-          <div className="p-4 bg-yellow-50 rounded-xl text-center">
-            <Users className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
-            <div className="text-yellow-700 text-xs font-semibold mb-1">Receivables</div>
-            <div className="text-yellow-600 font-bold">NPR {customerDues.toLocaleString()}</div>
-          </div>
-          <div className="p-4 bg-purple-50 rounded-xl text-center">
-            <TrendingUp className="w-6 h-6 text-purple-600 mx-auto mb-2" />
-            <div className="text-purple-700 text-xs font-semibold mb-1">Total Assets</div>
-            <div className="text-purple-600 font-bold">NPR {(totalBankBalance + inventoryValue + customerDues).toLocaleString()}</div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

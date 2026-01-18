@@ -120,7 +120,6 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, workspaces, 
               <option value="admin">Admin</option>
               <option value="inventory_manager">Inventory Manager</option>
               <option value="cashier">Cashier</option>
-              <option value="finance">Finance</option>
             </select>
           </div>
 
@@ -299,10 +298,6 @@ export const ViewUserModal: React.FC<ViewUserModalProps> = ({ user, workspaces, 
                 <div className="flex items-center space-x-2 text-green-600">
                   <CheckCircle className="w-4 h-4" />
                   <span className="text-sm">Branch Management</span>
-                </div>
-                <div className="flex items-center space-x-2 text-green-600">
-                  <CheckCircle className="w-4 h-4" />
-                  <span className="text-sm">Finance Oversight</span>
                 </div>
               </>
             )}

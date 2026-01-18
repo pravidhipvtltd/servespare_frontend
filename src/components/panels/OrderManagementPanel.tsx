@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { getFromStorage, saveToStorage } from '../../utils/mockData';
 import { useAuth } from '../../contexts/AuthContext';
+import { PopupContainer } from '../PopupContainer';
+import { useCustomPopup } from '../../hooks/useCustomPopup';
 
 type OrderType = 'purchase' | 'sales';
 type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'completed' | 'cancelled';
@@ -85,6 +87,7 @@ const STATUS_CONFIG: Record<OrderStatus, { color: string; icon: any; label: stri
 
 export const OrderManagementPanel: React.FC = () => {
   const { currentUser } = useAuth();
+  const popup = useCustomPopup();
   const [activeTab, setActiveTab] = useState<OrderType>('purchase');
   const [orders, setOrders] = useState<Order[]>([]);
   const [parties, setParties] = useState<any[]>([]);
@@ -100,18 +103,7 @@ export const OrderManagementPanel: React.FC = () => {
   const [partySearchQuery, setPartySearchQuery] = useState('');
   const [showPartyDropdown, setShowPartyDropdown] = useState(false);
 
-  // Alert dialog states
-  const [alertDialog, setAlertDialog] = useState<{
-    show: boolean;
-    type: 'error' | 'success' | 'warning';
-    title: string;
-    message: string;
-  }>({
-    show: false,
-    type: 'success',
-    title: '',
-    message: '',
-  });
+  // Alert dialog states - removed, using custom popup system
 
   // Form state
   const [formData, setFormData] = useState({
@@ -131,14 +123,7 @@ export const OrderManagementPanel: React.FC = () => {
     loadData();
   }, []);
 
-  // Show alert helper
-  const showAlert = (type: 'error' | 'success' | 'warning', title: string, message: string) => {
-    setAlertDialog({ show: true, type, title, message });
-  };
-
-  const closeAlert = () => {
-    setAlertDialog({ show: false, type: 'success', title: '', message: '' });
-  };
+  // Show alert helper - removed, using custom popup system
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -217,12 +202,12 @@ export const OrderManagementPanel: React.FC = () => {
     e.preventDefault();
     
     if (formData.items.length === 0) {
-      alert('⚠️ Please add at least one item to the order');
+      popup.showError('Please add at least one item to the order', 'Validation Error');
       return;
     }
 
     if (!formData.partyId) {
-      showAlert('warning', 'Party Required', 'Please select a party (customer/supplier) to continue.');
+      popup.showError('Please select a party (customer/supplier) to continue.', 'Party Required');
       return;
     }
 
@@ -257,10 +242,10 @@ export const OrderManagementPanel: React.FC = () => {
         o.id === editingOrder.id ? newOrder : o
       );
       saveToStorage(storageKey, updatedOrders);
-      showAlert('success', 'Order Updated', `Order ${newOrder.orderNumber} has been updated successfully!`);
+      popup.showSuccess(`Order ${newOrder.orderNumber} has been updated successfully!`, 'Order Updated');
     } else {
       saveToStorage(storageKey, [...existingOrders, newOrder]);
-      showAlert('success', 'Order Created', `Order ${newOrder.orderNumber} has been created successfully!`);
+      popup.showSuccess(`Order ${newOrder.orderNumber} has been created successfully!`, 'Order Created');
     }
 
     loadData();
@@ -306,14 +291,18 @@ export const OrderManagementPanel: React.FC = () => {
   };
 
   const handleDelete = (orderId: string, orderType: OrderType) => {
-    if (confirm('⚠️ Are you sure you want to delete this order? This action cannot be undone.')) {
-      const storageKey = orderType === 'purchase' ? 'purchaseOrders' : 'salesOrders';
-      const existingOrders = getFromStorage(storageKey, []);
-      const updatedOrders = existingOrders.filter((o: Order) => o.id !== orderId);
-      saveToStorage(storageKey, updatedOrders);
-      loadData();
-      showAlert('success', 'Order Deleted', 'The order has been deleted successfully.');
-    }
+    popup.showConfirm(
+      'Are you sure you want to delete this order? This action cannot be undone.',
+      'Delete Order',
+      () => {
+        const storageKey = orderType === 'purchase' ? 'purchaseOrders' : 'salesOrders';
+        const existingOrders = getFromStorage(storageKey, []);
+        const updatedOrders = existingOrders.filter((o: Order) => o.id !== orderId);
+        saveToStorage(storageKey, updatedOrders);
+        loadData();
+        popup.showSuccess('The order has been deleted successfully.', 'Order Deleted');
+      }
+    );
   };
 
   const handleStatusUpdate = (order: Order, newStatus: OrderStatus) => {
@@ -325,7 +314,7 @@ export const OrderManagementPanel: React.FC = () => {
     saveToStorage(storageKey, updatedOrders);
     loadData();
     setViewingOrder(null);
-    alert(`✅ Order status updated to: ${STATUS_CONFIG[newStatus].label}`);
+    popup.showSuccess(`Order status updated to: ${STATUS_CONFIG[newStatus].label}`, 'Status Updated');
   };
 
   const filteredOrders = orders.filter(order => {
@@ -1484,45 +1473,21 @@ export const OrderManagementPanel: React.FC = () => {
         </div>
       )}
 
-      {/* Custom Alert Dialog */}
-      {alertDialog.show && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-            {/* Header */}
-            <div className={`p-6 ${
-              alertDialog.type === 'error' ? 'bg-gradient-to-r from-red-600 to-red-700' :
-              alertDialog.type === 'warning' ? 'bg-gradient-to-r from-yellow-500 to-orange-600' :
-              'bg-gradient-to-r from-green-600 to-emerald-600'
-            } text-white`}>
-              <div className="flex items-center space-x-3">
-                {alertDialog.type === 'error' && <XCircle className="w-8 h-8" />}
-                {alertDialog.type === 'warning' && <AlertCircle className="w-8 h-8" />}
-                {alertDialog.type === 'success' && <CheckCircle className="w-8 h-8" />}
-                <h3 className="text-xl font-semibold">{alertDialog.title}</h3>
-              </div>
-            </div>
-
-            {/* Message */}
-            <div className="p-6">
-              <p className="text-gray-700 text-lg">{alertDialog.message}</p>
-            </div>
-
-            {/* Footer */}
-            <div className="px-6 pb-6 flex justify-end">
-              <button
-                onClick={closeAlert}
-                className={`px-8 py-3 rounded-xl font-semibold text-white transition-all hover:shadow-lg ${
-                  alertDialog.type === 'error' ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800' :
-                  alertDialog.type === 'warning' ? 'bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700' :
-                  'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
-                }`}
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Popup Container */}
+      <PopupContainer
+        showSuccessPopup={popup.showSuccessPopup}
+        successTitle={popup.successTitle}
+        successMessage={popup.successMessage}
+        onSuccessClose={popup.hideSuccess}
+        showErrorPopup={popup.showErrorPopup}
+        errorTitle={popup.errorTitle}
+        errorMessage={popup.errorMessage}
+        errorType={popup.errorType}
+        onErrorClose={popup.hideError}
+        showConfirmDialog={popup.showConfirmDialog}
+        confirmConfig={popup.confirmConfig}
+        onConfirmCancel={popup.hideConfirm}
+      />
     </div>
   );
 };

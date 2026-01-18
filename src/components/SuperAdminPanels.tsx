@@ -454,7 +454,7 @@ export const NotificationsView: React.FC<any> = ({ inventory, parties, bills }) 
 export const AuditLogView: React.FC<any> = ({ users }) => {
   const mockLogs = [
     { id: 1, user: 'Admin User', action: 'Created new user', timestamp: new Date().toISOString(), type: 'create' },
-    { id: 2, user: 'Finance User', action: 'Updated bill #BIL-12345', timestamp: new Date(Date.now() - 3600000).toISOString(), type: 'update' },
+    { id: 2, user: 'Inventory Manager', action: 'Updated bill #BIL-12345', timestamp: new Date(Date.now() - 3600000).toISOString(), type: 'update' },
     { id: 3, user: 'Inventory Manager', action: 'Added new inventory item', timestamp: new Date(Date.now() - 7200000).toISOString(), type: 'create' },
     { id: 4, user: 'Admin User', action: 'Deleted user account', timestamp: new Date(Date.now() - 10800000).toISOString(), type: 'delete' },
     { id: 5, user: 'Cashier', action: 'Processed sale transaction', timestamp: new Date(Date.now() - 14400000).toISOString(), type: 'transaction' },
@@ -524,7 +524,7 @@ export const MaintenanceView: React.FC = () => {
     <div className="space-y-6">
       <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-8 text-white">
         <h2 className="text-2xl font-bold mb-2">System Maintenance</h2>
-        <p className="text-blue-100">Database backup, cache, and system health monitoring</p>
+        <p className="text-blue-100">Database backup and cache management</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <button 

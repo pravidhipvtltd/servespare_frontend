@@ -12,7 +12,6 @@ const DEFAULT_ROLE_PERMISSIONS: RolePermissions = {
     'view_users', 'create_users', 'edit_users', 'delete_users',
     'view_inventory', 'create_inventory', 'edit_inventory', 'delete_inventory', 'adjust_stock',
     'view_bills', 'create_bills', 'edit_bills', 'delete_bills', 'process_refunds',
-    'view_finance', 'view_expenses', 'create_expenses', 'approve_expenses', 'view_profit_loss',
     'view_parties', 'create_parties', 'edit_parties', 'delete_parties',
     'view_settings', 'edit_settings', 'manage_branches'
   ],
@@ -21,7 +20,6 @@ const DEFAULT_ROLE_PERMISSIONS: RolePermissions = {
     'view_users', 'create_users', 'edit_users',
     'view_inventory', 'create_inventory', 'edit_inventory', 'delete_inventory', 'adjust_stock',
     'view_bills', 'create_bills', 'edit_bills', 'delete_bills',
-    'view_finance', 'view_expenses',
     'view_parties', 'create_parties', 'edit_parties', 'delete_parties',
     'view_settings'
   ],
@@ -35,12 +33,6 @@ const DEFAULT_ROLE_PERMISSIONS: RolePermissions = {
     'view_inventory',
     'view_bills', 'create_bills',
     'view_parties', 'create_parties',
-  ],
-  finance: [
-    'view_dashboard', 'view_analytics',
-    'view_bills',
-    'view_finance', 'view_expenses', 'create_expenses', 'approve_expenses', 'view_profit_loss',
-    'view_parties',
   ],
 };
 

@@ -38,7 +38,7 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
         </div>
         <h3 className="text-gray-900 text-2xl font-semibold mb-3">Access Denied</h3>
         <p className="text-gray-600 mb-6">
-          You don't have permission to access this feature. Please contact your administrator.
+          You don&apos;t have permission to access this feature. Please contact your administrator.
         </p>
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-start space-x-3">
           <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />

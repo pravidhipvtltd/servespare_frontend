@@ -54,12 +54,6 @@ const DEFAULT_PERMISSIONS: Record<string, string[]> = {
     'view_parties',
     'view_bills', 'create_bills',
     'view_orders', 'create_orders'
-  ],
-  finance: [
-    'view_dashboard', 'view_analytics',
-    'view_bills',
-    'view_daybook', 'view_ledger', 'view_returns',
-    'view_reports'
   ]
 };
 

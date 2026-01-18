@@ -1,14 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from "react";
 import {
-  RotateCcw, Search, Package, AlertCircle, Calendar,
-  Clock, User, ShoppingCart, ArrowLeft, Check, X,
-  FileText, Shield, Plus, Trash2, ChevronDown, ChevronUp
-} from 'lucide-react';
-import { getFromStorage, saveToStorage } from '../../utils/mockData';
-import { useAuth } from '../../contexts/AuthContext';
-import { Bill, CustomerOrder, InventoryItem, Party, Order } from '../../types';
+  RotateCcw,
+  Search,
+  Package,
+  Calendar,
+  Clock,
+  User,
+  ArrowLeft,
+  Check,
+  X,
+  FileText,
+  Shield,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
+import { getFromStorage, saveToStorage } from "../../utils/mockData";
+import { useAuth } from "../../contexts/AuthContext";
+import { Bill, CustomerOrder, InventoryItem, Order, Party } from "../../types";
+import { PopupContainer } from "../PopupContainer";
+import { useCustomPopup } from "../../hooks/useCustomPopup";
 
-type ReturnType = 'sales' | 'purchase';
+type ReturnType = "sales" | "purchase";
 
 interface ReturnItem {
   itemId: string;
@@ -23,7 +35,7 @@ interface ReturnItem {
 interface ReturnRecord {
   id: string;
   returnNumber: string;
-  type: 'sales' | 'purchase';
+  type: "sales" | "purchase";
   referenceId: string;
   referenceNumber: string;
   customerName?: string;
@@ -34,51 +46,272 @@ interface ReturnRecord {
   returnDate: string;
   reason: string;
   refundAmount: number;
-  status: 'pending' | 'completed' | 'rejected';
+  status: "pending" | "completed" | "rejected";
   workspaceId?: string;
   createdAt: string;
   createdBy?: string;
 }
 
 const WARRANTY_PERIODS = [
-  { value: '3', label: '3 Months' },
-  { value: '6', label: '6 Months' },
-  { value: '12', label: '12 Months' },
-  { value: '18', label: '18 Months' },
-  { value: '24', label: '24 Months' },
+  { value: "3", label: "3 Months" },
+  { value: "6", label: "6 Months" },
+  { value: "12", label: "12 Months" },
+  { value: "18", label: "18 Months" },
+  { value: "24", label: "24 Months" },
 ];
 
 export const ReturnPanel: React.FC = () => {
   const { currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<ReturnType>('sales');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [foundOrder, setFoundOrder] = useState<Bill | CustomerOrder | Order | null>(null);
+  const popup = useCustomPopup();
+  const [activeTab, setActiveTab] = useState<ReturnType>("sales");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [foundOrder, setFoundOrder] = useState<
+    Bill | CustomerOrder | Order | null
+  >(null);
   const [selectedItems, setSelectedItems] = useState<ReturnItem[]>([]);
-  const [returnReason, setReturnReason] = useState('');
+  const [returnReason, setReturnReason] = useState("");
   const [returns, setReturns] = useState<ReturnRecord[]>([]);
+  const [salesReturnsFromApi, setSalesReturnsFromApi] = useState<
+    ReturnRecord[]
+  >([]);
+  const [isLoadingSalesReturns, setIsLoadingSalesReturns] = useState(false);
+  const [salesReturnsError, setSalesReturnsError] = useState<string | null>(
+    null
+  );
+  const [purchaseReturnsFromApi, setPurchaseReturnsFromApi] = useState<
+    ReturnRecord[]
+  >([]);
+  const [isLoadingPurchaseReturns, setIsLoadingPurchaseReturns] =
+    useState(false);
+  const [purchaseReturnsError, setPurchaseReturnsError] = useState<
+    string | null
+  >(null);
   const [showHistory, setShowHistory] = useState(true);
-  const [customWarranty, setCustomWarranty] = useState('');
+  const [customWarranty, setCustomWarranty] = useState("");
   const [showCustomWarranty, setShowCustomWarranty] = useState(false);
   const [parties, setParties] = useState<Party[]>([]);
   const [selectedParty, setSelectedParty] = useState<Party | null>(null);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
 
   useEffect(() => {
-    loadReturns();
+    loadLocalReturns();
+    loadSalesReturnsFromApi();
+    loadPurchaseReturnsFromApi();
     loadParties();
     loadInventory();
-  }, []);
+  }, [currentUser]);
 
-  const loadReturns = () => {
-    const allReturns = getFromStorage('returns', []);
+  const parseNumber = (value: any) => {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : 0;
+  };
+
+  const mapApiReturnToRecord = (apiReturn: any): ReturnRecord => {
+    const items = Array.isArray(apiReturn?.items) ? apiReturn.items : [];
+
+    return {
+      id: apiReturn?.id?.toString?.() || `returned_${Date.now()}`,
+      returnNumber: apiReturn?.order_number || `RETURN-${apiReturn?.id || ""}`,
+      type: "sales",
+      referenceId: apiReturn?.id?.toString?.() || "",
+      referenceNumber:
+        apiReturn?.order_number || apiReturn?.tracking_number || "N/A",
+      customerName: apiReturn?.customer_name || undefined,
+      partyName: apiReturn?.branch_name || undefined,
+      items: items.map((item: any) => ({
+        itemId: item?.inventory?.toString?.() || item?.id?.toString?.() || "",
+        itemName: item?.item_name || item?.inventory_name || "Item",
+        quantity: parseNumber(item?.quantity),
+        returnQuantity: parseNumber(item?.quantity),
+        price: parseNumber(item?.unit_price),
+        total:
+          parseNumber(item?.line_total) ||
+          parseNumber(item?.quantity) * parseNumber(item?.unit_price),
+        warrantyPeriod: item?.warranty_period
+          ? String(item.warranty_period)
+          : undefined,
+      })),
+      originalDate:
+        apiReturn?.order_date ||
+        apiReturn?.created ||
+        apiReturn?.modified ||
+        new Date().toISOString(),
+      returnDate:
+        apiReturn?.modified ||
+        apiReturn?.actual_delivery_date ||
+        apiReturn?.order_date ||
+        apiReturn?.created ||
+        new Date().toISOString(),
+      reason:
+        apiReturn?.status_display_description ||
+        apiReturn?.notes ||
+        apiReturn?.internal_notes ||
+        "Return processed",
+      refundAmount: parseNumber(apiReturn?.total_amount),
+      status:
+        apiReturn?.order_status === "pending"
+          ? "pending"
+          : apiReturn?.order_status === "rejected"
+          ? "rejected"
+          : "completed",
+      workspaceId: apiReturn?.tenant?.toString?.(),
+      createdAt:
+        apiReturn?.created ||
+        apiReturn?.order_date ||
+        apiReturn?.modified ||
+        new Date().toISOString(),
+      createdBy: apiReturn?.created_by_name || undefined,
+    };
+  };
+
+  const mapPurchaseReturnToRecord = (apiReturn: any): ReturnRecord => {
+    const quantity = parseNumber(apiReturn?.quantity);
+    const price = parseNumber(apiReturn?.unit_price);
+
+    return {
+      id: apiReturn?.id?.toString?.() || `purchase_return_${Date.now()}`,
+      returnNumber: apiReturn?.purchase_order
+        ? `PO-RET-${apiReturn.purchase_order}`
+        : `PO-RET-${apiReturn?.id || ""}`,
+      type: "purchase",
+      referenceId: apiReturn?.purchase_order?.toString?.() || "",
+      referenceNumber: apiReturn?.purchase_order
+        ? `PO-${apiReturn.purchase_order}`
+        : apiReturn?.part_number || "N/A",
+      partyName: apiReturn?.branch ? `Branch ${apiReturn.branch}` : undefined,
+      items: [
+        {
+          itemId:
+            apiReturn?.part_number || apiReturn?.id?.toString?.() || "item",
+          itemName: apiReturn?.item_name || "Purchase Item",
+          quantity,
+          returnQuantity: quantity,
+          price,
+          total:
+            parseNumber(apiReturn?.total_price) ||
+            quantity * price ||
+            parseNumber(apiReturn?.subtotal),
+          warrantyPeriod: undefined,
+        },
+      ],
+      originalDate:
+        apiReturn?.created || apiReturn?.modified || new Date().toISOString(),
+      returnDate:
+        apiReturn?.modified || apiReturn?.created || new Date().toISOString(),
+      reason: apiReturn?.discount_description || "Purchase return processed",
+      refundAmount:
+        parseNumber(apiReturn?.total_price) ||
+        parseNumber(apiReturn?.subtotal) + parseNumber(apiReturn?.tax_amount),
+      status: apiReturn?.is_active === false ? "rejected" : "completed",
+      workspaceId: apiReturn?.tenant?.toString?.(),
+      createdAt:
+        apiReturn?.created || apiReturn?.modified || new Date().toISOString(),
+      createdBy: undefined,
+    };
+  };
+
+  const loadLocalReturns = () => {
+    const allReturns = getFromStorage("returns", []);
     const workspaceReturns = allReturns.filter(
       (r: ReturnRecord) => r.workspaceId === currentUser?.workspaceId
     );
     setReturns(workspaceReturns);
   };
 
+  const loadSalesReturnsFromApi = async () => {
+    setIsLoadingSalesReturns(true);
+    setSalesReturnsError(null);
+
+    try {
+      const token =
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("auth_token");
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/sales/orders/returned/`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch returned sales orders (${response.status})`
+        );
+      }
+
+      const data = await response.json();
+      const results = Array.isArray(data?.results)
+        ? data.results
+        : Array.isArray(data)
+        ? data
+        : [];
+
+      const mapped = results.map(mapApiReturnToRecord);
+      setSalesReturnsFromApi(mapped);
+    } catch (error: any) {
+      console.error("Error fetching returned sales orders:", error);
+      setSalesReturnsError(
+        error?.message || "Unable to load returned sales orders"
+      );
+    } finally {
+      setIsLoadingSalesReturns(false);
+    }
+  };
+
+  const loadPurchaseReturnsFromApi = async () => {
+    setIsLoadingPurchaseReturns(true);
+    setPurchaseReturnsError(null);
+
+    try {
+      const token =
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("auth_token");
+
+      const response = await fetch(
+        `${
+          import.meta.env.VITE_API_BASE_URL
+        }/stock-management/purchase-order-items/returned/`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch returned purchase items (${response.status})`
+        );
+      }
+
+      const data = await response.json();
+      const results = Array.isArray(data?.results)
+        ? data.results
+        : Array.isArray(data)
+        ? data
+        : [];
+
+      const mapped = results.map(mapPurchaseReturnToRecord);
+      setPurchaseReturnsFromApi(mapped);
+    } catch (error: any) {
+      console.error("Error fetching returned purchase items:", error);
+      setPurchaseReturnsError(
+        error?.message || "Unable to load returned purchase items"
+      );
+    } finally {
+      setIsLoadingPurchaseReturns(false);
+    }
+  };
+
   const loadParties = () => {
-    const allParties = getFromStorage('parties', []);
+    const allParties = getFromStorage("parties", []);
     const workspaceParties = allParties.filter(
       (p: Party) => p.workspaceId === currentUser?.workspaceId
     );
@@ -86,7 +319,7 @@ export const ReturnPanel: React.FC = () => {
   };
 
   const loadInventory = () => {
-    const allInventory = getFromStorage('inventory', []);
+    const allInventory = getFromStorage("inventory", []);
     const workspaceInventory = allInventory.filter(
       (i: InventoryItem) => i.workspaceId === currentUser?.workspaceId
     );
@@ -96,15 +329,15 @@ export const ReturnPanel: React.FC = () => {
   const handleSearch = () => {
     if (!searchQuery.trim()) return;
 
-    if (activeTab === 'sales') {
-      // Search in bills and customer orders
-      const allBills = getFromStorage('bills', []);
-      const allCustomerOrders = getFromStorage('customerOrders', []);
+    if (activeTab === "sales") {
+      const allBills = getFromStorage("bills", []);
+      const allCustomerOrders = getFromStorage("customerOrders", []);
 
       const bill = allBills.find(
         (b: Bill) =>
           b.workspaceId === currentUser?.workspaceId &&
-          (b.billNumber.toLowerCase().includes(searchQuery.toLowerCase()) || b.id === searchQuery)
+          (b.billNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            b.id === searchQuery)
       );
 
       if (bill) {
@@ -117,7 +350,7 @@ export const ReturnPanel: React.FC = () => {
             returnQuantity: 0,
             price: item.price,
             total: item.total,
-            warrantyPeriod: '',
+            warrantyPeriod: "",
           }))
         );
         return;
@@ -126,7 +359,8 @@ export const ReturnPanel: React.FC = () => {
       const order = allCustomerOrders.find(
         (o: CustomerOrder) =>
           o.workspaceId === currentUser?.workspaceId &&
-          (o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) || o.id === searchQuery)
+          (o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            o.id === searchQuery)
       );
 
       if (order) {
@@ -139,15 +373,17 @@ export const ReturnPanel: React.FC = () => {
             returnQuantity: 0,
             price: item.price,
             total: item.total,
-            warrantyPeriod: '',
+            warrantyPeriod: "",
           }))
         );
         return;
       }
 
-      alert('Order not found. Please check the order ID or bill number.');
+      popup.showError(
+        "Order not found. Please check the order ID or bill number.",
+        "Not Found"
+      );
     } else {
-      // Search in inventory by product ID or name
       const item = inventory.find(
         (i: InventoryItem) =>
           i.id === searchQuery ||
@@ -175,13 +411,16 @@ export const ReturnPanel: React.FC = () => {
             returnQuantity: 0,
             price: item.mrp || item.price,
             total: 0,
-            warrantyPeriod: '',
+            warrantyPeriod: "",
           },
         ]);
         return;
       }
 
-      alert('Product not found. Please check the product ID or name.');
+      popup.showError(
+        "Product not found. Please check the product ID or name.",
+        "Not Found"
+      );
     }
   };
 
@@ -205,9 +444,8 @@ export const ReturnPanel: React.FC = () => {
 
   const handleAddCustomWarranty = () => {
     if (customWarranty && parseInt(customWarranty) > 0) {
-      // Custom warranty will be handled per item
       setShowCustomWarranty(false);
-      setCustomWarranty('');
+      setCustomWarranty("");
     }
   };
 
@@ -219,20 +457,31 @@ export const ReturnPanel: React.FC = () => {
   };
 
   const handleSubmitReturn = () => {
-    const itemsToReturn = selectedItems.filter((item) => item.returnQuantity > 0);
+    const itemsToReturn = selectedItems.filter(
+      (item) => item.returnQuantity > 0
+    );
 
     if (itemsToReturn.length === 0) {
-      alert('Please select at least one item to return with quantity > 0');
+      popup.showError(
+        "Please select at least one item to return with quantity > 0",
+        "No Items Selected"
+      );
       return;
     }
 
     if (!returnReason.trim()) {
-      alert('Please provide a reason for the return');
+      popup.showError(
+        "Please provide a reason for the return",
+        "Reason Required"
+      );
       return;
     }
 
-    if (activeTab === 'purchase' && !selectedParty) {
-      alert('Please select a supplier party for purchase return');
+    if (activeTab === "purchase" && !selectedParty) {
+      popup.showError(
+        "Please select a supplier party for purchase return",
+        "Party Required"
+      );
       return;
     }
 
@@ -240,74 +489,91 @@ export const ReturnPanel: React.FC = () => {
       id: `return_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       returnNumber: `RET-${Date.now().toString().slice(-8)}`,
       type: activeTab,
-      referenceId: foundOrder?.id || '',
+      referenceId: foundOrder?.id || "",
       referenceNumber:
-        activeTab === 'sales'
-          ? (foundOrder as Bill)?.billNumber || (foundOrder as CustomerOrder)?.orderNumber || ''
+        activeTab === "sales"
+          ? (foundOrder as Bill)?.billNumber ||
+            (foundOrder as CustomerOrder)?.orderNumber ||
+            ""
           : searchQuery,
       customerName:
-        activeTab === 'sales'
-          ? (foundOrder as Bill)?.customerName || (foundOrder as CustomerOrder)?.customerName
+        activeTab === "sales"
+          ? (foundOrder as Bill)?.customerName ||
+            (foundOrder as CustomerOrder)?.customerName
           : undefined,
-      partyId: activeTab === 'purchase' ? selectedParty?.id : undefined,
-      partyName: activeTab === 'purchase' ? selectedParty?.name : undefined,
+      partyId: activeTab === "purchase" ? selectedParty?.id : undefined,
+      partyName: activeTab === "purchase" ? selectedParty?.name : undefined,
       items: itemsToReturn,
       originalDate: foundOrder?.createdAt || new Date().toISOString(),
       returnDate: new Date().toISOString(),
       reason: returnReason,
       refundAmount: calculateRefundAmount(),
-      status: 'completed',
+      status: "completed",
       workspaceId: currentUser?.workspaceId,
       createdAt: new Date().toISOString(),
       createdBy: currentUser?.id,
     };
 
-    // Update inventory
     const updatedInventory = [...inventory];
     itemsToReturn.forEach((returnItem) => {
-      const inventoryIndex = updatedInventory.findIndex((i) => i.id === returnItem.itemId);
+      const inventoryIndex = updatedInventory.findIndex(
+        (i) => i.id === returnItem.itemId
+      );
       if (inventoryIndex !== -1) {
-        if (activeTab === 'sales') {
-          // Sales return - add back to inventory
-          updatedInventory[inventoryIndex].quantity += returnItem.returnQuantity;
+        if (activeTab === "sales") {
+          updatedInventory[inventoryIndex].quantity +=
+            returnItem.returnQuantity;
         } else {
-          // Purchase return - reduce from inventory
-          updatedInventory[inventoryIndex].quantity -= returnItem.returnQuantity;
+          updatedInventory[inventoryIndex].quantity -=
+            returnItem.returnQuantity;
         }
       }
     });
 
-    // Save everything
-    const allReturns = getFromStorage('returns', []);
-    saveToStorage('returns', [...allReturns, returnRecord]);
-    saveToStorage('inventory', updatedInventory);
+    const allReturns = getFromStorage("returns", []);
+    saveToStorage("returns", [...allReturns, returnRecord]);
+    saveToStorage("inventory", updatedInventory);
 
-    // Reset form
     setFoundOrder(null);
     setSelectedItems([]);
-    setReturnReason('');
-    setSearchQuery('');
+    setReturnReason("");
+    setSearchQuery("");
     setSelectedParty(null);
-    loadReturns();
+    loadLocalReturns();
     loadInventory();
 
-    alert(
-      `Return ${returnRecord.returnNumber} submitted successfully! Refund amount: ₹${returnRecord.refundAmount.toLocaleString()}`
+    popup.showSuccess(
+      `Refund amount: Rs${returnRecord.refundAmount.toLocaleString()}`,
+      `Return ${returnRecord.returnNumber} Submitted!`
     );
   };
 
   const handleReset = () => {
     setFoundOrder(null);
     setSelectedItems([]);
-    setReturnReason('');
-    setSearchQuery('');
+    setReturnReason("");
+    setSearchQuery("");
     setSelectedParty(null);
   };
 
-  const filteredReturns = returns.filter((r) => r.type === activeTab);
+  const salesReturnsLocal = returns.filter((r) => r.type === "sales");
+  const purchaseReturnsLocal = returns.filter((r) => r.type === "purchase");
+  const filteredReturns =
+    activeTab === "sales"
+      ? [...salesReturnsFromApi, ...salesReturnsLocal]
+      : [...purchaseReturnsFromApi, ...purchaseReturnsLocal];
 
-  const checkWarrantyStatus = (originalDate: string, warrantyPeriod?: string) => {
-    if (!warrantyPeriod) return { status: 'none', message: 'No warranty' };
+  const isLoadingReturns =
+    activeTab === "sales" ? isLoadingSalesReturns : isLoadingPurchaseReturns;
+  const returnsError =
+    activeTab === "sales" ? salesReturnsError : purchaseReturnsError;
+
+  const checkWarrantyStatus = (
+    originalDate: string,
+    warrantyPeriod?: string
+  ) => {
+    if (!warrantyPeriod)
+      return { status: "none", message: "No warranty" } as const;
 
     const months = parseInt(warrantyPeriod);
     const original = new Date(originalDate);
@@ -316,19 +582,19 @@ export const ReturnPanel: React.FC = () => {
 
     const now = new Date();
     const isValid = now <= expiryDate;
-
-    const daysLeft = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const daysLeft = Math.ceil(
+      (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    );
 
     return {
-      status: isValid ? 'valid' : 'expired',
-      message: isValid ? `${daysLeft} days left` : 'Expired',
+      status: isValid ? "valid" : "expired",
+      message: isValid ? `${daysLeft} days left` : "Expired",
       expiryDate: expiryDate.toLocaleDateString(),
-    };
+    } as const;
   };
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
       <div className="border-b border-gray-200 bg-white p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -339,17 +605,16 @@ export const ReturnPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* Tab Switcher */}
         <div className="flex space-x-2 bg-gray-100 rounded-lg p-1 max-w-md">
           <button
             onClick={() => {
-              setActiveTab('sales');
+              setActiveTab("sales");
               handleReset();
             }}
             className={`flex-1 py-2 px-4 rounded-lg text-sm transition-all ${
-              activeTab === 'sales'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+              activeTab === "sales"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
             }`}
           >
             <div className="flex items-center justify-center space-x-2">
@@ -359,13 +624,13 @@ export const ReturnPanel: React.FC = () => {
           </button>
           <button
             onClick={() => {
-              setActiveTab('purchase');
+              setActiveTab("purchase");
               handleReset();
             }}
             className={`flex-1 py-2 px-4 rounded-lg text-sm transition-all ${
-              activeTab === 'purchase'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+              activeTab === "purchase"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
             }`}
           >
             <div className="flex items-center justify-center space-x-2">
@@ -378,14 +643,13 @@ export const ReturnPanel: React.FC = () => {
 
       <div className="flex-1 overflow-auto">
         <div className="p-6 space-y-6">
-          {/* Search Section */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h3 className="text-gray-900 mb-4 flex items-center space-x-2">
               <Search className="w-5 h-5 text-gray-600" />
               <span>
-                {activeTab === 'sales'
-                  ? 'Search Order/Bill by ID'
-                  : 'Search Product by ID or Name'}
+                {activeTab === "sales"
+                  ? "Search Order/Bill by ID"
+                  : "Search Product by ID or Name"}
               </span>
             </h3>
 
@@ -393,13 +657,13 @@ export const ReturnPanel: React.FC = () => {
               <input
                 type="text"
                 placeholder={
-                  activeTab === 'sales'
-                    ? 'Enter order number or bill number...'
-                    : 'Enter product ID, part number, or name...'
+                  activeTab === "sales"
+                    ? "Enter order number or bill number..."
+                    : "Enter product ID, part number, or name..."
                 }
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                onKeyPress={(e) => e.key === "Enter" && handleSearch()}
                 className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
@@ -411,14 +675,13 @@ export const ReturnPanel: React.FC = () => {
               </button>
             </div>
 
-            {/* Supplier Party Selection for Purchase Return */}
-            {activeTab === 'purchase' && (
+            {activeTab === "purchase" && (
               <div className="mt-4">
                 <label className="block text-sm text-gray-600 mb-2">
                   Select Supplier Party <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={selectedParty?.id || ''}
+                  value={selectedParty?.id || ""}
                   onChange={(e) => {
                     const party = parties.find((p) => p.id === e.target.value);
                     setSelectedParty(party || null);
@@ -427,7 +690,12 @@ export const ReturnPanel: React.FC = () => {
                 >
                   <option value="">Choose a supplier party...</option>
                   {parties
-                    .filter((p) => p.type === 'supplier' || p.type === 'distributor' || p.type === 'wholesaler')
+                    .filter(
+                      (p) =>
+                        p.type === "supplier" ||
+                        p.type === "distributor" ||
+                        p.type === "wholesaler"
+                    )
                     .map((party) => (
                       <option key={party.id} value={party.id}>
                         {party.name} - {party.contactPerson}
@@ -438,17 +706,17 @@ export const ReturnPanel: React.FC = () => {
             )}
           </div>
 
-          {/* Order/Product Details */}
           {foundOrder && (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              {/* Order Header */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200 p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg text-gray-900 mb-2">
-                      {activeTab === 'sales' ? 'Order Details' : 'Product Details'}
+                      {activeTab === "sales"
+                        ? "Order Details"
+                        : "Product Details"}
                     </h3>
-                    {activeTab === 'sales' ? (
+                    {activeTab === "sales" ? (
                       <>
                         <div className="flex items-center space-x-4 text-sm text-gray-600">
                           <span className="flex items-center space-x-1">
@@ -470,17 +738,21 @@ export const ReturnPanel: React.FC = () => {
                           <span className="flex items-center space-x-1">
                             <Calendar className="w-4 h-4" />
                             <span>
-                              {new Date(foundOrder.createdAt).toLocaleDateString('en-US', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
+                              {new Date(
+                                foundOrder.createdAt
+                              ).toLocaleDateString("en-US", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
                               })}
                             </span>
                           </span>
                         </div>
                       </>
                     ) : (
-                      <p className="text-sm text-gray-600">Select items and quantities to return to supplier</p>
+                      <p className="text-sm text-gray-600">
+                        Select items and quantities to return to supplier
+                      </p>
                     )}
                   </div>
                   <button
@@ -493,12 +765,14 @@ export const ReturnPanel: React.FC = () => {
                 </div>
               </div>
 
-              {/* Items List */}
               <div className="p-6">
                 <div className="space-y-4">
                   {selectedItems.map((item) => {
                     const warranty = item.warrantyPeriod
-                      ? checkWarrantyStatus(foundOrder.createdAt, item.warrantyPeriod)
+                      ? checkWarrantyStatus(
+                          foundOrder.createdAt,
+                          item.warrantyPeriod
+                        )
                       : null;
 
                     return (
@@ -508,21 +782,25 @@ export const ReturnPanel: React.FC = () => {
                       >
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">
-                            <h4 className="text-gray-900 mb-1">{item.itemName}</h4>
+                            <h4 className="text-gray-900 mb-1">
+                              {item.itemName}
+                            </h4>
                             <div className="flex items-center space-x-4 text-sm text-gray-600">
                               <span>Original Qty: {item.quantity}</span>
                               <span>•</span>
-                              <span>Price: ₹{item.price.toLocaleString()}</span>
+                              <span>
+                                Price: Rs{item.price.toLocaleString()}
+                              </span>
                             </div>
                           </div>
                           {warranty && (
                             <div
                               className={`px-3 py-1 rounded-full text-xs flex items-center space-x-1 ${
-                                warranty.status === 'valid'
-                                  ? 'bg-green-100 text-green-700'
-                                  : warranty.status === 'expired'
-                                  ? 'bg-red-100 text-red-700'
-                                  : 'bg-gray-100 text-gray-700'
+                                warranty.status === "valid"
+                                  ? "bg-green-100 text-green-700"
+                                  : warranty.status === "expired"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-gray-100 text-gray-700"
                               }`}
                             >
                               <Shield className="w-3 h-3" />
@@ -557,29 +835,40 @@ export const ReturnPanel: React.FC = () => {
                             </label>
                             <div className="flex space-x-2">
                               <select
-                                value={item.warrantyPeriod || ''}
+                                value={item.warrantyPeriod || ""}
                                 onChange={(e) =>
-                                  handleWarrantyChange(item.itemId, e.target.value)
+                                  handleWarrantyChange(
+                                    item.itemId,
+                                    e.target.value
+                                  )
                                 }
                                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                               >
                                 <option value="">No warranty</option>
                                 {WARRANTY_PERIODS.map((period) => (
-                                  <option key={period.value} value={period.value}>
+                                  <option
+                                    key={period.value}
+                                    value={period.value}
+                                  >
                                     {period.label}
                                   </option>
                                 ))}
                                 <option value="custom">Custom...</option>
                               </select>
-                              {item.warrantyPeriod === 'custom' && (
+                              {item.warrantyPeriod === "custom" && (
                                 <input
                                   type="number"
                                   placeholder="Months"
                                   value={customWarranty}
-                                  onChange={(e) => setCustomWarranty(e.target.value)}
+                                  onChange={(e) =>
+                                    setCustomWarranty(e.target.value)
+                                  }
                                   onBlur={() => {
                                     if (customWarranty) {
-                                      handleWarrantyChange(item.itemId, customWarranty);
+                                      handleWarrantyChange(
+                                        item.itemId,
+                                        customWarranty
+                                      );
                                     }
                                   }}
                                   className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -592,7 +881,10 @@ export const ReturnPanel: React.FC = () => {
                         {item.returnQuantity > 0 && (
                           <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
                             <p className="text-sm text-green-800">
-                              Refund Amount: ₹{(item.returnQuantity * item.price).toLocaleString()}
+                              Refund Amount: Rs
+                              {(
+                                item.returnQuantity * item.price
+                              ).toLocaleString()}
                             </p>
                           </div>
                         )}
@@ -601,7 +893,6 @@ export const ReturnPanel: React.FC = () => {
                   })}
                 </div>
 
-                {/* Return Reason */}
                 <div className="mt-6">
                   <label className="block text-sm text-gray-600 mb-2">
                     Return Reason <span className="text-red-500">*</span>
@@ -615,17 +906,15 @@ export const ReturnPanel: React.FC = () => {
                   />
                 </div>
 
-                {/* Total Refund */}
                 <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-700">Total Refund Amount:</span>
                     <span className="text-2xl text-blue-600">
-                      ₹{calculateRefundAmount().toLocaleString()}
+                      Rs{calculateRefundAmount().toLocaleString()}
                     </span>
                   </div>
                 </div>
 
-                {/* Action Buttons */}
                 <div className="mt-6 flex space-x-3">
                   <button
                     onClick={handleSubmitReturn}
@@ -647,7 +936,6 @@ export const ReturnPanel: React.FC = () => {
             </div>
           )}
 
-          {/* Return History */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <button
               onClick={() => setShowHistory(!showHistory)}
@@ -669,14 +957,27 @@ export const ReturnPanel: React.FC = () => {
 
             {showHistory && (
               <div className="p-6">
-                {filteredReturns.length === 0 ? (
+                {isLoadingReturns ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <RotateCcw className="w-12 h-12 text-gray-300 mx-auto mb-3 animate-spin" />
+                    <p>
+                      {activeTab === "sales"
+                        ? "Loading returned sales orders..."
+                        : "Loading returned purchase items..."}
+                    </p>
+                  </div>
+                ) : returnsError ? (
+                  <div className="text-center py-6 text-red-600 text-sm">
+                    {returnsError}
+                  </div>
+                ) : filteredReturns.length === 0 ? (
                   <div className="text-center py-12 text-gray-500">
                     <RotateCcw className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                     <p>No return records found</p>
                     <p className="text-sm mt-1">
-                      {activeTab === 'sales'
-                        ? 'Sales returns will appear here'
-                        : 'Purchase returns will appear here'}
+                      {activeTab === "sales"
+                        ? "Sales returns will appear here"
+                        : "Purchase returns will appear here"}
                     </p>
                   </div>
                 ) : (
@@ -684,7 +985,8 @@ export const ReturnPanel: React.FC = () => {
                     {filteredReturns
                       .sort(
                         (a, b) =>
-                          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                          new Date(b.createdAt).getTime() -
+                          new Date(a.createdAt).getTime()
                       )
                       .map((returnRecord) => (
                         <div
@@ -694,14 +996,16 @@ export const ReturnPanel: React.FC = () => {
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex-1">
                               <div className="flex items-center space-x-3 mb-2">
-                                <h4 className="text-gray-900">{returnRecord.returnNumber}</h4>
+                                <h4 className="text-gray-900">
+                                  {returnRecord.returnNumber}
+                                </h4>
                                 <span
                                   className={`px-3 py-1 rounded-full text-xs ${
-                                    returnRecord.status === 'completed'
-                                      ? 'bg-green-100 text-green-700'
-                                      : returnRecord.status === 'pending'
-                                      ? 'bg-yellow-100 text-yellow-700'
-                                      : 'bg-red-100 text-red-700'
+                                    returnRecord.status === "completed"
+                                      ? "bg-green-100 text-green-700"
+                                      : returnRecord.status === "pending"
+                                      ? "bg-yellow-100 text-yellow-700"
+                                      : "bg-red-100 text-red-700"
                                   }`}
                                 >
                                   {returnRecord.status}
@@ -734,25 +1038,33 @@ export const ReturnPanel: React.FC = () => {
                             </div>
                             <div className="text-right">
                               <p className="text-green-600 text-lg mb-1">
-                                ₹{returnRecord.refundAmount.toLocaleString()}
+                                Rs{returnRecord.refundAmount.toLocaleString()}
                               </p>
                               <p className="text-xs text-gray-500">
-                                {new Date(returnRecord.returnDate).toLocaleDateString('en-US', {
-                                  day: '2-digit',
-                                  month: 'short',
-                                  year: 'numeric',
+                                {new Date(
+                                  returnRecord.returnDate
+                                ).toLocaleDateString("en-US", {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
                                 })}
                               </p>
                             </div>
                           </div>
 
                           <div className="mb-3">
-                            <p className="text-sm text-gray-600 mb-1">Reason:</p>
-                            <p className="text-sm text-gray-900">{returnRecord.reason}</p>
+                            <p className="text-sm text-gray-600 mb-1">
+                              Reason:
+                            </p>
+                            <p className="text-sm text-gray-900">
+                              {returnRecord.reason}
+                            </p>
                           </div>
 
                           <div className="space-y-2">
-                            <p className="text-sm text-gray-600">Items Returned:</p>
+                            <p className="text-sm text-gray-600">
+                              Items Returned:
+                            </p>
                             <div className="bg-gray-50 rounded-lg p-3 space-y-2">
                               {returnRecord.items.map((item, idx) => (
                                 <div
@@ -760,17 +1072,26 @@ export const ReturnPanel: React.FC = () => {
                                   className="flex items-center justify-between text-sm"
                                 >
                                   <div className="flex items-center space-x-3">
-                                    <span className="text-gray-900">{item.itemName}</span>
-                                    <span className="text-gray-500">×{item.returnQuantity}</span>
+                                    <span className="text-gray-900">
+                                      {item.itemName}
+                                    </span>
+                                    <span className="text-gray-500">
+                                      ×{item.returnQuantity}
+                                    </span>
                                     {item.warrantyPeriod && (
                                       <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs flex items-center space-x-1">
                                         <Shield className="w-3 h-3" />
-                                        <span>{item.warrantyPeriod} months</span>
+                                        <span>
+                                          {item.warrantyPeriod} months
+                                        </span>
                                       </span>
                                     )}
                                   </div>
                                   <span className="text-gray-700">
-                                    ₹{(item.returnQuantity * item.price).toLocaleString()}
+                                    Rs
+                                    {(
+                                      item.returnQuantity * item.price
+                                    ).toLocaleString()}
                                   </span>
                                 </div>
                               ))}
@@ -779,14 +1100,18 @@ export const ReturnPanel: React.FC = () => {
 
                           <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between text-xs text-gray-500">
                             <span>
-                              Original Date:{' '}
-                              {new Date(returnRecord.originalDate).toLocaleDateString()}
+                              Original Date:{" "}
+                              {new Date(
+                                returnRecord.originalDate
+                              ).toLocaleDateString()}
                             </span>
                             <span>
-                              Days Since Purchase:{' '}
+                              Days Since Purchase:{" "}
                               {Math.ceil(
                                 (new Date(returnRecord.returnDate).getTime() -
-                                  new Date(returnRecord.originalDate).getTime()) /
+                                  new Date(
+                                    returnRecord.originalDate
+                                  ).getTime()) /
                                   (1000 * 60 * 60 * 24)
                               )}
                             </span>
@@ -800,6 +1125,21 @@ export const ReturnPanel: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <PopupContainer
+        showSuccessPopup={popup.showSuccessPopup}
+        successTitle={popup.successTitle}
+        successMessage={popup.successMessage}
+        onSuccessClose={popup.hideSuccess}
+        showErrorPopup={popup.showErrorPopup}
+        errorTitle={popup.errorTitle}
+        errorMessage={popup.errorMessage}
+        errorType={popup.errorType}
+        onErrorClose={popup.hideError}
+        showConfirmDialog={popup.showConfirmDialog}
+        confirmConfig={popup.confirmConfig}
+        onConfirmCancel={popup.hideConfirm}
+      />
     </div>
   );
 };

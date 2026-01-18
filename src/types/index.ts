@@ -1,4 +1,8 @@
-export type UserRole = 'super_admin' | 'admin' | 'inventory_manager' | 'cashier' | 'finance';
+export type UserRole =
+  | "super_admin"
+  | "admin"
+  | "inventory_manager"
+  | "cashier";
 
 export interface User {
   id: string;
@@ -13,6 +17,9 @@ export interface User {
   isActive?: boolean;
   avatar?: string;
   permissions?: any;
+  businessName?: string; // For admin users created by SuperAdmin
+  branch?: string; // Branch/location assignment
+  branchId?: string; // Branch ID for direct reference
 }
 
 export interface Workspace {
@@ -25,9 +32,38 @@ export interface Workspace {
   createdAt: string;
 }
 
-export type PartyType = 'supplier' | 'customer';
-export type CustomerType = 'retail' | 'retailer' | 'workshop' | 'distributor' | 'wholesaler';
-export type PaymentTerms = 'cash' | 'credit_7' | 'credit_15' | 'credit_30' | 'credit_45';
+// Branch Management
+export interface Branch {
+  id: string;
+  name: string;
+  code: string; // Short code for the branch (e.g., "MAIN", "KTM01")
+  address: string;
+  city: string;
+  state?: string;
+  phone: string;
+  email?: string;
+  manager?: string; // User ID of branch manager
+  managerName?: string;
+  isActive: boolean;
+  workspaceId?: string;
+  createdAt: string;
+  createdBy?: string;
+  updatedAt?: string;
+}
+
+export type PartyType = "supplier" | "customer";
+export type CustomerType =
+  | "retail"
+  | "retailer"
+  | "workshop"
+  | "distributor"
+  | "wholesaler";
+export type PaymentTerms =
+  | "cash"
+  | "credit_7"
+  | "credit_15"
+  | "credit_30"
+  | "credit_45";
 
 export interface Party {
   id: string;
@@ -56,7 +92,7 @@ export interface Party {
 export interface PartyTransaction {
   id: string;
   partyId: string;
-  type: 'purchase' | 'payment' | 'return';
+  type: "purchase" | "payment" | "return";
   amount: number;
   description: string;
   invoiceNumber?: string;
@@ -65,7 +101,7 @@ export interface PartyTransaction {
   createdBy?: string;
 }
 
-export type PurchaseOrderStatus = 'draft' | 'ordered' | 'received' | 'billed';
+export type PurchaseOrderStatus = "draft" | "ordered" | "received" | "billed";
 
 export interface PurchaseOrderItem {
   id: string;
@@ -135,9 +171,10 @@ export interface CashDrawerShift {
   expectedAmount?: number;
   actualAmount?: number;
   difference?: number; // Positive = surplus, Negative = loss
-  status: 'open' | 'closed' | 'force_closed';
+  status: "open" | "closed" | "force_closed";
   transactions: CashTransaction[];
   notes?: string;
+  varianceReason?: string; // Reason for cash variance (surplus/shortage)
   flagged?: boolean;
   flagReason?: string;
   flaggedBy?: string;
@@ -148,15 +185,15 @@ export interface CashDrawerShift {
 
 export interface CashTransaction {
   id: string;
-  type: 'sale' | 'refund' | 'cash_in' | 'cash_out' | 'opening' | 'closing';
+  type: "sale" | "refund" | "cash_in" | "cash_out" | "opening" | "closing";
   amount: number;
   billNumber?: string;
   description?: string;
   timestamp: string;
 }
 
-export type VehicleType = 'two_wheeler' | 'four_wheeler';
-export type ItemCategory = 'local' | 'original';
+export type VehicleType = "two_wheeler" | "four_wheeler";
+export type ItemCategory = "local" | "original";
 
 export interface InventoryItem {
   id: string;
@@ -174,6 +211,7 @@ export interface InventoryItem {
   wholesalePrice?: number;
   distributorPrice?: number;
   partyId?: string; // Link to supplier
+  partyName?: string;
   partNumber?: string;
   barcode?: string;
   hsnCode?: string;
@@ -181,6 +219,7 @@ export interface InventoryItem {
   warrantyPeriod?: string; // Warranty in months
   image?: string;
   workspaceId?: string;
+  branchId?: number; // Branch ID (from backend)
   createdAt: string;
   lastRestocked?: string;
 }
@@ -188,7 +227,7 @@ export interface InventoryItem {
 export interface Transaction {
   id: string;
   itemId: string;
-  type: 'in' | 'out';
+  type: "in" | "out";
   quantity: number;
   price: number;
   customerName?: string;
@@ -206,19 +245,26 @@ export interface Bill {
   customerPhone?: string;
   customerAddress?: string;
   customerPanVat?: string;
-  customerType?: 'customer' | PartyType; // Type of customer
+  customerType?: "customer" | PartyType; // Type of customer
   partyId?: string; // Link to party if exists
   customerId?: string; // Same as partyId, for ledger compatibility
   items: BillItem[];
   subtotal: number;
   tax: number;
   discount: number;
-  discountType?: 'percentage' | 'fixed';
+  discountType?: "percentage" | "fixed";
   discountHistory?: DiscountHistoryEntry[]; // Track all discounts applied
   total: number;
-  paymentMethod: 'cash' | 'esewa' | 'fonepay' | 'bank' | 'credit' | 'cheque';
+  paymentMethod: "cash" | "esewa" | "fonepay" | "bank" | "credit" | "cheque";
   bankAccountId?: string; // ID of the bank account/payment method used
-  paymentStatus: 'paid' | 'pending' | 'draft' | 'hold' | 'cancelled' | 'refunded' | 'credit';
+  paymentStatus:
+    | "paid"
+    | "pending"
+    | "draft"
+    | "hold"
+    | "cancelled"
+    | "refunded"
+    | "credit";
   notes?: string;
   branchId?: string; // Branch where sale was made
   branchName?: string;
@@ -233,7 +279,7 @@ export interface Bill {
 export interface DiscountHistoryEntry {
   id: string;
   amount: number;
-  type: 'percentage' | 'fixed';
+  type: "percentage" | "fixed";
   appliedBy: string;
   appliedAt: string;
   reason?: string;
@@ -253,7 +299,7 @@ export interface Order {
   orderNumber: string;
   partyId?: string;
   items: OrderItem[];
-  status: 'pending' | 'received' | 'cancelled';
+  status: "pending" | "received" | "cancelled";
   expectedDate?: string;
   workspaceId?: string;
   createdAt: string;
@@ -280,8 +326,8 @@ export interface CustomerOrder {
   tax: number;
   discount: number;
   total: number;
-  status: 'pending' | 'completed' | 'cancelled';
-  paymentMethod: 'cod' | 'paid' | 'credit';
+  status: "pending" | "completed" | "cancelled";
+  paymentMethod: "cod" | "paid" | "credit";
   workspaceId?: string;
   createdAt: string;
   completedAt?: string;

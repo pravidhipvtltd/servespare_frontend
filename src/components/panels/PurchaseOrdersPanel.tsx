@@ -1,22 +1,50 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search, X, Eye, FileText, Download, Upload, Package, CheckCircle, Clock, AlertCircle, Calendar, Truck, ChevronRight, File, Check } from 'lucide-react';
-import { getFromStorage, saveToStorage } from '../../utils/mockData';
-import { useAuth } from '../../contexts/AuthContext';
-import { PurchaseOrder, PurchaseOrderItem, PurchaseOrderStatus, Party, GRN, InventoryItem } from '../../types';
-import { Pagination } from '../common/Pagination';
+import React, { useState, useEffect } from "react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Search,
+  X,
+  Eye,
+  FileText,
+  Download,
+  Upload,
+  Package,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  Calendar,
+  Truck,
+  ChevronRight,
+  File,
+  Check,
+} from "lucide-react";
+import { getFromStorage, saveToStorage } from "../../utils/mockData";
+import { useAuth } from "../../contexts/AuthContext";
+import {
+  PurchaseOrder,
+  PurchaseOrderItem,
+  PurchaseOrderStatus,
+  Party,
+  GRN,
+  InventoryItem,
+} from "../../types";
+import { Pagination } from "../common/Pagination";
+import { PopupContainer } from "../PopupContainer";
+import { useCustomPopup } from "../../hooks/useCustomPopup";
 
 const STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
-  draft: 'Draft',
-  ordered: 'Ordered',
-  received: 'Received',
-  billed: 'Billed',
+  draft: "Draft",
+  ordered: "Ordered",
+  received: "Received",
+  billed: "Billed",
 };
 
 const STATUS_COLORS: Record<PurchaseOrderStatus, string> = {
-  draft: 'bg-gray-100 text-gray-700',
-  ordered: 'bg-blue-100 text-blue-700',
-  received: 'bg-green-100 text-green-700',
-  billed: 'bg-purple-100 text-purple-700',
+  draft: "bg-gray-100 text-gray-700",
+  ordered: "bg-blue-100 text-blue-700",
+  received: "bg-green-100 text-green-700",
+  billed: "bg-purple-100 text-purple-700",
 };
 
 const STATUS_ICONS: Record<PurchaseOrderStatus, React.ReactNode> = {
@@ -26,13 +54,18 @@ const STATUS_ICONS: Record<PurchaseOrderStatus, React.ReactNode> = {
   billed: <FileText className="w-4 h-4" />,
 };
 
+import { getBranches } from "../../api/branch.api";
+
 export const PurchaseOrdersPanel: React.FC = () => {
   const { currentUser } = useAuth();
+  const popup = useCustomPopup();
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Party[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<PurchaseOrderStatus | 'all'>('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState<
+    PurchaseOrderStatus | "all"
+  >("all");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewingSidebar, setViewingSidebar] = useState(false);
   const [receivingSidebar, setReceivingSidebar] = useState(false);
@@ -43,28 +76,29 @@ export const PurchaseOrdersPanel: React.FC = () => {
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
-  
+  const [currentBranchId, setCurrentBranchId] = useState<number>(0);
+
   const [formData, setFormData] = useState<Partial<PurchaseOrder>>({
-    poNumber: '',
-    supplierId: '',
-    supplierName: '',
-    status: 'draft',
-    orderDate: new Date().toISOString().split('T')[0],
-    expectedDeliveryDate: '',
+    poNumber: "",
+    supplierId: "",
+    supplierName: "",
+    status: "draft",
+    orderDate: new Date().toISOString().split("T")[0],
+    expectedDeliveryDate: "",
     items: [],
     subtotal: 0,
     taxAmount: 0,
     discountAmount: 0,
     totalAmount: 0,
-    notes: '',
-    terms: '',
+    notes: "",
+    terms: "",
     grnGenerated: false,
   });
 
   const [newItem, setNewItem] = useState<Partial<PurchaseOrderItem>>({
-    itemName: '',
-    partNumber: '',
-    description: '',
+    itemName: "",
+    partNumber: "",
+    description: "",
     orderedQuantity: 1,
     receivedQuantity: 0,
     unitPrice: 0,
@@ -79,31 +113,202 @@ export const PurchaseOrdersPanel: React.FC = () => {
     loadInventoryItems();
   }, []);
 
-  const loadPurchaseOrders = () => {
-    const allPOs = getFromStorage('purchaseOrders', []);
-    setPurchaseOrders(allPOs.filter((po: PurchaseOrder) => po.workspaceId === currentUser?.workspaceId));
+  useEffect(() => {
+    const fetchBranchId = async () => {
+      if (currentUser?.branchId) {
+        setCurrentBranchId(parseInt(currentUser.branchId));
+      } else if (currentUser?.branch && !isNaN(parseInt(currentUser.branch))) {
+        setCurrentBranchId(parseInt(currentUser.branch));
+      } else {
+        try {
+          const response = await getBranches();
+          if (response.results && response.results.length > 0) {
+            setCurrentBranchId(response.results[0].id);
+          }
+        } catch (err) {
+          console.error("Error fetching branches:", err);
+        }
+      }
+    };
+    fetchBranchId();
+  }, [currentUser]);
+
+  const loadPurchaseOrders = async () => {
+    try {
+      const token =
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("auth_token");
+      if (token) {
+        const response = await fetch(
+          `${
+            import.meta.env.VITE_API_BASE_URL
+          }/stock-management/purchase-orders/`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+              "ngrok-skip-browser-warning": "true",
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const mappedOrders: PurchaseOrder[] = data.results.map(
+            (apiPO: any) => ({
+              id: apiPO.id.toString(),
+              poNumber: apiPO.po_number,
+              supplierId: apiPO.supplier.toString(),
+              supplierName:
+                apiPO.supplier_detail?.party_name || "Unknown Supplier",
+              status: apiPO.status.toLowerCase() as PurchaseOrderStatus,
+              orderDate: apiPO.order_date,
+              expectedDeliveryDate: apiPO.expected_delivery_date || "",
+              items: apiPO.items || [],
+              subtotal:
+                parseFloat(apiPO.total_amount) - parseFloat(apiPO.total_tax),
+              taxAmount: parseFloat(apiPO.total_tax),
+              discountAmount: 0,
+              totalAmount: parseFloat(apiPO.total_amount),
+              notes: apiPO.notes || "",
+              terms: apiPO.terms_and_condition || "",
+              grnGenerated: false,
+              createdAt: apiPO.created,
+              updatedAt: apiPO.modified,
+              invoiceFile: apiPO.purchase_invoice,
+              workspaceId: currentUser?.workspaceId, // Maintain workspace context if needed
+            })
+          );
+          setPurchaseOrders(mappedOrders);
+        } else {
+          console.error(
+            "Failed to fetch purchase orders:",
+            response.statusText
+          );
+          // Fallback to local storage if API fails
+          const allPOs = getFromStorage("purchaseOrders", []);
+          setPurchaseOrders(
+            allPOs.filter(
+              (po: PurchaseOrder) => po.workspaceId === currentUser?.workspaceId
+            )
+          );
+        }
+      } else {
+        const allPOs = getFromStorage("purchaseOrders", []);
+        setPurchaseOrders(
+          allPOs.filter(
+            (po: PurchaseOrder) => po.workspaceId === currentUser?.workspaceId
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error loading purchase orders:", error);
+      const allPOs = getFromStorage("purchaseOrders", []);
+      setPurchaseOrders(
+        allPOs.filter(
+          (po: PurchaseOrder) => po.workspaceId === currentUser?.workspaceId
+        )
+      );
+    }
   };
 
-  const loadSuppliers = () => {
-    const allParties = getFromStorage('parties', []);
-    setSuppliers(allParties.filter((p: Party) => p.type === 'supplier' && p.workspaceId === currentUser?.workspaceId));
+  const loadSuppliers = async () => {
+    try {
+      const token =
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("auth_token");
+      if (token) {
+        const response = await fetch(
+          `${
+            import.meta.env.VITE_API_BASE_URL
+          }/stock-management/parties/suppliers/`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+              "ngrok-skip-browser-warning": "true",
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          let results: any[] = [];
+          if (Array.isArray(data)) {
+            results = data;
+          } else if (data.results && Array.isArray(data.results)) {
+            results = data.results;
+          }
+
+          const mappedSuppliers: Party[] = results.map((party: any) => ({
+            id: party.id.toString(),
+            name: party.party_name,
+            type: "supplier",
+            contactPerson: party.contact_person || "",
+            phone: party.phone || "",
+            email: party.email || "",
+            address: party.address || "",
+            city: party.city || "",
+            paymentTerms: party.payment_terms || "cash",
+            openingBalance: parseFloat(party.opening_balance) || 0,
+            currentBalance: parseFloat(party.opening_balance) || 0,
+            isActive: party.is_active,
+            createdAt: party.created || new Date().toISOString(),
+            workspaceId: currentUser?.workspaceId,
+          }));
+          setSuppliers(mappedSuppliers);
+        } else {
+          // Fallback to local storage
+          const allParties = getFromStorage("parties", []);
+          setSuppliers(
+            allParties.filter(
+              (p: Party) =>
+                p.type === "supplier" &&
+                p.workspaceId === currentUser?.workspaceId
+            )
+          );
+        }
+      } else {
+        const allParties = getFromStorage("parties", []);
+        setSuppliers(
+          allParties.filter(
+            (p: Party) =>
+              p.type === "supplier" &&
+              p.workspaceId === currentUser?.workspaceId
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error loading suppliers:", error);
+      const allParties = getFromStorage("parties", []);
+      setSuppliers(
+        allParties.filter(
+          (p: Party) =>
+            p.type === "supplier" && p.workspaceId === currentUser?.workspaceId
+        )
+      );
+    }
   };
 
   const loadInventoryItems = () => {
-    const allItems = getFromStorage('inventory', []);
-    setInventoryItems(allItems.filter((item: InventoryItem) => item.workspaceId === currentUser?.workspaceId));
+    const allItems = getFromStorage("inventory", []);
+    setInventoryItems(
+      allItems.filter(
+        (item: InventoryItem) => item.workspaceId === currentUser?.workspaceId
+      )
+    );
   };
 
   const generatePONumber = () => {
     const year = new Date().getFullYear();
-    const month = String(new Date().getMonth() + 1).padStart(2, '0');
+    const month = String(new Date().getMonth() + 1).padStart(2, "0");
     const random = Math.floor(Math.random() * 9000) + 1000;
     return `PO-${year}${month}-${random}`;
   };
 
   const generateGRNNumber = () => {
     const year = new Date().getFullYear();
-    const month = String(new Date().getMonth() + 1).padStart(2, '0');
+    const month = String(new Date().getMonth() + 1).padStart(2, "0");
     const random = Math.floor(Math.random() * 9000) + 1000;
     return `GRN-${year}${month}-${random}`;
   };
@@ -116,18 +321,18 @@ export const PurchaseOrdersPanel: React.FC = () => {
       setEditingPO(null);
       setFormData({
         poNumber: generatePONumber(),
-        supplierId: '',
-        supplierName: '',
-        status: 'draft',
-        orderDate: new Date().toISOString().split('T')[0],
-        expectedDeliveryDate: '',
+        supplierId: "",
+        supplierName: "",
+        status: "draft",
+        orderDate: new Date().toISOString().split("T")[0],
+        expectedDeliveryDate: "",
         items: [],
         subtotal: 0,
         taxAmount: 0,
         discountAmount: 0,
         totalAmount: 0,
-        notes: '',
-        terms: 'Payment within 30 days of delivery',
+        notes: "",
+        terms: "Payment within 30 days of delivery",
         grnGenerated: false,
       });
     }
@@ -160,7 +365,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
   };
 
   const handleSupplierChange = (supplierId: string) => {
-    const supplier = suppliers.find(s => s.id === supplierId);
+    const supplier = suppliers.find((s) => s.id === supplierId);
     if (supplier) {
       setFormData({
         ...formData,
@@ -184,14 +389,18 @@ export const PurchaseOrdersPanel: React.FC = () => {
 
   const handleAddItem = () => {
     if (!newItem.itemName || !newItem.orderedQuantity || !newItem.unitPrice) {
-      alert('Please fill in all required item fields');
+      popup.showError(
+        "Please fill in all required item fields (Item Name, Quantity, and Unit Price).",
+        "Missing Required Fields",
+        "warning"
+      );
       return;
     }
 
     const total = calculateItemTotal(newItem);
     const item: PurchaseOrderItem = {
+      ...(newItem as PurchaseOrderItem),
       id: Date.now().toString(),
-      ...newItem as PurchaseOrderItem,
       totalAmount: total,
     };
 
@@ -199,9 +408,9 @@ export const PurchaseOrdersPanel: React.FC = () => {
     updatePOTotals(updatedItems);
 
     setNewItem({
-      itemName: '',
-      partNumber: '',
-      description: '',
+      itemName: "",
+      partNumber: "",
+      description: "",
       orderedQuantity: 1,
       receivedQuantity: 0,
       unitPrice: 0,
@@ -211,8 +420,55 @@ export const PurchaseOrdersPanel: React.FC = () => {
     });
   };
 
-  const handleRemoveItem = (itemId: string) => {
-    const updatedItems = (formData.items || []).filter(item => item.id !== itemId);
+  const handleRemoveItem = async (itemId: string) => {
+    // Check if we are editing an existing PO and if the item exists on the server
+    if (editingPO) {
+      const originalItem = editingPO.items.find((i) => i.id === itemId);
+
+      if (originalItem) {
+        try {
+          const token =
+            localStorage.getItem("accessToken") ||
+            localStorage.getItem("auth_token");
+          if (token) {
+            const response = await fetch(
+              `${
+                import.meta.env.VITE_API_BASE_URL
+              }/stock-management/purchase-order-items/${itemId}/`,
+              {
+                method: "DELETE",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "ngrok-skip-browser-warning": "true",
+                },
+              }
+            );
+
+            if (!response.ok) {
+              console.error("Failed to delete item from server");
+              popup.showError(
+                "Failed to delete item from server",
+                "Delete Failed",
+                "error"
+              );
+              return;
+            }
+          }
+        } catch (e) {
+          console.error("Error deleting item:", e);
+          popup.showError(
+            "An error occurred while deleting the item.",
+            "Delete Failed",
+            "error"
+          );
+          return;
+        }
+      }
+    }
+
+    const updatedItems = (formData.items || []).filter(
+      (item) => item.id !== itemId
+    );
     updatePOTotals(updatedItems);
   };
 
@@ -220,17 +476,20 @@ export const PurchaseOrdersPanel: React.FC = () => {
     const subtotal = items.reduce((sum, item) => {
       const quantity = item.orderedQuantity || 0;
       const price = item.unitPrice || 0;
-      return sum + (quantity * price);
+      return sum + quantity * price;
     }, 0);
 
-    const discountAmount = items.reduce((sum, item) => sum + (item.discount || 0), 0);
+    const discountAmount = items.reduce(
+      (sum, item) => sum + (item.discount || 0),
+      0
+    );
     const taxAmount = items.reduce((sum, item) => {
       const quantity = item.orderedQuantity || 0;
       const price = item.unitPrice || 0;
       const discount = item.discount || 0;
       const taxPercent = item.taxPercent || 0;
-      const afterDiscount = (quantity * price) - discount;
-      return sum + ((afterDiscount * taxPercent) / 100);
+      const afterDiscount = quantity * price - discount;
+      return sum + (afterDiscount * taxPercent) / 100;
     }, 0);
 
     const totalAmount = subtotal - discountAmount + taxAmount;
@@ -245,86 +504,357 @@ export const PurchaseOrdersPanel: React.FC = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.supplierId) {
-      alert('Please select a supplier');
+      popup.showError(
+        "Please select a supplier before creating the purchase order.",
+        "Supplier Required",
+        "warning"
+      );
       return;
     }
 
     if (!formData.items || formData.items.length === 0) {
-      alert('Please add at least one item');
-      return;
-    }
-
-    const allPOs = getFromStorage('purchaseOrders', []);
-
-    if (editingPO) {
-      const updated = allPOs.map((po: PurchaseOrder) =>
-        po.id === editingPO.id
-          ? { ...po, ...formData, updatedAt: new Date().toISOString() }
-          : po
+      popup.showError(
+        "Please add at least one item to the purchase order.",
+        "Items Required",
+        "warning"
       );
-      saveToStorage('purchaseOrders', updated);
-    } else {
-      const newPO: PurchaseOrder = {
-        id: Date.now().toString(),
-        ...formData as PurchaseOrder,
-        workspaceId: currentUser?.workspaceId,
-        createdAt: new Date().toISOString(),
-        createdBy: currentUser?.id,
-        updatedAt: new Date().toISOString(),
-      };
-      saveToStorage('purchaseOrders', [...allPOs, newPO]);
-    }
-
-    loadPurchaseOrders();
-    handleCloseSidebar();
-  };
-
-  const handleDelete = (poId: string) => {
-    if (confirm('Are you sure you want to delete this purchase order?')) {
-      const allPOs = getFromStorage('purchaseOrders', []);
-      const filtered = allPOs.filter((po: PurchaseOrder) => po.id !== poId);
-      saveToStorage('purchaseOrders', filtered);
-      setSelectedOrders([]);
-      loadPurchaseOrders();
-    }
-  };
-
-  const handleBulkDelete = () => {
-    if (selectedOrders.length === 0) {
-      alert('Please select orders to delete');
       return;
     }
 
-    if (confirm(`Are you sure you want to delete ${selectedOrders.length} purchase order(s)?`)) {
-      const allPOs = getFromStorage('purchaseOrders', []);
-      const filtered = allPOs.filter((po: PurchaseOrder) => !selectedOrders.includes(po.id));
-      saveToStorage('purchaseOrders', filtered);
-      setSelectedOrders([]);
-      loadPurchaseOrders();
+    try {
+      const token =
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("auth_token");
+
+      if (token) {
+        let response;
+
+        if (editingPO) {
+          const apiPayload = {
+            po_number: formData.poNumber,
+            status: formData.status || "draft",
+            supplier: parseInt(formData.supplierId),
+            order_date: formData.orderDate,
+            expected_delivery_date: formData.expectedDeliveryDate,
+            purchase_invoice: formData.invoiceFile || null,
+            notes: formData.notes || "",
+            terms_and_condition: formData.terms || "",
+            branch: currentBranchId,
+            is_active: true,
+            items: formData.items.map((item) => ({
+              item_name: item.itemName,
+              part_number: item.partNumber,
+              description: item.description,
+              ordered_quantity: item.orderedQuantity,
+              unit_price: item.unitPrice,
+              tax_percent: item.taxPercent,
+              discount: item.discount,
+            })),
+          };
+
+          response = await fetch(
+            `${
+              import.meta.env.VITE_API_BASE_URL
+            }/stock-management/purchase-orders/${editingPO.id}/`,
+            {
+              method: "PUT",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+                "ngrok-skip-browser-warning": "true",
+              },
+              body: JSON.stringify(apiPayload),
+            }
+          );
+        } else {
+          const apiPayload = {
+            po_number: formData.poNumber,
+            status: formData.status || "pending",
+            supplier: parseInt(formData.supplierId),
+            order_date: formData.orderDate,
+            expected_delivery_date: formData.expectedDeliveryDate,
+            notes: formData.notes || "",
+            branch: currentBranchId,
+            items: formData.items.map((item) => {
+              // Calculate tax amount for the item
+              const quantity = item.orderedQuantity || 0;
+              const price = item.unitPrice || 0;
+              const discount = item.discount || 0;
+              const taxPercent = item.taxPercent || 0;
+              const afterDiscount = quantity * price - discount;
+              const taxAmount = (afterDiscount * taxPercent) / 100;
+
+              return {
+                item_name: item.itemName,
+                part_number: item.partNumber,
+                quantity: quantity,
+                unit_price: price,
+                tax: parseFloat(taxAmount.toFixed(2)),
+                // discount: discount // Is discount in the payload? User didn't show it but it might be useful. The user said "use this api ... for adding purchase orders" and gave a specific payload. I'll stick to their payload fields + necessary ones.
+              };
+            }),
+          };
+
+          response = await fetch(
+            `${
+              import.meta.env.VITE_API_BASE_URL
+            }/stock-management/purchase-orders/create-with-items/`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+                "ngrok-skip-browser-warning": "true",
+              },
+              body: JSON.stringify(apiPayload),
+            }
+          );
+        }
+
+        if (response.ok) {
+          loadPurchaseOrders();
+          handleCloseSidebar();
+          popup.showSuccess(
+            editingPO ? "Purchase Order Updated" : "Purchase Order Created",
+            `The purchase order has been successfully ${
+              editingPO ? "updated" : "created"
+            }.`
+          );
+        } else {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.detail ||
+              errorData.message ||
+              "Failed to save purchase order"
+          );
+        }
+      } else {
+        // Fallback to local storage
+        const allPOs = getFromStorage("purchaseOrders", []);
+
+        if (editingPO) {
+          const updated = allPOs.map((po: PurchaseOrder) =>
+            po.id === editingPO.id
+              ? { ...po, ...formData, updatedAt: new Date().toISOString() }
+              : po
+          );
+          saveToStorage("purchaseOrders", updated);
+        } else {
+          const newPO: PurchaseOrder = {
+            ...(formData as PurchaseOrder),
+            id: Date.now().toString(),
+            workspaceId: currentUser?.workspaceId,
+            createdAt: new Date().toISOString(),
+            createdBy: currentUser?.id,
+            updatedAt: new Date().toISOString(),
+          };
+          saveToStorage("purchaseOrders", [...allPOs, newPO]);
+        }
+
+        loadPurchaseOrders();
+        handleCloseSidebar();
+        popup.showSuccess(
+          editingPO ? "Purchase Order Updated" : "Purchase Order Created",
+          "Saved locally (offline mode)"
+        );
+      }
+    } catch (error: any) {
+      console.error("Error saving purchase order:", error);
+      popup.showError(
+        error.message || "An error occurred while saving the purchase order.",
+        "Save Failed",
+        "error"
+      );
     }
+  };
+
+  const handleDelete = async (poId: string) => {
+    popup.showConfirm(
+      "Delete Purchase Order",
+      "Are you sure you want to delete this purchase order? This action cannot be undone.",
+      async () => {
+        try {
+          const token =
+            localStorage.getItem("accessToken") ||
+            localStorage.getItem("auth_token");
+
+          if (token) {
+            const response = await fetch(
+              `${
+                import.meta.env.VITE_API_BASE_URL
+              }/stock-management/purchase-orders/${poId}/`,
+              {
+                method: "DELETE",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                  "ngrok-skip-browser-warning": "true",
+                },
+              }
+            );
+
+            if (response.ok) {
+              // Also remove from local storage
+              const allPOs = getFromStorage("purchaseOrders", []);
+              const filtered = allPOs.filter(
+                (po: PurchaseOrder) => po.id !== poId
+              );
+              saveToStorage("purchaseOrders", filtered);
+
+              setSelectedOrders([]);
+              loadPurchaseOrders();
+              popup.showSuccess(
+                "Purchase Order Deleted",
+                "The purchase order has been successfully deleted."
+              );
+            } else {
+              const errorData = await response.json().catch(() => ({}));
+              popup.showError(
+                errorData.detail ||
+                  "Failed to delete purchase order from server.",
+                "Delete Failed",
+                "error"
+              );
+            }
+          } else {
+            // Fallback to local storage if no token
+            const allPOs = getFromStorage("purchaseOrders", []);
+            const filtered = allPOs.filter(
+              (po: PurchaseOrder) => po.id !== poId
+            );
+            saveToStorage("purchaseOrders", filtered);
+            setSelectedOrders([]);
+            loadPurchaseOrders();
+            popup.showSuccess(
+              "Purchase Order Deleted",
+              "The purchase order has been successfully deleted."
+            );
+          }
+        } catch (error) {
+          console.error("Error deleting purchase order:", error);
+          popup.showError(
+            "An error occurred while deleting the purchase order. Please try again.",
+            "Delete Failed",
+            "error"
+          );
+        }
+      },
+      { type: "danger" }
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedOrders.length === 0) {
+      popup.showError(
+        "Please select at least one purchase order to delete.",
+        "No Orders Selected",
+        "warning"
+      );
+      return;
+    }
+
+    popup.showConfirm(
+      "Delete Multiple Purchase Orders",
+      `Are you sure you want to delete ${selectedOrders.length} purchase order(s)? This action cannot be undone.`,
+      async () => {
+        try {
+          const token =
+            localStorage.getItem("accessToken") ||
+            localStorage.getItem("auth_token");
+
+          if (token) {
+            const deletePromises = selectedOrders.map((poId) =>
+              fetch(
+                `${
+                  import.meta.env.VITE_API_BASE_URL
+                }/stock-management/purchase-orders/${poId}/`,
+                {
+                  method: "DELETE",
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                    "ngrok-skip-browser-warning": "true",
+                  },
+                }
+              )
+            );
+
+            const results = await Promise.allSettled(deletePromises);
+            const successCount = results.filter(
+              (result) => result.status === "fulfilled" && result.value.ok
+            ).length;
+            const failedCount = selectedOrders.length - successCount;
+
+            // Remove successfully deleted orders from local storage
+            const allPOs = getFromStorage("purchaseOrders", []);
+            const filtered = allPOs.filter(
+              (po: PurchaseOrder) => !selectedOrders.includes(po.id)
+            );
+            saveToStorage("purchaseOrders", filtered);
+
+            setSelectedOrders([]);
+            loadPurchaseOrders();
+
+            if (failedCount === 0) {
+              popup.showSuccess(
+                "Orders Deleted",
+                `Successfully deleted ${successCount} purchase order(s).`
+              );
+            } else {
+              popup.showError(
+                `Deleted ${successCount} order(s), but ${failedCount} failed. Please try again.`,
+                "Partial Delete",
+                "warning"
+              );
+            }
+          } else {
+            // Fallback to local storage if no token
+            const allPOs = getFromStorage("purchaseOrders", []);
+            const filtered = allPOs.filter(
+              (po: PurchaseOrder) => !selectedOrders.includes(po.id)
+            );
+            saveToStorage("purchaseOrders", filtered);
+            setSelectedOrders([]);
+            loadPurchaseOrders();
+            popup.showSuccess(
+              "Orders Deleted",
+              `Successfully deleted ${selectedOrders.length} purchase order(s).`
+            );
+          }
+        } catch (error) {
+          console.error("Error deleting purchase orders:", error);
+          popup.showError(
+            "An error occurred while deleting purchase orders. Please try again.",
+            "Delete Failed",
+            "error"
+          );
+        }
+      },
+      { type: "danger" }
+    );
   };
 
   const toggleSelectAll = () => {
     if (selectedOrders.length === paginatedOrders.length) {
       setSelectedOrders([]);
     } else {
-      setSelectedOrders(paginatedOrders.map(po => po.id));
+      setSelectedOrders(paginatedOrders.map((po) => po.id));
     }
   };
 
   const toggleSelectOrder = (id: string) => {
-    setSelectedOrders(prev =>
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    setSelectedOrders((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.type === 'application/pdf') {
+    if (file && file.type === "application/pdf") {
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData({
@@ -335,7 +865,11 @@ export const PurchaseOrdersPanel: React.FC = () => {
       };
       reader.readAsDataURL(file);
     } else {
-      alert('Please upload a PDF file');
+      popup.showError(
+        "Only PDF files are allowed. Please upload a valid PDF document.",
+        "Invalid File Type",
+        "warning"
+      );
     }
   };
 
@@ -344,7 +878,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
     setIsDragging(false);
 
     const file = e.dataTransfer.files[0];
-    if (file && file.type === 'application/pdf') {
+    if (file && file.type === "application/pdf") {
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData({
@@ -355,7 +889,11 @@ export const PurchaseOrdersPanel: React.FC = () => {
       };
       reader.readAsDataURL(file);
     } else {
-      alert('Please upload a PDF file');
+      popup.showError(
+        "Only PDF files are allowed. Please upload a valid PDF document.",
+        "Invalid File Type",
+        "warning"
+      );
     }
   };
 
@@ -371,7 +909,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
   const handleReceiveItem = (itemId: string, received: boolean) => {
     if (!receivingPO) return;
 
-    const updatedItems = receivingPO.items.map(item => {
+    const updatedItems = receivingPO.items.map((item) => {
       if (item.id === itemId) {
         return {
           ...item,
@@ -390,7 +928,9 @@ export const PurchaseOrdersPanel: React.FC = () => {
   const handleCompleteReceiving = () => {
     if (!receivingPO) return;
 
-    const allReceived = receivingPO.items.every(item => item.receivedQuantity === item.orderedQuantity);
+    const allReceived = receivingPO.items.every(
+      (item) => item.receivedQuantity === item.orderedQuantity
+    );
 
     // Generate GRN
     const grn: GRN = {
@@ -401,25 +941,25 @@ export const PurchaseOrdersPanel: React.FC = () => {
       supplierId: receivingPO.supplierId,
       supplierName: receivingPO.supplierName,
       receivedDate: new Date().toISOString(),
-      receivedBy: currentUser?.name || 'Unknown',
+      receivedBy: currentUser?.name || "Unknown",
       items: receivingPO.items,
-      notes: '',
+      notes: "",
       workspaceId: currentUser?.workspaceId,
       createdAt: new Date().toISOString(),
     };
 
     // Save GRN
-    const allGRNs = getFromStorage('grns', []);
-    saveToStorage('grns', [...allGRNs, grn]);
+    const allGRNs = getFromStorage("grns", []);
+    saveToStorage("grns", [...allGRNs, grn]);
 
     // Update PO status
-    const allPOs = getFromStorage('purchaseOrders', []);
+    const allPOs = getFromStorage("purchaseOrders", []);
     const updatedPOs = allPOs.map((po: PurchaseOrder) => {
       if (po.id === receivingPO.id) {
         return {
           ...po,
           items: receivingPO.items,
-          status: allReceived ? 'received' : 'ordered',
+          status: allReceived ? "received" : "ordered",
           receivedDate: new Date().toISOString(),
           grnGenerated: true,
           grnNumber: grn.grnNumber,
@@ -428,12 +968,12 @@ export const PurchaseOrdersPanel: React.FC = () => {
       }
       return po;
     });
-    saveToStorage('purchaseOrders', updatedPOs);
+    saveToStorage("purchaseOrders", updatedPOs);
 
     // Update inventory quantities
-    receivingPO.items.forEach(item => {
+    receivingPO.items.forEach((item) => {
       if (item.receivedQuantity > 0 && item.inventoryItemId) {
-        const allInventory = getFromStorage('inventory', []);
+        const allInventory = getFromStorage("inventory", []);
         const updatedInventory = allInventory.map((invItem: InventoryItem) => {
           if (invItem.id === item.inventoryItemId) {
             return {
@@ -444,21 +984,25 @@ export const PurchaseOrdersPanel: React.FC = () => {
           }
           return invItem;
         });
-        saveToStorage('inventory', updatedInventory);
+        saveToStorage("inventory", updatedInventory);
       }
     });
 
     loadPurchaseOrders();
     loadInventoryItems();
     handleCloseReceivingSidebar();
-    alert(`GRN ${grn.grnNumber} generated successfully!`);
+    popup.showSuccess(
+      "GRN Generated Successfully!",
+      `GRN ${grn.grnNumber} has been generated and inventory has been updated.`
+    );
   };
 
-  const filteredPOs = purchaseOrders.filter(po => {
-    const matchesSearch = 
+  const filteredPOs = purchaseOrders.filter((po) => {
+    const matchesSearch =
       po.poNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       po.supplierName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = selectedStatus === 'all' || po.status === selectedStatus;
+    const matchesStatus =
+      selectedStatus === "all" || po.status === selectedStatus;
     return matchesSearch && matchesStatus;
   });
 
@@ -474,9 +1018,12 @@ export const PurchaseOrdersPanel: React.FC = () => {
 
   const stats = {
     totalPOs: purchaseOrders.length,
-    totalValue: purchaseOrders.reduce((sum, po) => sum + po.totalAmount, 0),
-    pendingPOs: purchaseOrders.filter(po => po.status === 'ordered').length,
-    receivedPOs: purchaseOrders.filter(po => po.status === 'received').length,
+    totalValue: purchaseOrders.reduce(
+      (sum, po) => sum + (po.totalAmount || 0),
+      0
+    ),
+    pendingPOs: purchaseOrders.filter((po) => po.status === "ordered").length,
+    receivedPOs: purchaseOrders.filter((po) => po.status === "received").length,
   };
 
   return (
@@ -498,7 +1045,9 @@ export const PurchaseOrdersPanel: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-500 text-sm">Total Value</p>
-              <p className="text-gray-900 text-2xl mt-1">NPR {stats.totalValue.toLocaleString()}</p>
+              <p className="text-gray-900 text-2xl mt-1">
+                NPR {stats.totalValue.toLocaleString()}
+              </p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
               <Package className="w-6 h-6 text-green-600" />
@@ -532,7 +1081,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
       {/* Actions Bar */}
       <div className="flex items-center justify-between">
         <h3 className="text-gray-900 text-lg">Purchase Orders</h3>
-        <button 
+        <button
           onClick={() => handleOpenSidebar()}
           className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
@@ -554,7 +1103,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          
+
           {/* Bulk Delete Button */}
           {selectedOrders.length > 0 && (
             <button
@@ -570,23 +1119,25 @@ export const PurchaseOrdersPanel: React.FC = () => {
         {/* Status Filter Badges */}
         <div className="flex flex-wrap gap-2 mb-6">
           <button
-            onClick={() => setSelectedStatus('all')}
+            onClick={() => setSelectedStatus("all")}
             className={`px-4 py-2 rounded-full text-sm transition-colors ${
-              selectedStatus === 'all'
-                ? 'bg-gray-900 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              selectedStatus === "all"
+                ? "bg-gray-900 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             All ({purchaseOrders.length})
           </button>
-          {(['draft', 'ordered', 'received', 'billed'] as PurchaseOrderStatus[]).map((status) => (
+          {(
+            ["draft", "ordered", "received", "billed"] as PurchaseOrderStatus[]
+          ).map((status) => (
             <button
               key={status}
               onClick={() => setSelectedStatus(status)}
               className={`px-4 py-2 rounded-full text-sm transition-colors ${
                 selectedStatus === status
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
               {STATUS_LABELS[status]} ({statusCounts[status] || 0})
@@ -602,24 +1153,46 @@ export const PurchaseOrdersPanel: React.FC = () => {
                 <th className="text-left text-gray-500 text-sm py-3 px-4">
                   <input
                     type="checkbox"
-                    checked={selectedOrders.length === paginatedOrders.length && paginatedOrders.length > 0}
+                    checked={
+                      selectedOrders.length === paginatedOrders.length &&
+                      paginatedOrders.length > 0
+                    }
                     onChange={toggleSelectAll}
                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
                 </th>
-                <th className="text-left text-gray-500 text-sm py-3 px-4">PO Number</th>
-                <th className="text-left text-gray-500 text-sm py-3 px-4">Supplier</th>
-                <th className="text-left text-gray-500 text-sm py-3 px-4">Order Date</th>
-                <th className="text-left text-gray-500 text-sm py-3 px-4">Expected Delivery</th>
-                <th className="text-left text-gray-500 text-sm py-3 px-4">Items</th>
-                <th className="text-left text-gray-500 text-sm py-3 px-4">Total Amount</th>
-                <th className="text-left text-gray-500 text-sm py-3 px-4">Status</th>
-                <th className="text-left text-gray-500 text-sm py-3 px-4">Actions</th>
+                <th className="text-left text-gray-500 text-sm py-3 px-4">
+                  PO Number
+                </th>
+                <th className="text-left text-gray-500 text-sm py-3 px-4">
+                  Supplier
+                </th>
+                <th className="text-left text-gray-500 text-sm py-3 px-4">
+                  Order Date
+                </th>
+                <th className="text-left text-gray-500 text-sm py-3 px-4">
+                  Expected Delivery
+                </th>
+                <th className="text-left text-gray-500 text-sm py-3 px-4">
+                  Items
+                </th>
+                <th className="text-left text-gray-500 text-sm py-3 px-4">
+                  Total Amount
+                </th>
+                <th className="text-left text-gray-500 text-sm py-3 px-4">
+                  Status
+                </th>
+                <th className="text-left text-gray-500 text-sm py-3 px-4">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
               {paginatedOrders.map((po) => (
-                <tr key={po.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <tr
+                  key={po.id}
+                  className="border-b border-gray-100 hover:bg-gray-50"
+                >
                   <td className="py-4 px-4">
                     <input
                       type="checkbox"
@@ -631,62 +1204,52 @@ export const PurchaseOrdersPanel: React.FC = () => {
                   <td className="py-4 px-4">
                     <div className="text-gray-900">{po.poNumber}</div>
                     {po.grnGenerated && (
-                      <div className="text-xs text-green-600 mt-1">GRN: {po.grnNumber}</div>
+                      <div className="text-xs text-green-600 mt-1">
+                        GRN: {po.grnNumber}
+                      </div>
                     )}
                   </td>
                   <td className="py-4 px-4 text-gray-900">{po.supplierName}</td>
                   <td className="py-4 px-4 text-gray-600 text-sm">
-                    {new Date(po.orderDate).toLocaleDateString('en-NP')}
+                    {new Date(po.orderDate).toLocaleDateString("en-NP")}
                   </td>
                   <td className="py-4 px-4 text-gray-600 text-sm">
-                    {new Date(po.expectedDeliveryDate).toLocaleDateString('en-NP')}
+                    {new Date(po.expectedDeliveryDate).toLocaleDateString(
+                      "en-NP"
+                    )}
                   </td>
-                  <td className="py-4 px-4 text-gray-600 text-sm">{po.items.length} items</td>
+                  <td className="py-4 px-4 text-gray-600 text-sm">
+                    {po.items?.length || 0} items
+                  </td>
                   <td className="py-4 px-4 text-gray-900">
-                    NPR {po.totalAmount.toLocaleString()}
+                    NPR {(po.totalAmount || 0).toLocaleString()}
                   </td>
                   <td className="py-4 px-4">
-                    <span className={`px-3 py-1 rounded-full text-sm flex items-center space-x-1 w-fit ${STATUS_COLORS[po.status]}`}>
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm flex items-center space-x-1 w-fit ${
+                        STATUS_COLORS[po.status]
+                      }`}
+                    >
                       {STATUS_ICONS[po.status]}
                       <span>{STATUS_LABELS[po.status]}</span>
                     </span>
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center space-x-2">
-                      <button 
+                      <button
                         onClick={() => handleViewPO(po)}
                         className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
                         title="View Details"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      {po.status === 'ordered' && (
-                        <button 
-                          onClick={() => handleReceivePO(po)}
-                          className="p-2 text-purple-600 hover:bg-purple-50 rounded transition-colors"
-                          title="Receive Goods"
-                        >
-                          <Truck className="w-4 h-4" />
-                        </button>
-                      )}
-                      {po.status === 'draft' && (
-                        <>
-                          <button 
-                            onClick={() => handleOpenSidebar(po)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                            title="Edit"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(po.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </>
-                      )}
+                      <button
+                        onClick={() => handleDelete(po.id)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -698,8 +1261,6 @@ export const PurchaseOrdersPanel: React.FC = () => {
         {/* Pagination */}
         {filteredPOs.length > itemsPerPage && (
           <Pagination
-            totalItems={filteredPOs.length}
-            itemsPerPage={itemsPerPage}
             currentPage={currentPage}
             totalPages={Math.ceil(filteredPOs.length / itemsPerPage)}
             onPageChange={setCurrentPage}
@@ -710,16 +1271,16 @@ export const PurchaseOrdersPanel: React.FC = () => {
       {/* Add/Edit PO Sidebar */}
       {sidebarOpen && (
         <>
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40"
             onClick={handleCloseSidebar}
           />
-          
+
           <div className="fixed right-0 top-0 h-full w-full md:w-[800px] bg-white shadow-xl z-50 overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-gray-900 text-lg">
-                  {editingPO ? 'Edit Purchase Order' : 'Create Purchase Order'}
+                  {editingPO ? "Edit Purchase Order" : "Create Purchase Order"}
                 </h3>
                 <button
                   onClick={handleCloseSidebar}
@@ -738,31 +1299,46 @@ export const PurchaseOrdersPanel: React.FC = () => {
                   </h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-gray-700 text-sm mb-2">PO Number</label>
+                      <label className="block text-gray-700 text-sm mb-2">
+                        PO Number
+                      </label>
                       <input
                         type="text"
                         value={formData.poNumber}
-                        onChange={(e) => setFormData({ ...formData, poNumber: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, poNumber: e.target.value })
+                        }
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100"
                         readOnly
                       />
                     </div>
 
                     <div>
-                      <label className="block text-gray-700 text-sm mb-2">Status</label>
+                      <label className="block text-gray-700 text-sm mb-2">
+                        Status
+                      </label>
                       <select
                         value={formData.status}
-                        onChange={(e) => setFormData({ ...formData, status: e.target.value as PurchaseOrderStatus })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            status: e.target.value as PurchaseOrderStatus,
+                          })
+                        }
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                          <option key={value} value={value}>{label}</option>
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
                         ))}
                       </select>
                     </div>
 
                     <div className="col-span-2">
-                      <label className="block text-gray-700 text-sm mb-2">Supplier *</label>
+                      <label className="block text-gray-700 text-sm mb-2">
+                        Supplier *
+                      </label>
                       <select
                         value={formData.supplierId}
                         onChange={(e) => handleSupplierChange(e.target.value)}
@@ -779,22 +1355,36 @@ export const PurchaseOrdersPanel: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-gray-700 text-sm mb-2">Order Date *</label>
+                      <label className="block text-gray-700 text-sm mb-2">
+                        Order Date *
+                      </label>
                       <input
                         type="date"
                         value={formData.orderDate}
-                        onChange={(e) => setFormData({ ...formData, orderDate: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            orderDate: e.target.value,
+                          })
+                        }
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-gray-700 text-sm mb-2">Expected Delivery *</label>
+                      <label className="block text-gray-700 text-sm mb-2">
+                        Expected Delivery *
+                      </label>
                       <input
                         type="date"
                         value={formData.expectedDeliveryDate}
-                        onChange={(e) => setFormData({ ...formData, expectedDeliveryDate: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            expectedDeliveryDate: e.target.value,
+                          })
+                        }
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         required
                       />
@@ -810,69 +1400,65 @@ export const PurchaseOrdersPanel: React.FC = () => {
                   </h4>
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="col-span-2">
-                      <label className="block text-gray-700 text-sm mb-2">Select from Inventory</label>
-                      <select
-                        onChange={(e) => {
-                          const item = inventoryItems.find(i => i.id === e.target.value);
-                          if (item) {
-                            setNewItem({
-                              ...newItem,
-                              inventoryItemId: item.id,
-                              itemName: item.name,
-                              partNumber: item.partNumber,
-                              unitPrice: item.price,
-                            });
-                          }
-                        }}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Select an item or enter manually</option>
-                        {inventoryItems.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.name} - {item.partNumber}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="col-span-2">
-                      <label className="block text-gray-700 text-sm mb-2">Item Name *</label>
+                      <label className="block text-gray-700 text-sm mb-2">
+                        Item Name *
+                      </label>
                       <input
                         type="text"
                         value={newItem.itemName}
-                        onChange={(e) => setNewItem({ ...newItem, itemName: e.target.value })}
+                        onChange={(e) =>
+                          setNewItem({ ...newItem, itemName: e.target.value })
+                        }
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Enter item name"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-gray-700 text-sm mb-2">Part Number</label>
+                      <label className="block text-gray-700 text-sm mb-2">
+                        Part Number
+                      </label>
                       <input
                         type="text"
                         value={newItem.partNumber}
-                        onChange={(e) => setNewItem({ ...newItem, partNumber: e.target.value })}
+                        onChange={(e) =>
+                          setNewItem({ ...newItem, partNumber: e.target.value })
+                        }
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-gray-700 text-sm mb-2">Quantity *</label>
+                      <label className="block text-gray-700 text-sm mb-2">
+                        Quantity *
+                      </label>
                       <input
                         type="number"
                         value={newItem.orderedQuantity}
-                        onChange={(e) => setNewItem({ ...newItem, orderedQuantity: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setNewItem({
+                            ...newItem,
+                            orderedQuantity: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         min="1"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-gray-700 text-sm mb-2">Unit Price (NPR) *</label>
+                      <label className="block text-gray-700 text-sm mb-2">
+                        Unit Price (NPR) *
+                      </label>
                       <input
                         type="number"
                         value={newItem.unitPrice}
-                        onChange={(e) => setNewItem({ ...newItem, unitPrice: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setNewItem({
+                            ...newItem,
+                            unitPrice: parseFloat(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         min="0"
                         step="0.01"
@@ -880,11 +1466,18 @@ export const PurchaseOrdersPanel: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-gray-700 text-sm mb-2">Tax %</label>
+                      <label className="block text-gray-700 text-sm mb-2">
+                        Tax %
+                      </label>
                       <input
                         type="number"
                         value={newItem.taxPercent}
-                        onChange={(e) => setNewItem({ ...newItem, taxPercent: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setNewItem({
+                            ...newItem,
+                            taxPercent: parseFloat(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         min="0"
                         step="0.01"
@@ -892,11 +1485,18 @@ export const PurchaseOrdersPanel: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-gray-700 text-sm mb-2">Discount (NPR)</label>
+                      <label className="block text-gray-700 text-sm mb-2">
+                        Discount (NPR)
+                      </label>
                       <input
                         type="number"
                         value={newItem.discount}
-                        onChange={(e) => setNewItem({ ...newItem, discount: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setNewItem({
+                            ...newItem,
+                            discount: parseFloat(e.target.value) || 0,
+                          })
+                        }
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         min="0"
                         step="0.01"
@@ -904,10 +1504,17 @@ export const PurchaseOrdersPanel: React.FC = () => {
                     </div>
 
                     <div className="col-span-2">
-                      <label className="block text-gray-700 text-sm mb-2">Description</label>
+                      <label className="block text-gray-700 text-sm mb-2">
+                        Description
+                      </label>
                       <textarea
                         value={newItem.description}
-                        onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                        onChange={(e) =>
+                          setNewItem({
+                            ...newItem,
+                            description: e.target.value,
+                          })
+                        }
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         rows={2}
                       />
@@ -929,33 +1536,62 @@ export const PurchaseOrdersPanel: React.FC = () => {
                 {formData.items && formData.items.length > 0 && (
                   <div className="border border-gray-200 rounded-lg overflow-hidden">
                     <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                      <h4 className="text-gray-900">Order Items ({formData.items.length})</h4>
+                      <h4 className="text-gray-900">
+                        Order Items ({formData.items.length})
+                      </h4>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>
                           <tr className="bg-gray-50 border-b border-gray-200">
-                            <th className="text-left text-gray-600 text-sm py-2 px-4">Item</th>
-                            <th className="text-right text-gray-600 text-sm py-2 px-4">Qty</th>
-                            <th className="text-right text-gray-600 text-sm py-2 px-4">Price</th>
-                            <th className="text-right text-gray-600 text-sm py-2 px-4">Tax</th>
-                            <th className="text-right text-gray-600 text-sm py-2 px-4">Total</th>
-                            <th className="text-right text-gray-600 text-sm py-2 px-4">Action</th>
+                            <th className="text-left text-gray-600 text-sm py-2 px-4">
+                              Item
+                            </th>
+                            <th className="text-right text-gray-600 text-sm py-2 px-4">
+                              Qty
+                            </th>
+                            <th className="text-right text-gray-600 text-sm py-2 px-4">
+                              Price
+                            </th>
+                            <th className="text-right text-gray-600 text-sm py-2 px-4">
+                              Tax
+                            </th>
+                            <th className="text-right text-gray-600 text-sm py-2 px-4">
+                              Total
+                            </th>
+                            <th className="text-right text-gray-600 text-sm py-2 px-4">
+                              Action
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
                           {formData.items.map((item) => (
-                            <tr key={item.id} className="border-b border-gray-100">
+                            <tr
+                              key={item.id}
+                              className="border-b border-gray-100"
+                            >
                               <td className="py-3 px-4">
-                                <div className="text-gray-900">{item.itemName}</div>
+                                <div className="text-gray-900">
+                                  {item.itemName}
+                                </div>
                                 {item.partNumber && (
-                                  <div className="text-xs text-gray-500">PN: {item.partNumber}</div>
+                                  <div className="text-xs text-gray-500">
+                                    PN: {item.partNumber}
+                                  </div>
                                 )}
                               </td>
-                              <td className="py-3 px-4 text-right text-gray-900">{item.orderedQuantity}</td>
-                              <td className="py-3 px-4 text-right text-gray-900">NPR {item.unitPrice.toLocaleString()}</td>
-                              <td className="py-3 px-4 text-right text-gray-600">{item.taxPercent}%</td>
-                              <td className="py-3 px-4 text-right text-gray-900">NPR {item.totalAmount.toLocaleString()}</td>
+                              <td className="py-3 px-4 text-right text-gray-900">
+                                {item.orderedQuantity}
+                              </td>
+                              <td className="py-3 px-4 text-right text-gray-900">
+                                NPR {item.unitPrice.toLocaleString()}
+                              </td>
+                              <td className="py-3 px-4 text-right text-gray-600">
+                                {item.taxPercent}%
+                              </td>
+                              <td className="py-3 px-4 text-right text-gray-900">
+                                NPR {item.totalAmount.toLocaleString()}
+                              </td>
                               <td className="py-3 px-4 text-right">
                                 <button
                                   type="button"
@@ -970,23 +1606,51 @@ export const PurchaseOrdersPanel: React.FC = () => {
                         </tbody>
                         <tfoot className="bg-gray-50">
                           <tr className="border-t-2 border-gray-300">
-                            <td colSpan={4} className="py-3 px-4 text-right text-gray-700">Subtotal:</td>
-                            <td className="py-3 px-4 text-right text-gray-900">NPR {formData.subtotal?.toLocaleString()}</td>
+                            <td
+                              colSpan={4}
+                              className="py-3 px-4 text-right text-gray-700"
+                            >
+                              Subtotal:
+                            </td>
+                            <td className="py-3 px-4 text-right text-gray-900">
+                              NPR {formData.subtotal?.toLocaleString()}
+                            </td>
                             <td></td>
                           </tr>
                           <tr>
-                            <td colSpan={4} className="py-2 px-4 text-right text-gray-700">Tax:</td>
-                            <td className="py-2 px-4 text-right text-gray-900">NPR {formData.taxAmount?.toLocaleString()}</td>
+                            <td
+                              colSpan={4}
+                              className="py-2 px-4 text-right text-gray-700"
+                            >
+                              Tax:
+                            </td>
+                            <td className="py-2 px-4 text-right text-gray-900">
+                              NPR {formData.taxAmount?.toLocaleString()}
+                            </td>
                             <td></td>
                           </tr>
                           <tr>
-                            <td colSpan={4} className="py-2 px-4 text-right text-gray-700">Discount:</td>
-                            <td className="py-2 px-4 text-right text-red-600">- NPR {formData.discountAmount?.toLocaleString()}</td>
+                            <td
+                              colSpan={4}
+                              className="py-2 px-4 text-right text-gray-700"
+                            >
+                              Discount:
+                            </td>
+                            <td className="py-2 px-4 text-right text-red-600">
+                              - NPR {formData.discountAmount?.toLocaleString()}
+                            </td>
                             <td></td>
                           </tr>
                           <tr className="border-t border-gray-300">
-                            <td colSpan={4} className="py-3 px-4 text-right text-gray-900">Total Amount:</td>
-                            <td className="py-3 px-4 text-right text-blue-600">NPR {formData.totalAmount?.toLocaleString()}</td>
+                            <td
+                              colSpan={4}
+                              className="py-3 px-4 text-right text-gray-900"
+                            >
+                              Total Amount:
+                            </td>
+                            <td className="py-3 px-4 text-right text-blue-600">
+                              NPR {formData.totalAmount?.toLocaleString()}
+                            </td>
                             <td></td>
                           </tr>
                         </tfoot>
@@ -1001,27 +1665,37 @@ export const PurchaseOrdersPanel: React.FC = () => {
                     <Upload className="w-5 h-5 mr-2 text-purple-600" />
                     Purchase Invoice (Optional)
                   </h4>
-                  
+
                   <div
                     onDrop={handleDrop}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                       isDragging
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-300 hover:border-gray-400'
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-300 hover:border-gray-400"
                     }`}
                   >
                     {formData.invoiceFile ? (
                       <div className="space-y-4">
                         <File className="w-12 h-12 text-green-600 mx-auto" />
                         <div>
-                          <p className="text-gray-900">{formData.invoiceFileName}</p>
-                          <p className="text-sm text-gray-500 mt-1">Invoice uploaded successfully</p>
+                          <p className="text-gray-900">
+                            {formData.invoiceFileName}
+                          </p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            Invoice uploaded successfully
+                          </p>
                         </div>
                         <button
                           type="button"
-                          onClick={() => setFormData({ ...formData, invoiceFile: undefined, invoiceFileName: undefined })}
+                          onClick={() =>
+                            setFormData({
+                              ...formData,
+                              invoiceFile: undefined,
+                              invoiceFileName: undefined,
+                            })
+                          }
                           className="text-red-600 hover:text-red-700 text-sm"
                         >
                           Remove File
@@ -1031,8 +1705,12 @@ export const PurchaseOrdersPanel: React.FC = () => {
                       <div className="space-y-4">
                         <Upload className="w-12 h-12 text-gray-400 mx-auto" />
                         <div>
-                          <p className="text-gray-700">Drag and drop PDF invoice here</p>
-                          <p className="text-sm text-gray-500 mt-1">or click to browse</p>
+                          <p className="text-gray-700">
+                            Drag and drop PDF invoice here
+                          </p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            or click to browse
+                          </p>
                         </div>
                         <input
                           type="file"
@@ -1055,10 +1733,14 @@ export const PurchaseOrdersPanel: React.FC = () => {
                 {/* Notes and Terms */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-700 text-sm mb-2">Notes</label>
+                    <label className="block text-gray-700 text-sm mb-2">
+                      Notes
+                    </label>
                     <textarea
                       value={formData.notes}
-                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, notes: e.target.value })
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       rows={3}
                       placeholder="Any additional notes..."
@@ -1066,10 +1748,14 @@ export const PurchaseOrdersPanel: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-gray-700 text-sm mb-2">Terms & Conditions</label>
+                    <label className="block text-gray-700 text-sm mb-2">
+                      Terms & Conditions
+                    </label>
                     <textarea
                       value={formData.terms}
-                      onChange={(e) => setFormData({ ...formData, terms: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, terms: e.target.value })
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       rows={3}
                       placeholder="Payment and delivery terms..."
@@ -1090,7 +1776,9 @@ export const PurchaseOrdersPanel: React.FC = () => {
                     type="submit"
                     className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                   >
-                    {editingPO ? 'Update Purchase Order' : 'Create Purchase Order'}
+                    {editingPO
+                      ? "Update Purchase Order"
+                      : "Create Purchase Order"}
                   </button>
                 </div>
               </form>
@@ -1101,16 +1789,18 @@ export const PurchaseOrdersPanel: React.FC = () => {
 
       {/* View PO Details Sidebar */}
       {viewingSidebar && viewingPO && (
-        <>
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+        <div className="fixed inset-0 z-[100] flex justify-end">
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50"
             onClick={handleCloseViewSidebar}
           />
-          
-          <div className="fixed right-0 top-0 h-full w-full md:w-[800px] bg-white shadow-xl z-50 overflow-y-auto">
+
+          <div className="relative h-full w-full md:w-[800px] bg-white shadow-xl overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-gray-900 text-xl">Purchase Order Details</h3>
+                <h3 className="text-gray-900 text-xl">
+                  Purchase Order Details
+                </h3>
                 <button
                   onClick={handleCloseViewSidebar}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -1123,10 +1813,18 @@ export const PurchaseOrdersPanel: React.FC = () => {
               <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-6 mb-6">
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h4 className="text-gray-900 text-2xl mb-2">{viewingPO.poNumber}</h4>
-                    <p className="text-gray-600">Supplier: {viewingPO.supplierName}</p>
+                    <h4 className="text-gray-900 text-2xl mb-2">
+                      {viewingPO.poNumber}
+                    </h4>
+                    <p className="text-gray-600">
+                      Supplier: {viewingPO.supplierName}
+                    </p>
                   </div>
-                  <span className={`px-4 py-2 rounded-full text-sm flex items-center space-x-2 ${STATUS_COLORS[viewingPO.status]}`}>
+                  <span
+                    className={`px-4 py-2 rounded-full text-sm flex items-center space-x-2 ${
+                      STATUS_COLORS[viewingPO.status]
+                    }`}
+                  >
                     {STATUS_ICONS[viewingPO.status]}
                     <span>{STATUS_LABELS[viewingPO.status]}</span>
                   </span>
@@ -1134,15 +1832,25 @@ export const PurchaseOrdersPanel: React.FC = () => {
                 <div className="grid grid-cols-3 gap-4 mt-4">
                   <div>
                     <p className="text-gray-500 text-sm">Order Date</p>
-                    <p className="text-gray-900">{new Date(viewingPO.orderDate).toLocaleDateString('en-NP')}</p>
+                    <p className="text-gray-900">
+                      {new Date(viewingPO.orderDate).toLocaleDateString(
+                        "en-NP"
+                      )}
+                    </p>
                   </div>
                   <div>
                     <p className="text-gray-500 text-sm">Expected Delivery</p>
-                    <p className="text-gray-900">{new Date(viewingPO.expectedDeliveryDate).toLocaleDateString('en-NP')}</p>
+                    <p className="text-gray-900">
+                      {new Date(
+                        viewingPO.expectedDeliveryDate
+                      ).toLocaleDateString("en-NP")}
+                    </p>
                   </div>
                   <div>
                     <p className="text-gray-500 text-sm">Total Amount</p>
-                    <p className="text-blue-600">NPR {viewingPO.totalAmount.toLocaleString()}</p>
+                    <p className="text-blue-600">
+                      NPR {viewingPO.totalAmount.toLocaleString()}
+                    </p>
                   </div>
                 </div>
                 {viewingPO.grnGenerated && (
@@ -1162,11 +1870,21 @@ export const PurchaseOrdersPanel: React.FC = () => {
                   <table className="w-full">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="text-left text-gray-600 text-sm py-3 px-4">Item</th>
-                        <th className="text-right text-gray-600 text-sm py-3 px-4">Ordered</th>
-                        <th className="text-right text-gray-600 text-sm py-3 px-4">Received</th>
-                        <th className="text-right text-gray-600 text-sm py-3 px-4">Price</th>
-                        <th className="text-right text-gray-600 text-sm py-3 px-4">Total</th>
+                        <th className="text-left text-gray-600 text-sm py-3 px-4">
+                          Item
+                        </th>
+                        <th className="text-right text-gray-600 text-sm py-3 px-4">
+                          Ordered
+                        </th>
+                        <th className="text-right text-gray-600 text-sm py-3 px-4">
+                          Received
+                        </th>
+                        <th className="text-right text-gray-600 text-sm py-3 px-4">
+                          Price
+                        </th>
+                        <th className="text-right text-gray-600 text-sm py-3 px-4">
+                          Total
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1175,36 +1893,79 @@ export const PurchaseOrdersPanel: React.FC = () => {
                           <td className="py-3 px-4">
                             <div className="text-gray-900">{item.itemName}</div>
                             {item.partNumber && (
-                              <div className="text-xs text-gray-500">PN: {item.partNumber}</div>
+                              <div className="text-xs text-gray-500">
+                                PN: {item.partNumber}
+                              </div>
                             )}
                           </td>
-                          <td className="py-3 px-4 text-right text-gray-900">{item.orderedQuantity}</td>
+                          <td className="py-3 px-4 text-right text-gray-900">
+                            {item.orderedQuantity}
+                          </td>
                           <td className="py-3 px-4 text-right">
-                            <span className={item.receivedQuantity === item.orderedQuantity ? 'text-green-600' : 'text-orange-600'}>
+                            <span
+                              className={
+                                item.receivedQuantity === item.orderedQuantity
+                                  ? "text-green-600"
+                                  : "text-orange-600"
+                              }
+                            >
                               {item.receivedQuantity}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-right text-gray-900">NPR {item.unitPrice.toLocaleString()}</td>
-                          <td className="py-3 px-4 text-right text-gray-900">NPR {item.totalAmount.toLocaleString()}</td>
+                          <td className="py-3 px-4 text-right text-gray-900">
+                            NPR {(item.unitPrice || 0).toLocaleString()}
+                          </td>
+                          <td className="py-3 px-4 text-right text-gray-900">
+                            NPR {(item.totalAmount || 0).toLocaleString()}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot className="bg-gray-50">
                       <tr className="border-t-2 border-gray-300">
-                        <td colSpan={4} className="py-3 px-4 text-right text-gray-700">Subtotal:</td>
-                        <td className="py-3 px-4 text-right text-gray-900">NPR {viewingPO.subtotal.toLocaleString()}</td>
+                        <td
+                          colSpan={4}
+                          className="py-3 px-4 text-right text-gray-700"
+                        >
+                          Subtotal:
+                        </td>
+                        <td className="py-3 px-4 text-right text-gray-900">
+                          NPR {(viewingPO.subtotal || 0).toLocaleString()}
+                        </td>
                       </tr>
                       <tr>
-                        <td colSpan={4} className="py-2 px-4 text-right text-gray-700">Tax:</td>
-                        <td className="py-2 px-4 text-right text-gray-900">NPR {viewingPO.taxAmount.toLocaleString()}</td>
+                        <td
+                          colSpan={4}
+                          className="py-2 px-4 text-right text-gray-700"
+                        >
+                          Tax:
+                        </td>
+                        <td className="py-2 px-4 text-right text-gray-900">
+                          NPR {(viewingPO.taxAmount || 0).toLocaleString()}
+                        </td>
                       </tr>
                       <tr>
-                        <td colSpan={4} className="py-2 px-4 text-right text-gray-700">Discount:</td>
-                        <td className="py-2 px-4 text-right text-red-600">- NPR {viewingPO.discountAmount.toLocaleString()}</td>
+                        <td
+                          colSpan={4}
+                          className="py-2 px-4 text-right text-gray-700"
+                        >
+                          Discount:
+                        </td>
+                        <td className="py-2 px-4 text-right text-red-600">
+                          - NPR{" "}
+                          {(viewingPO.discountAmount || 0).toLocaleString()}
+                        </td>
                       </tr>
                       <tr className="border-t border-gray-300">
-                        <td colSpan={4} className="py-3 px-4 text-right text-gray-900">Total:</td>
-                        <td className="py-3 px-4 text-right text-blue-600">NPR {viewingPO.totalAmount.toLocaleString()}</td>
+                        <td
+                          colSpan={4}
+                          className="py-3 px-4 text-right text-gray-900"
+                        >
+                          Total:
+                        </td>
+                        <td className="py-3 px-4 text-right text-blue-600">
+                          NPR {(viewingPO.totalAmount || 0).toLocaleString()}
+                        </td>
                       </tr>
                     </tfoot>
                   </table>
@@ -1219,7 +1980,9 @@ export const PurchaseOrdersPanel: React.FC = () => {
                     <div className="flex items-center space-x-3">
                       <File className="w-8 h-8 text-red-600" />
                       <div>
-                        <p className="text-gray-900">{viewingPO.invoiceFileName}</p>
+                        <p className="text-gray-900">
+                          {viewingPO.invoiceFileName}
+                        </p>
                         <p className="text-sm text-gray-500">PDF Document</p>
                       </div>
                     </div>
@@ -1242,7 +2005,9 @@ export const PurchaseOrdersPanel: React.FC = () => {
                     <div>
                       <h4 className="text-gray-900 mb-2">Notes</h4>
                       <div className="border border-gray-200 rounded-lg p-4">
-                        <p className="text-gray-600 text-sm">{viewingPO.notes}</p>
+                        <p className="text-gray-600 text-sm">
+                          {viewingPO.notes}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -1250,7 +2015,9 @@ export const PurchaseOrdersPanel: React.FC = () => {
                     <div>
                       <h4 className="text-gray-900 mb-2">Terms & Conditions</h4>
                       <div className="border border-gray-200 rounded-lg p-4">
-                        <p className="text-gray-600 text-sm">{viewingPO.terms}</p>
+                        <p className="text-gray-600 text-sm">
+                          {viewingPO.terms}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -1259,7 +2026,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
 
               {/* Action Buttons */}
               <div className="flex space-x-3 pt-4 border-t border-gray-200">
-                {viewingPO.status === 'ordered' && (
+                {viewingPO.status === "ordered" && (
                   <button
                     onClick={() => {
                       handleCloseViewSidebar();
@@ -1280,21 +2047,23 @@ export const PurchaseOrdersPanel: React.FC = () => {
               </div>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* Receiving Sidebar */}
       {receivingSidebar && receivingPO && (
         <>
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40"
             onClick={handleCloseReceivingSidebar}
           />
-          
+
           <div className="fixed right-0 top-0 h-full w-full md:w-[700px] bg-white shadow-xl z-50 overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-gray-900 text-xl">Receive Goods - {receivingPO.poNumber}</h3>
+                <h3 className="text-gray-900 text-xl">
+                  Receive Goods - {receivingPO.poNumber}
+                </h3>
                 <button
                   onClick={handleCloseReceivingSidebar}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -1308,8 +2077,13 @@ export const PurchaseOrdersPanel: React.FC = () => {
                 <div className="flex items-start space-x-3">
                   <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
                   <div>
-                    <p className="text-blue-900">Tick the checkbox for each item you've received</p>
-                    <p className="text-blue-700 text-sm mt-1">This will update your inventory and generate a GRN (Goods Received Note)</p>
+                    <p className="text-blue-900">
+                      Tick the checkbox for each item you've received
+                    </p>
+                    <p className="text-blue-700 text-sm mt-1">
+                      This will update your inventory and generate a GRN (Goods
+                      Received Note)
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1317,24 +2091,27 @@ export const PurchaseOrdersPanel: React.FC = () => {
               {/* Receiving Checklist */}
               <div className="space-y-3 mb-6">
                 {receivingPO.items.map((item) => {
-                  const isReceived = item.receivedQuantity === item.orderedQuantity;
+                  const isReceived =
+                    item.receivedQuantity === item.orderedQuantity;
                   return (
                     <div
                       key={item.id}
                       className={`border-2 rounded-lg p-4 transition-all ${
                         isReceived
-                          ? 'border-green-500 bg-green-50'
-                          : 'border-gray-200 hover:border-gray-300'
+                          ? "border-green-500 bg-green-50"
+                          : "border-gray-200 hover:border-gray-300"
                       }`}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex items-start space-x-4 flex-1">
                           <button
-                            onClick={() => handleReceiveItem(item.id, !isReceived)}
+                            onClick={() =>
+                              handleReceiveItem(item.id, !isReceived)
+                            }
                             className={`mt-1 w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${
                               isReceived
-                                ? 'border-green-600 bg-green-600 scale-110'
-                                : 'border-gray-300 hover:border-gray-400'
+                                ? "border-green-600 bg-green-600 scale-110"
+                                : "border-gray-300 hover:border-gray-400"
                             }`}
                           >
                             {isReceived && (
@@ -1342,21 +2119,36 @@ export const PurchaseOrdersPanel: React.FC = () => {
                             )}
                           </button>
                           <div className="flex-1">
-                            <h4 className={`text-gray-900 ${isReceived ? 'line-through' : ''}`}>
+                            <h4
+                              className={`text-gray-900 ${
+                                isReceived ? "line-through" : ""
+                              }`}
+                            >
                               {item.itemName}
                             </h4>
                             {item.partNumber && (
-                              <p className="text-sm text-gray-500">Part: {item.partNumber}</p>
+                              <p className="text-sm text-gray-500">
+                                Part: {item.partNumber}
+                              </p>
                             )}
                             <div className="flex items-center space-x-4 mt-2">
                               <span className="text-sm text-gray-600">
-                                Qty: <span className="text-gray-900">{item.orderedQuantity}</span>
+                                Qty:{" "}
+                                <span className="text-gray-900">
+                                  {item.orderedQuantity}
+                                </span>
                               </span>
                               <span className="text-sm text-gray-600">
-                                Price: <span className="text-gray-900">NPR {item.unitPrice.toLocaleString()}</span>
+                                Price:{" "}
+                                <span className="text-gray-900">
+                                  NPR {item.unitPrice.toLocaleString()}
+                                </span>
                               </span>
                               <span className="text-sm text-gray-600">
-                                Total: <span className="text-gray-900">NPR {item.totalAmount.toLocaleString()}</span>
+                                Total:{" "}
+                                <span className="text-gray-900">
+                                  NPR {item.totalAmount.toLocaleString()}
+                                </span>
                               </span>
                             </div>
                           </div>
@@ -1374,17 +2166,25 @@ export const PurchaseOrdersPanel: React.FC = () => {
               <div className="bg-gray-50 rounded-lg p-4 mb-6">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-700">Total Items:</span>
-                  <span className="text-gray-900">{receivingPO.items.length}</span>
+                  <span className="text-gray-900">
+                    {receivingPO.items.length}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-700">Received Items:</span>
                   <span className="text-green-600">
-                    {receivingPO.items.filter(i => i.receivedQuantity === i.orderedQuantity).length}
+                    {
+                      receivingPO.items.filter(
+                        (i) => i.receivedQuantity === i.orderedQuantity
+                      ).length
+                    }
                   </span>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t border-gray-300">
                   <span className="text-gray-700">Total Value:</span>
-                  <span className="text-blue-600">NPR {receivingPO.totalAmount.toLocaleString()}</span>
+                  <span className="text-blue-600">
+                    NPR {receivingPO.totalAmount.toLocaleString()}
+                  </span>
                 </div>
               </div>
 
@@ -1398,7 +2198,10 @@ export const PurchaseOrdersPanel: React.FC = () => {
                 </button>
                 <button
                   onClick={handleCompleteReceiving}
-                  disabled={receivingPO.items.filter(i => i.receivedQuantity > 0).length === 0}
+                  disabled={
+                    receivingPO.items.filter((i) => i.receivedQuantity > 0)
+                      .length === 0
+                  }
                   className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
                 >
                   <CheckCircle className="w-5 h-5" />
@@ -1427,6 +2230,22 @@ export const PurchaseOrdersPanel: React.FC = () => {
           animation: scale-in 0.3s ease-out;
         }
       `}</style>
+
+      {/* Popup Container */}
+      <PopupContainer
+        showSuccessPopup={popup.showSuccessPopup}
+        successTitle={popup.successTitle}
+        successMessage={popup.successMessage}
+        onSuccessClose={popup.hideSuccess}
+        showErrorPopup={popup.showErrorPopup}
+        errorTitle={popup.errorTitle}
+        errorMessage={popup.errorMessage}
+        errorType={popup.errorType}
+        onErrorClose={popup.hideError}
+        showConfirmDialog={popup.showConfirmDialog}
+        confirmConfig={popup.confirmConfig}
+        onConfirmCancel={popup.hideConfirm}
+      />
     </div>
   );
 };

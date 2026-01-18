@@ -277,7 +277,7 @@ export const DemoBookingModal: React.FC<DemoBookingModalProps> = ({ isOpen, onCl
               <div className="mt-8 p-6 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl border-2 border-indigo-200">
                 <p className="text-sm text-gray-700">
                   <strong>What's Next?</strong><br />
-                  You'll receive a confirmation email with calendar invite and demo preparation materials.
+                  You&apos;ll receive a confirmation email with calendar invite and demo preparation materials.
                 </p>
               </div>
             </div>

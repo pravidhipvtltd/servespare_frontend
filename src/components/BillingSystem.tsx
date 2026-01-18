@@ -1,8 +1,17 @@
-import React, { useState } from 'react';
-import { ShoppingCart, Plus, Minus, Trash2, CreditCard, Banknote, Smartphone, Check } from 'lucide-react';
-import { InventoryItem, Transaction } from '../types';
-import { getFromStorage, saveToStorage } from '../utils/mockData';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState } from "react";
+import {
+  ShoppingCart,
+  Plus,
+  Minus,
+  Trash2,
+  CreditCard,
+  Banknote,
+  Smartphone,
+  Check,
+} from "lucide-react";
+import { InventoryItem, Transaction } from "../types";
+import { getFromStorage, saveToStorage } from "../utils/mockData";
+import { useAuth } from "../contexts/AuthContext";
 
 interface BillingSystemProps {
   inventory: InventoryItem[];
@@ -14,74 +23,82 @@ interface CartItem {
   quantity: number;
 }
 
-export const BillingSystem: React.FC<BillingSystemProps> = ({ inventory, onTransactionComplete }) => {
+export const BillingSystem: React.FC<BillingSystemProps> = ({
+  inventory,
+  onTransactionComplete,
+}) => {
   const { currentUser } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi'>('cash');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "upi">(
+    "cash"
+  );
+  const [searchQuery, setSearchQuery] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const filteredInventory = inventory.filter(item => 
-    (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (item.partNumber || '').toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredInventory = inventory.filter(
+    (item) =>
+      (item.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.partNumber || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const addToCart = (item: InventoryItem) => {
-    const existing = cart.find(c => c.item.id === item.id);
+    const existing = cart.find((c) => c.item.id === item.id);
     if (existing) {
       if (existing.quantity < item.quantity) {
-        setCart(cart.map(c => 
-          c.item.id === item.id 
-            ? { ...c, quantity: c.quantity + 1 }
-            : c
-        ));
+        setCart(
+          cart.map((c) =>
+            c.item.id === item.id ? { ...c, quantity: c.quantity + 1 } : c
+          )
+        );
       } else {
-        alert('Not enough stock available');
+        alert("Not enough stock available");
       }
     } else {
       if (item.quantity > 0) {
         setCart([...cart, { item, quantity: 1 }]);
       } else {
-        alert('Item out of stock');
+        alert("Item out of stock");
       }
     }
   };
 
   const updateQuantity = (itemId: string, delta: number) => {
-    setCart(cart.map(c => {
-      if (c.item.id === itemId) {
-        const newQuantity = c.quantity + delta;
-        if (newQuantity <= 0) return c;
-        if (newQuantity > c.item.quantity) {
-          alert('Not enough stock available');
-          return c;
+    setCart(
+      cart.map((c) => {
+        if (c.item.id === itemId) {
+          const newQuantity = c.quantity + delta;
+          if (newQuantity <= 0) return c;
+          if (newQuantity > c.item.quantity) {
+            alert("Not enough stock available");
+            return c;
+          }
+          return { ...c, quantity: newQuantity };
         }
-        return { ...c, quantity: newQuantity };
-      }
-      return c;
-    }));
+        return c;
+      })
+    );
   };
 
   const removeFromCart = (itemId: string) => {
-    setCart(cart.filter(c => c.item.id !== itemId));
+    setCart(cart.filter((c) => c.item.id !== itemId));
   };
 
   const calculateTotal = () => {
-    return cart.reduce((sum, c) => sum + (c.item.price * c.quantity), 0);
+    return cart.reduce((sum, c) => sum + c.item.price * c.quantity, 0);
   };
 
   const handleCheckout = () => {
     if (cart.length === 0) {
-      alert('Cart is empty');
+      alert("Cart is empty");
       return;
     }
 
     // Create transaction
     const transaction: Transaction = {
       id: `txn${Date.now()}`,
-      items: cart.map(c => ({
+      items: cart.map((c) => ({
         itemId: c.item.id,
         itemName: c.item.name,
         quantity: c.quantity,
@@ -91,15 +108,15 @@ export const BillingSystem: React.FC<BillingSystemProps> = ({ inventory, onTrans
       customerName: customerName || undefined,
       customerPhone: customerPhone || undefined,
       paymentMethod,
-      processedBy: currentUser?.id || '',
+      processedBy: currentUser?.id || "",
       workspaceId: currentUser?.workspaceId,
       createdAt: new Date().toISOString(),
     };
 
     // Update inventory quantities
-    const allInventory: InventoryItem[] = getFromStorage('inventory', []);
-    const updatedInventory = allInventory.map(item => {
-      const cartItem = cart.find(c => c.item.id === item.id);
+    const allInventory: InventoryItem[] = getFromStorage("inventory", []);
+    const updatedInventory = allInventory.map((item) => {
+      const cartItem = cart.find((c) => c.item.id === item.id);
       if (cartItem) {
         return {
           ...item,
@@ -111,17 +128,17 @@ export const BillingSystem: React.FC<BillingSystemProps> = ({ inventory, onTrans
     });
 
     // Save transaction and inventory
-    const allTransactions: Transaction[] = getFromStorage('transactions', []);
-    saveToStorage('transactions', [...allTransactions, transaction]);
-    saveToStorage('inventory', updatedInventory);
+    const allTransactions: Transaction[] = getFromStorage("transactions", []);
+    saveToStorage("transactions", [...allTransactions, transaction]);
+    saveToStorage("inventory", updatedInventory);
 
     // Reset form
     setCart([]);
-    setCustomerName('');
-    setCustomerPhone('');
-    setSearchQuery('');
+    setCustomerName("");
+    setCustomerPhone("");
+    setSearchQuery("");
     setShowSuccess(true);
-    
+
     setTimeout(() => {
       setShowSuccess(false);
     }, 3000);
@@ -146,7 +163,7 @@ export const BillingSystem: React.FC<BillingSystemProps> = ({ inventory, onTrans
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[600px] overflow-y-auto">
-          {filteredInventory.map(item => (
+          {filteredInventory.map((item) => (
             <div
               key={item.id}
               onClick={() => addToCart(item)}
@@ -154,16 +171,26 @@ export const BillingSystem: React.FC<BillingSystemProps> = ({ inventory, onTrans
             >
               <div className="flex items-start justify-between mb-2">
                 <h4 className="text-gray-900">{item.name}</h4>
-                <span className={`px-2 py-1 rounded-full text-xs ${
-                  item.category === 'branded' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-700'
-                }`}>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs ${
+                    item.category === "branded"
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-gray-200 text-gray-700"
+                  }`}
+                >
                   {item.category}
                 </span>
               </div>
               <p className="text-gray-500 text-sm mb-2">{item.partNumber}</p>
               <div className="flex items-center justify-between">
-                <span className="text-gray-900">₹{item.price}</span>
-                <span className={`text-sm ${item.quantity <= item.reorderLevel ? 'text-red-600' : 'text-gray-600'}`}>
+                <span className="text-gray-900">Rs{item.price}</span>
+                <span
+                  className={`text-sm ${
+                    item.quantity <= item.reorderLevel
+                      ? "text-red-600"
+                      : "text-gray-600"
+                  }`}
+                >
                   Stock: {item.quantity}
                 </span>
               </div>
@@ -182,12 +209,16 @@ export const BillingSystem: React.FC<BillingSystemProps> = ({ inventory, onTrans
           </div>
 
           <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
-            {cart.map(cartItem => (
+            {cart.map((cartItem) => (
               <div key={cartItem.item.id} className="bg-gray-50 p-3 rounded-xl">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
-                    <div className="text-gray-900 text-sm">{cartItem.item.name}</div>
-                    <div className="text-gray-500 text-xs">₹{cartItem.item.price} each</div>
+                    <div className="text-gray-900 text-sm">
+                      {cartItem.item.name}
+                    </div>
+                    <div className="text-gray-500 text-xs">
+                      Rs{cartItem.item.price} each
+                    </div>
                   </div>
                   <button
                     onClick={() => removeFromCart(cartItem.item.id)}
@@ -204,7 +235,9 @@ export const BillingSystem: React.FC<BillingSystemProps> = ({ inventory, onTrans
                     >
                       <Minus className="w-3 h-3" />
                     </button>
-                    <span className="text-gray-900 w-8 text-center">{cartItem.quantity}</span>
+                    <span className="text-gray-900 w-8 text-center">
+                      {cartItem.quantity}
+                    </span>
                     <button
                       onClick={() => updateQuantity(cartItem.item.id, 1)}
                       className="w-7 h-7 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
@@ -213,7 +246,8 @@ export const BillingSystem: React.FC<BillingSystemProps> = ({ inventory, onTrans
                     </button>
                   </div>
                   <div className="text-gray-900">
-                    ₹{(cartItem.item.price * cartItem.quantity).toLocaleString()}
+                    Rs
+                    {(cartItem.item.price * cartItem.quantity).toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -230,11 +264,13 @@ export const BillingSystem: React.FC<BillingSystemProps> = ({ inventory, onTrans
           <div className="pt-4 border-t border-gray-200">
             <div className="flex justify-between items-center mb-1">
               <span className="text-gray-600">Subtotal</span>
-              <span className="text-gray-900">₹{total.toLocaleString()}</span>
+              <span className="text-gray-900">Rs{total.toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-900">Total</span>
-              <span className="text-gray-900 text-2xl">₹{total.toLocaleString()}</span>
+              <span className="text-gray-900 text-2xl">
+                Rs{total.toLocaleString()}
+              </span>
             </div>
           </div>
         </div>
@@ -265,24 +301,34 @@ export const BillingSystem: React.FC<BillingSystemProps> = ({ inventory, onTrans
           <h3 className="text-gray-900 mb-4">Payment Method</h3>
           <div className="space-y-2">
             {[
-              { value: 'cash', label: 'Cash', icon: Banknote },
-              { value: 'card', label: 'Card', icon: CreditCard },
-              { value: 'upi', label: 'UPI', icon: Smartphone },
-            ].map(method => (
+              { value: "cash", label: "Cash", icon: Banknote },
+              { value: "card", label: "Card", icon: CreditCard },
+              { value: "upi", label: "UPI", icon: Smartphone },
+            ].map((method) => (
               <button
                 key={method.value}
                 onClick={() => setPaymentMethod(method.value as any)}
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all ${
                   paymentMethod === method.value
-                    ? 'border-orange-500 bg-orange-50'
-                    : 'border-gray-200 hover:border-gray-300'
+                    ? "border-orange-500 bg-orange-50"
+                    : "border-gray-200 hover:border-gray-300"
                 }`}
               >
                 <div className="flex items-center space-x-3">
-                  <method.icon className={`w-5 h-5 ${
-                    paymentMethod === method.value ? 'text-orange-600' : 'text-gray-600'
-                  }`} />
-                  <span className={paymentMethod === method.value ? 'text-orange-900' : 'text-gray-900'}>
+                  <method.icon
+                    className={`w-5 h-5 ${
+                      paymentMethod === method.value
+                        ? "text-orange-600"
+                        : "text-gray-600"
+                    }`}
+                  />
+                  <span
+                    className={
+                      paymentMethod === method.value
+                        ? "text-orange-900"
+                        : "text-gray-900"
+                    }
+                  >
                     {method.label}
                   </span>
                 </div>
@@ -300,7 +346,7 @@ export const BillingSystem: React.FC<BillingSystemProps> = ({ inventory, onTrans
           disabled={cart.length === 0}
           className="w-full py-4 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
         >
-          Complete Sale - ₹{total.toLocaleString()}
+          Complete Sale - Rs{total.toLocaleString()}
         </button>
       </div>
 

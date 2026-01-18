@@ -1,16 +1,56 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 import {
-  ShoppingCart, Plus, Trash2, Search, User, Phone, MapPin,
-  FileText, Calculator, Percent, CreditCard, Printer, Save,
-  Check, X, Edit2, Package, AlertCircle, ChevronRight, Eye,
-  Download, ArrowLeft, Receipt, Banknote, Smartphone, Building2,
-  Clock, Calendar, Hash, DollarSign, CreditCard as CreditIcon,
-  FileCheck, Badge, Link as LinkIcon, Barcode, UserCheck, Users
-} from 'lucide-react';
-import { getFromStorage, saveToStorage } from '../../utils/mockData';
-import { useAuth } from '../../contexts/AuthContext';
-import { InventoryItem, Bill, BillItem, Party, CustomerType } from '../../types';
-import { BankAccount } from './BankAccountsPanel';
+  ShoppingCart,
+  Plus,
+  Trash2,
+  Search,
+  User,
+  Phone,
+  MapPin,
+  FileText,
+  Calculator,
+  Percent,
+  CreditCard,
+  Printer,
+  Save,
+  Check,
+  X,
+  Edit2,
+  Package,
+  AlertCircle,
+  ChevronRight,
+  Eye,
+  Download,
+  ArrowLeft,
+  Receipt,
+  Banknote,
+  Smartphone,
+  Building2,
+  Clock,
+  Calendar,
+  Hash,
+  DollarSign,
+  CreditCard as CreditIcon,
+  FileCheck,
+  Badge,
+  Link as LinkIcon,
+  Barcode,
+  UserCheck,
+  Users,
+} from "lucide-react";
+import { getFromStorage, saveToStorage } from "../../utils/mockData";
+import { useAuth } from "../../contexts/AuthContext";
+import { getBranches, getCurrentTenantId } from "../../api/branch.api";
+import {
+  InventoryItem,
+  Bill,
+  BillItem,
+  Party,
+  CustomerType,
+} from "../../types";
+import { BankAccount } from "./BankAccountsPanel";
+import { PopupContainer } from "../PopupContainer";
+import { useCustomPopup } from "../../hooks/useCustomPopup";
 
 interface BillFormData {
   customerName: string;
@@ -23,10 +63,10 @@ interface BillFormData {
   items: BillItemWithWarranty[];
   subtotal: number;
   discount: number;
-  discountType: 'percentage' | 'fixed';
+  discountType: "percentage" | "fixed";
   tax: number;
   total: number;
-  paymentMethod: 'cash' | 'esewa' | 'fonepay' | 'bank' | 'credit' | 'cheque';
+  paymentMethod: "cash" | "esewa" | "fonepay" | "bank" | "credit" | "cheque";
   bankAccountId?: string;
   notes: string;
 }
@@ -39,24 +79,39 @@ interface BillItemWithWarranty extends BillItem {
 interface BillCreationPanelProps {
   editingBill?: Bill | null;
   onSave?: () => void;
+  branchId?: string | number | undefined;
 }
 
-const WARRANTY_OPTIONS = ['No Warranty', '6 Months', '1 Year', '2 Years', '3 Years'];
+const WARRANTY_OPTIONS = [
+  "No Warranty",
+  "6 Months",
+  "1 Year",
+  "2 Years",
+  "3 Years",
+];
 
-export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBill, onSave }) => {
+export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
+  editingBill,
+  onSave,
+  branchId,
+}) => {
   const { currentUser } = useAuth();
+  const popup = useCustomPopup();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [parties, setParties] = useState<Party[]>([]);
+  const [branches, setBranches] = useState<any[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [generatedBill, setGeneratedBill] = useState<Bill | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
   // Item search states
-  const [itemSearchQuery, setItemSearchQuery] = useState('');
+  const [itemSearchQuery, setItemSearchQuery] = useState("");
   const [showItemSuggestions, setShowItemSuggestions] = useState(false);
   const [filteredItems, setFilteredItems] = useState<InventoryItem[]>([]);
   const [selectedItemIndex, setSelectedItemIndex] = useState<number>(-1);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   // Customer auto-detect states
   const [nameSuggestions, setNameSuggestions] = useState<Party[]>([]);
@@ -66,39 +121,93 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
 
   // Barcode scanning state
   const barcodeInputRef = useRef<HTMLInputElement>(null);
-  const [barcodeInput, setBarcodeInput] = useState('');
+  const [barcodeInput, setBarcodeInput] = useState("");
 
   const [formData, setFormData] = useState<BillFormData>({
-    customerName: '',
-    customerPhone: '+977',
-    customerAddress: '',
-    customerPanVat: '',
-    customerType: 'retail',
+    customerName: "",
+    customerPhone: "+977",
+    customerAddress: "",
+    customerPanVat: "",
+    customerType: "retail",
     isWalkIn: true,
     items: [],
     subtotal: 0,
     discount: 0,
-    discountType: 'percentage',
+    discountType: "percentage",
     tax: 13,
     total: 0,
-    paymentMethod: 'cash',
-    notes: '',
+    paymentMethod: "cash",
+    notes: "",
   });
 
   useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        const tenantId = currentUser?.workspaceId || getCurrentTenantId();
+
+        console.log("🔍 [fetchBranches] Starting fetch for tenant:", tenantId);
+
+        const data = await getBranches(tenantId || undefined);
+        console.log("📦 [fetchBranches] API response:", data);
+
+        const branchList = data.results || [];
+
+        console.log(
+          "🔄 [fetchBranches] Branch list to map:",
+          branchList.length,
+          branchList
+        );
+
+        const mappedBranches = branchList.map((apiBranch: any) => ({
+          id: apiBranch.id.toString(),
+          name: apiBranch.branch_name || apiBranch.name,
+          location: `${apiBranch.city || ""}, ${apiBranch.state || ""}`.trim(),
+          address: apiBranch.Address || apiBranch.address,
+          city: apiBranch.city,
+          state: apiBranch.state,
+          phone: apiBranch.phone,
+          email: apiBranch.Email || apiBranch.email,
+          isActive: apiBranch.is_active,
+          code: apiBranch.branch_code,
+        }));
+
+        console.log("✅ [fetchBranches] Mapped branches:", mappedBranches);
+
+        // For Bill Creation, we should NOT have "All Branches" option
+        const finalBranches = [...mappedBranches];
+        setBranches(finalBranches);
+
+        // Default to first branch if none selected
+        if (currentUser?.role === "cashier" && currentUser?.branchId) {
+          setSelectedBranchId(Number(currentUser.branchId));
+        } else if (finalBranches.length > 0 && !selectedBranchId) {
+          setSelectedBranchId(Number(finalBranches[0].id));
+        }
+      } catch (err) {
+        console.warn("Failed to fetch branches from API:", err);
+      }
+    };
+    fetchBranches();
     loadData();
-  }, []);
+  }, [currentUser]);
+
+  useEffect(() => {
+    // Enforce cashier branch selection
+    if (currentUser?.role === "cashier" && currentUser?.branchId) {
+      setSelectedBranchId(Number(currentUser.branchId));
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     calculateTotals();
   }, [formData.items, formData.discount, formData.discountType, formData.tax]);
 
-  // Auto-detect customer when name or phone changes
   useEffect(() => {
     if (formData.customerName && !formData.isWalkIn) {
-      const matches = parties.filter(p => 
-        p.type === 'customer' && 
-        p.name.toLowerCase().includes(formData.customerName.toLowerCase())
+      const matches = parties.filter(
+        (p) =>
+          p.type === "customer" &&
+          p.name.toLowerCase().includes(formData.customerName.toLowerCase())
       );
       setNameSuggestions(matches);
     } else {
@@ -107,13 +216,16 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
   }, [formData.customerName, parties, formData.isWalkIn]);
 
   useEffect(() => {
-    if (formData.customerPhone && formData.customerPhone !== '+977' && !formData.isWalkIn) {
-      const matches = parties.filter(p => 
-        p.type === 'customer' && 
-        p.phone.includes(formData.customerPhone)
+    if (
+      formData.customerPhone &&
+      formData.customerPhone !== "+977" &&
+      !formData.isWalkIn
+    ) {
+      const matches = parties.filter(
+        (p) => p.type === "customer" && p.phone.includes(formData.customerPhone)
       );
       setPhoneSuggestions(matches);
-      
+
       // Auto-fill if exact match
       if (matches.length === 1) {
         selectCustomer(matches[0]);
@@ -123,74 +235,199 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
     }
   }, [formData.customerPhone, parties, formData.isWalkIn]);
 
-  // Item search filtering
+  // Item search filtering - use API and local inventory
   useEffect(() => {
-    if (itemSearchQuery.trim()) {
-      const filtered = inventory.filter(item =>
-        item.name?.toLowerCase().includes(itemSearchQuery.toLowerCase()) ||
-        item.partNumber?.toLowerCase().includes(itemSearchQuery.toLowerCase()) ||
-        item.barcode?.toLowerCase().includes(itemSearchQuery.toLowerCase())
-      );
-      setFilteredItems(filtered.slice(0, 10)); // Limit to 10 results
-      setShowItemSuggestions(true);
-    } else {
-      setFilteredItems([]);
-      setShowItemSuggestions(false);
-    }
+    const searchItems = async () => {
+      setSearchLoading(true);
+      try {
+        const token = localStorage.getItem("accessToken");
+        const headers: HeadersInit = {
+          "ngrok-skip-browser-warning": "true",
+        };
+
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        // If query present, call API search endpoint, otherwise show local inventory
+        if (itemSearchQuery.trim()) {
+          const response = await fetch(
+            `${
+              import.meta.env.VITE_API_BASE_URL
+            }/stock-management/inventory/?search=${encodeURIComponent(
+              itemSearchQuery.trim()
+            )}`,
+            { headers }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            const results = Array.isArray(data.results) ? data.results : data;
+            const mappedItems = results.map((item: any) => ({
+              id: item.id,
+              name: item.item_name,
+              partNumber: item.part_number || "",
+              barcode: item.barcode || "",
+              category: item.category || "",
+              quantity: item.quantity || item.current_stock || 0,
+              warrantyPeriod:
+                item.warranty_period || item.warranty || "No Warranty",
+              retailPrice: parseFloat(item.retail_pricing) || 0,
+              wholesalePrice: parseFloat(item.wholesale_pricing) || 0,
+              costPrice: parseFloat(item.cost_price) || 0,
+              location: item.location || "",
+            }));
+            setFilteredItems(mappedItems.slice(0, 50));
+            setShowItemSuggestions(true);
+          } else {
+            setFilteredItems([]);
+            setShowItemSuggestions(false);
+          }
+        } else {
+          // No search query — show the loaded inventory (from `inventory` state)
+          const mapped = inventory.map((i: any) => ({
+            id: i.id,
+            name: i.name || i.item_name || "",
+            partNumber: i.partNumber || i.part_number || "",
+            barcode: i.barcode || "",
+            category: i.category || "local",
+            quantity: i.quantity || i.currentStock || 0,
+            warrantyPeriod: i.warrantyPeriod || "No Warranty",
+            retailPrice: i.retailPrice || i.price || 0,
+            wholesalePrice: i.wholesalePrice || 0,
+            costPrice: i.costPrice || 0,
+            location: i.location || "",
+            vehicleType: i.vehicleType || "two_wheeler",
+            minStockLevel: i.minStockLevel || 0,
+            price: i.price || 0,
+            mrp: i.mrp || 0,
+            createdAt: i.createdAt || new Date().toISOString(),
+          }));
+          setFilteredItems(mapped.slice(0, 50));
+          setShowItemSuggestions(mapped.length > 0);
+        }
+      } catch (error) {
+        setFilteredItems([]);
+        setShowItemSuggestions(false);
+      } finally {
+        setSearchLoading(false);
+      }
+    };
+
+    const debounceTimer = setTimeout(() => {
+      searchItems();
+    }, 250);
+
+    return () => clearTimeout(debounceTimer);
   }, [itemSearchQuery, inventory]);
 
   // Barcode scanning
   useEffect(() => {
     if (barcodeInput.trim()) {
-      const item = inventory.find(i => i.barcode === barcodeInput.trim());
+      const item = inventory.find((i) => i.barcode === barcodeInput.trim());
       if (item) {
         addItemToCart(item);
-        setBarcodeInput('');
+        setBarcodeInput("");
       }
     }
   }, [barcodeInput, inventory]);
 
-  const loadData = () => {
-    const storedInventory = getFromStorage('inventory', [])
-      .filter((i: InventoryItem) => i.workspaceId === currentUser?.workspaceId);
-    const storedParties = getFromStorage('parties', [])
-      .filter((p: Party) => p.workspaceId === currentUser?.workspaceId && p.type === 'customer');
-    const storedAccounts = getFromStorage('bankAccounts', [])
-      .filter((a: BankAccount) => a.workspaceId === currentUser?.workspaceId && a.isActive);
-    
+  const loadData = async () => {
+    // Load from 'products' key (standardized across system)
+    const storedInventory = getFromStorage("products", []).filter(
+      (i: InventoryItem) =>
+        i.workspaceId === currentUser?.workspaceId && i.quantity > 0
+    );
+    const storedParties = getFromStorage("parties", []).filter(
+      (p: Party) =>
+        p.workspaceId === currentUser?.workspaceId && p.type === "customer"
+    );
+    const storedAccounts = getFromStorage("bankAccounts", []).filter(
+      (a: BankAccount) =>
+        a.workspaceId === currentUser?.workspaceId && a.isActive
+    );
+
     setInventory(storedInventory);
     setParties(storedParties);
     setBankAccounts(storedAccounts);
+
+    // If parent (AdminDashboard) provides a branch filter, use it
+    if (branchId !== undefined && branchId !== null) {
+      const num = Number(branchId);
+      if (!isNaN(num) && num > 0) {
+        setSelectedBranchId(num);
+      }
+    }
+
+    // Try fetching inventory from remote API and replace/augment local list
+    try {
+      const token = localStorage.getItem("accessToken");
+      const headers: HeadersInit = {
+        "ngrok-skip-browser-warning": "true",
+      };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/stock-management/inventory/`,
+        { headers }
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        const results = Array.isArray(data.results) ? data.results : data;
+        const mapped = results.map((item: any) => ({
+          id: item.id,
+          name: item.item_name,
+          partNumber: item.part_number || "",
+          barcode: item.barcode || "",
+          category: item.category || "",
+          quantity: item.quantity || item.current_stock || 0,
+          warrantyPeriod:
+            item.warranty_period || item.warranty || "No Warranty",
+          retailPrice: parseFloat(item.retail_pricing) || 0,
+          wholesalePrice: parseFloat(item.wholesale_pricing) || 0,
+          costPrice: parseFloat(item.cost_price) || 0,
+          location: item.location || "",
+          workspaceId: item.branch || currentUser?.workspaceId,
+        }));
+
+        // Use remote inventory if available, otherwise keep local
+        if (mapped.length > 0) {
+          setInventory(mapped);
+        }
+      }
+    } catch (err) {
+      // Ignore remote fetch errors — local inventory remains available
+      console.warn("Inventory fetch failed:", err);
+    }
   };
 
   const selectCustomer = (party: Party) => {
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       customerName: party.name,
       customerPhone: party.phone,
       customerAddress: party.address,
-      customerPanVat: party.panNumber || party.gstNumber || '',
-      customerType: party.customerType || 'retail',
+      customerPanVat: party.panNumber || party.gstNumber || "",
+      customerType: party.customerType || "retail",
       partyId: party.id,
       isWalkIn: false,
-    });
+    }));
     setShowNameSuggestions(false);
     setShowPhoneSuggestions(false);
   };
 
   const getCustomerPricing = (item: InventoryItem): number => {
     const customerType = formData.customerType;
-    
+
     switch (customerType) {
-      case 'retail':
+      case "retail":
         return item.retailPrice || item.price || 0;
-      case 'retailer':
+      case "retailer":
         return item.retailPrice || item.price || 0;
-      case 'wholesaler':
+      case "wholesaler":
         return item.wholesalePrice || item.price || 0;
-      case 'distributor':
+      case "distributor":
         return item.distributorPrice || item.price || 0;
-      case 'workshop':
+      case "workshop":
         return item.retailPrice || item.price || 0;
       default:
         return item.price || 0;
@@ -199,13 +436,17 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
 
   const addItemToCart = (item: InventoryItem) => {
     const price = getCustomerPricing(item);
-    const existingItem = formData.items.find(i => i.itemId === item.id);
-    
+    const existingItem = formData.items.find((i) => i.itemId === item.id);
+
     if (existingItem) {
       // Increment quantity
-      const updatedItems = formData.items.map(i =>
+      const updatedItems = formData.items.map((i) =>
         i.itemId === item.id
-          ? { ...i, quantity: i.quantity + 1, total: (i.quantity + 1) * i.price }
+          ? {
+              ...i,
+              quantity: i.quantity + 1,
+              total: (i.quantity + 1) * i.price,
+            }
           : i
       );
       setFormData({ ...formData, items: updatedItems });
@@ -217,25 +458,30 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
         quantity: 1,
         price: price,
         total: price,
-        warranty: item.warrantyPeriod || 'No Warranty',
+        warranty: item.warrantyPeriod || "No Warranty",
         barcode: item.barcode,
       };
       setFormData({ ...formData, items: [...formData.items, newItem] });
     }
-    
-    setItemSearchQuery('');
+
+    setItemSearchQuery("");
     setShowItemSuggestions(false);
   };
 
-  const updateItem = (index: number, field: keyof BillItemWithWarranty, value: any) => {
+  const updateItem = (
+    index: number,
+    field: keyof BillItemWithWarranty,
+    value: any
+  ) => {
     const updatedItems = [...formData.items];
     updatedItems[index] = { ...updatedItems[index], [field]: value };
-    
+
     // Recalculate total for this item
-    if (field === 'quantity' || field === 'price') {
-      updatedItems[index].total = updatedItems[index].quantity * updatedItems[index].price;
+    if (field === "quantity" || field === "price") {
+      updatedItems[index].total =
+        updatedItems[index].quantity * updatedItems[index].price;
     }
-    
+
     setFormData({ ...formData, items: updatedItems });
   };
 
@@ -246,14 +492,15 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
 
   const calculateTotals = () => {
     const subtotal = formData.items.reduce((sum, item) => sum + item.total, 0);
-    const discountAmount = formData.discountType === 'percentage'
-      ? (subtotal * formData.discount) / 100
-      : formData.discount;
+    const discountAmount =
+      formData.discountType === "percentage"
+        ? (subtotal * formData.discount) / 100
+        : formData.discount;
     const afterDiscount = subtotal - discountAmount;
     const taxAmount = (afterDiscount * formData.tax) / 100;
     const total = afterDiscount + taxAmount;
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       subtotal,
       total,
@@ -261,7 +508,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
   };
 
   const updateBankAccountBalance = (accountId: string, amount: number) => {
-    const allAccounts = getFromStorage('bankAccounts', []);
+    const allAccounts = getFromStorage("bankAccounts", []);
     const updatedAccounts = allAccounts.map((acc: BankAccount) => {
       if (acc.id === accountId) {
         return {
@@ -272,23 +519,25 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
       }
       return acc;
     });
-    saveToStorage('bankAccounts', updatedAccounts);
+    saveToStorage("bankAccounts", updatedAccounts);
   };
 
-  const handleSaveBill = (status: 'paid' | 'pending' | 'draft' = 'paid') => {
+  const handleSaveBill = async (
+    status: "paid" | "pending" | "draft" = "paid"
+  ) => {
     // Validation
     if (!formData.customerName.trim()) {
-      alert('Please enter customer name');
+      popup.showError("Please enter customer name", "Validation Error");
       return;
     }
 
     if (formData.items.length === 0) {
-      alert('Please add at least one item');
+      popup.showError("Please add at least one item", "Validation Error");
       return;
     }
 
     // Generate bill number
-    const bills = getFromStorage('bills', []);
+    const bills = getFromStorage<Bill>("bills", []);
     const billNumber = `INV${Date.now().toString().slice(-8)}`;
 
     const newBill: Bill = {
@@ -298,10 +547,10 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
       customerPhone: formData.customerPhone,
       customerAddress: formData.customerAddress,
       customerPanVat: formData.customerPanVat,
-      customerType: formData.customerType,
+      customerType: formData.customerType as any,
       partyId: formData.partyId,
       customerId: formData.partyId, // For ledger compatibility
-      items: formData.items.map(item => ({
+      items: formData.items.map((item) => ({
         itemId: item.itemId,
         itemName: item.itemName,
         quantity: item.quantity,
@@ -324,47 +573,142 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
       createdBy: currentUser?.id,
     };
 
-    // Update inventory
-    const updatedInventory = getFromStorage('inventory', []).map((item: InventoryItem) => {
-      const billItem = formData.items.find(i => i.itemId === item.id);
-      if (billItem) {
-        return {
-          ...item,
-          quantity: item.quantity - billItem.quantity,
-        };
+    // Ensure branch selected
+    if (!selectedBranchId) {
+      popup.showError(
+        "Please select a branch before saving the bill",
+        "Validation Error"
+      );
+      return;
+    }
+
+    // Try to POST bill to remote API
+    let apiCreated = false;
+    try {
+      const token = localStorage.getItem("accessToken");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
+      };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const subtotal = formData.subtotal;
+      const discountAmount =
+        formData.discountType === "percentage"
+          ? (subtotal * formData.discount) / 100
+          : formData.discount;
+      const afterDiscount = subtotal - discountAmount;
+      const taxAmount = (afterDiscount * formData.tax) / 100;
+      const totalAfterDiscount = afterDiscount;
+
+      const payload = {
+        tenant: currentUser?.workspaceId || 0,
+        branch: Number(selectedBranchId),
+        customer_name: formData.customerName,
+        address: formData.customerAddress,
+        phone_numbers: formData.customerPhone,
+        pan_vat_number: formData.customerPanVat,
+        customer_type: formData.customerType,
+        price: formData.total.toFixed(2),
+        subtotal: subtotal.toFixed(2),
+        discount_method:
+          formData.discountType === "percentage" ? "percentage" : "amount",
+        discount_value: formData.discount.toFixed(2),
+        discount_amount: discountAmount.toFixed(2),
+        total_after_discount: totalAfterDiscount.toFixed(2),
+        payment_method: formData.paymentMethod,
+        status: status,
+        purchase_items_data: formData.items.map((it) => ({
+          inventory_id: it.itemId,
+          product_name: it.itemName,
+          quantity: Number(it.quantity),
+          price: it.price.toFixed(2),
+          total_price: it.total.toFixed(2),
+        })),
+        is_active: true,
+      };
+
+      const resp = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/sales/bills/`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (resp.ok) {
+        const respData = await resp.json();
+        popup.showSuccess("Bill created successfully", "Success");
+        // Use server response to populate generated bill where possible
+        setGeneratedBill({
+          ...newBill,
+          id: respData.id ? String(respData.id) : newBill.id,
+          billNumber: respData.bill_number || newBill.billNumber,
+          createdAt: respData.created || newBill.createdAt,
+        });
+        setShowPreview(true);
+        apiCreated = true;
+      } else {
+        const errText = await resp.text();
+        popup.showError(`Bill Creation Failed`, "API Error");
       }
-      return item;
-    });
-    saveToStorage('inventory', updatedInventory);
+    } catch (err) {
+      console.warn("Bill creation API failed:", err);
+      popup.showError(
+        "Failed to create bill on server. Saved locally.",
+        "Network Error"
+      );
+    }
+
+    // Update inventory stock in 'products' (standardized key)
+    const updatedInventory = getFromStorage("products", []).map(
+      (item: InventoryItem) => {
+        const billItem = formData.items.find((i) => i.itemId === item.id);
+        if (billItem) {
+          return {
+            ...item,
+            currentStock: (item.quantity || 0) - billItem.quantity,
+            quantity: (item.quantity || 0) - billItem.quantity, // Support both fields
+            lastUpdated: new Date().toISOString(),
+          };
+        }
+        return item;
+      }
+    );
+    saveToStorage("products", updatedInventory);
 
     // Update bank account balance if paid
-    if (status === 'paid' && formData.bankAccountId) {
+    if (status === "paid" && formData.bankAccountId) {
       updateBankAccountBalance(formData.bankAccountId, formData.total);
     }
 
     // Track cash in hand if payment method is cash
-    if (status === 'paid' && formData.paymentMethod === 'cash') {
-      const cashTransactions = getFromStorage('cashTransactions', []);
+    if (status === "paid" && formData.paymentMethod === "cash") {
+      const cashTransactions = getFromStorage("cashTransactions", []);
       const cashTransaction = {
         id: `CASH-${Date.now()}`,
-        type: 'cash_in',
-        source: 'bill_payment',
+        type: "cash_in",
+        source: "bill_payment",
         amount: formData.total,
         description: `Bill Payment - ${billNumber} (${formData.customerName})`,
         billId: billNumber,
         date: new Date().toISOString(),
-        createdBy: currentUser?.name || 'Unknown',
-        createdAt: new Date().toISOString()
+        createdBy: currentUser?.name || "Unknown",
+        createdAt: new Date().toISOString(),
       };
-      saveToStorage('cashTransactions', [cashTransaction, ...cashTransactions]);
+      saveToStorage("cashTransactions", [cashTransaction, ...cashTransactions]);
     }
 
     // Save bill
     bills.push(newBill);
-    saveToStorage('bills', bills);
+    saveToStorage("bills", bills);
 
-    setGeneratedBill(newBill);
-    setShowPreview(true);
+    // If API did not create the bill, use local generated bill preview
+    if (!apiCreated) {
+      setGeneratedBill(newBill);
+      setShowPreview(true);
+    }
 
     if (onSave) {
       onSave();
@@ -384,20 +728,20 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
 
   const resetForm = () => {
     setFormData({
-      customerName: '',
-      customerPhone: '+977',
-      customerAddress: '',
-      customerPanVat: '',
-      customerType: 'retail',
+      customerName: "",
+      customerPhone: "+977",
+      customerAddress: "",
+      customerPanVat: "",
+      customerType: "retail",
       isWalkIn: true,
       items: [],
       subtotal: 0,
       discount: 0,
-      discountType: 'percentage',
+      discountType: "percentage",
       tax: 13,
       total: 0,
-      paymentMethod: 'cash',
-      notes: '',
+      paymentMethod: "cash",
+      notes: "",
     });
     setShowPreview(false);
     setGeneratedBill(null);
@@ -434,13 +778,21 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
         </div>
 
         {/* Bill Preview */}
-        <div ref={printRef} className="bg-white rounded-xl border-2 border-gray-200 p-8 max-w-4xl mx-auto">
+        <div
+          ref={printRef}
+          className="bg-white rounded-xl border-2 border-gray-200 p-8 max-w-4xl mx-auto"
+        >
           {/* Header */}
           <div className="text-center border-b-2 border-gray-300 pb-6 mb-6">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">INVOICE</h1>
             <p className="text-gray-600">Serve Spares - Inventory System</p>
-            <p className="text-sm text-gray-500 mt-2">Bill No: {generatedBill.billNumber}</p>
-            <p className="text-sm text-gray-500">Date: {new Date(generatedBill.createdAt).toLocaleDateString('en-NP')}</p>
+            <p className="text-sm text-gray-500 mt-2">
+              Bill No: {generatedBill.billNumber}
+            </p>
+            <p className="text-sm text-gray-500">
+              Date:{" "}
+              {new Date(generatedBill.createdAt).toLocaleDateString("en-NP")}
+            </p>
           </div>
 
           {/* Customer Details */}
@@ -448,14 +800,46 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
             <div>
               <h3 className="font-bold text-gray-900 mb-2">Bill To:</h3>
               <p className="text-gray-700">{generatedBill.customerName}</p>
-              {generatedBill.customerPhone && <p className="text-gray-600 text-sm">{generatedBill.customerPhone}</p>}
-              {generatedBill.customerAddress && <p className="text-gray-600 text-sm">{generatedBill.customerAddress}</p>}
-              {generatedBill.customerPanVat && <p className="text-gray-600 text-sm">PAN/VAT: {generatedBill.customerPanVat}</p>}
+              {generatedBill.customerPhone && (
+                <p className="text-gray-600 text-sm">
+                  {generatedBill.customerPhone}
+                </p>
+              )}
+              {generatedBill.customerAddress && (
+                <p className="text-gray-600 text-sm">
+                  {generatedBill.customerAddress}
+                </p>
+              )}
+              {generatedBill.customerPanVat && (
+                <p className="text-gray-600 text-sm">
+                  PAN/VAT: {generatedBill.customerPanVat}
+                </p>
+              )}
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-600">Payment Method: <span className="font-semibold">{generatedBill.paymentMethod.toUpperCase()}</span></p>
-              <p className="text-sm text-gray-600">Status: <span className={`font-semibold ${generatedBill.paymentStatus === 'paid' ? 'text-green-600' : 'text-orange-600'}`}>{generatedBill.paymentStatus.toUpperCase()}</span></p>
-              {generatedBill.cashierName && <p className="text-sm text-gray-600 mt-2">Cashier: {generatedBill.cashierName}</p>}
+              <p className="text-sm text-gray-600">
+                Payment Method:{" "}
+                <span className="font-semibold">
+                  {generatedBill.paymentMethod.toUpperCase()}
+                </span>
+              </p>
+              <p className="text-sm text-gray-600">
+                Status:{" "}
+                <span
+                  className={`font-semibold ${
+                    generatedBill.paymentStatus === "paid"
+                      ? "text-green-600"
+                      : "text-orange-600"
+                  }`}
+                >
+                  {generatedBill.paymentStatus.toUpperCase()}
+                </span>
+              </p>
+              {generatedBill.cashierName && (
+                <p className="text-sm text-gray-600 mt-2">
+                  Cashier: {generatedBill.cashierName}
+                </p>
+              )}
             </div>
           </div>
 
@@ -463,23 +847,47 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
           <table className="w-full mb-6">
             <thead className="bg-gray-100">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-bold text-gray-900">S.N</th>
-                <th className="px-4 py-3 text-left text-sm font-bold text-gray-900">Part Name</th>
-                <th className="px-4 py-3 text-left text-sm font-bold text-gray-900">Warranty</th>
-                <th className="px-4 py-3 text-center text-sm font-bold text-gray-900">Qty</th>
-                <th className="px-4 py-3 text-right text-sm font-bold text-gray-900">Rate</th>
-                <th className="px-4 py-3 text-right text-sm font-bold text-gray-900">Amount</th>
+                <th className="px-4 py-3 text-left text-sm font-bold text-gray-900">
+                  S.N
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-bold text-gray-900">
+                  Part Name
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-bold text-gray-900">
+                  Warranty
+                </th>
+                <th className="px-4 py-3 text-center text-sm font-bold text-gray-900">
+                  Qty
+                </th>
+                <th className="px-4 py-3 text-right text-sm font-bold text-gray-900">
+                  Rate
+                </th>
+                <th className="px-4 py-3 text-right text-sm font-bold text-gray-900">
+                  Amount
+                </th>
               </tr>
             </thead>
             <tbody>
               {generatedBill.items.map((item, index) => (
                 <tr key={index} className="border-b border-gray-200">
-                  <td className="px-4 py-3 text-sm text-gray-700">{index + 1}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{item.itemName}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{item.warranty || 'No Warranty'}</td>
-                  <td className="px-4 py-3 text-center text-sm text-gray-700">{item.quantity}</td>
-                  <td className="px-4 py-3 text-right text-sm text-gray-700">रू{item.price.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-right text-sm text-gray-900 font-semibold">रू{item.total.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">
+                    {index + 1}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    {item.itemName}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {item.warranty || "No Warranty"}
+                  </td>
+                  <td className="px-4 py-3 text-center text-sm text-gray-700">
+                    {item.quantity}
+                  </td>
+                  <td className="px-4 py-3 text-right text-sm text-gray-700">
+                    Rs{item.price.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 text-right text-sm text-gray-900 font-semibold">
+                    Rs{item.total.toLocaleString()}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -490,25 +898,50 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
             <div className="w-64">
               <div className="flex justify-between py-2">
                 <span className="text-gray-600">Subtotal:</span>
-                <span className="text-gray-900 font-semibold">रू{generatedBill.subtotal.toLocaleString()}</span>
+                <span className="text-gray-900 font-semibold">
+                  Rs{generatedBill.subtotal.toLocaleString()}
+                </span>
               </div>
               {generatedBill.discount > 0 && (
                 <div className="flex justify-between py-2">
-                  <span className="text-gray-600">Discount ({generatedBill.discountType === 'percentage' ? `${generatedBill.discount}%` : 'Fixed'}):</span>
+                  <span className="text-gray-600">
+                    Discount (
+                    {generatedBill.discountType === "percentage"
+                      ? `${generatedBill.discount}%`
+                      : "Fixed"}
+                    ):
+                  </span>
                   <span className="text-red-600 font-semibold">
-                    -रू{(generatedBill.discountType === 'percentage' ? (generatedBill.subtotal * generatedBill.discount) / 100 : generatedBill.discount).toLocaleString()}
+                    -Rs
+                    {(generatedBill.discountType === "percentage"
+                      ? (generatedBill.subtotal * generatedBill.discount) / 100
+                      : generatedBill.discount
+                    ).toLocaleString()}
                   </span>
                 </div>
               )}
               <div className="flex justify-between py-2">
-                <span className="text-gray-600">Tax ({generatedBill.tax}%):</span>
+                <span className="text-gray-600">
+                  Tax ({generatedBill.tax}%):
+                </span>
                 <span className="text-gray-900 font-semibold">
-                  रू{((generatedBill.subtotal - (generatedBill.discountType === 'percentage' ? (generatedBill.subtotal * generatedBill.discount) / 100 : generatedBill.discount)) * generatedBill.tax / 100).toLocaleString()}
+                  Rs
+                  {(
+                    ((generatedBill.subtotal -
+                      (generatedBill.discountType === "percentage"
+                        ? (generatedBill.subtotal * generatedBill.discount) /
+                          100
+                        : generatedBill.discount)) *
+                      generatedBill.tax) /
+                    100
+                  ).toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between py-3 border-t-2 border-gray-300">
                 <span className="text-lg font-bold text-gray-900">Total:</span>
-                <span className="text-lg font-bold text-blue-600">रू{generatedBill.total.toLocaleString()}</span>
+                <span className="text-lg font-bold text-blue-600">
+                  Rs{generatedBill.total.toLocaleString()}
+                </span>
               </div>
             </div>
           </div>
@@ -524,7 +957,9 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
           {/* Footer */}
           <div className="text-center text-gray-500 text-sm mt-8 pt-6 border-t border-gray-300">
             <p>Thank you for your business!</p>
-            <p className="mt-1">Generated on {new Date().toLocaleString('en-NP')}</p>
+            <p className="mt-1">
+              Generated on {new Date().toLocaleString("en-NP")}
+            </p>
           </div>
         </div>
       </div>
@@ -559,7 +994,13 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
                 <input
                   type="checkbox"
                   checked={formData.isWalkIn}
-                  onChange={(e) => setFormData({ ...formData, isWalkIn: e.target.checked, partyId: undefined })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      isWalkIn: e.target.checked,
+                      partyId: undefined,
+                    })
+                  }
                   className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                 />
                 <span className="text-sm text-gray-700">Walk-in Customer</span>
@@ -568,7 +1009,9 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
 
             <div className="grid grid-cols-2 gap-4">
               <div className="relative">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Customer Name *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Customer Name *
+                </label>
                 <input
                   type="text"
                   value={formData.customerName}
@@ -581,13 +1024,15 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
                 />
                 {showNameSuggestions && nameSuggestions.length > 0 && (
                   <div className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                    {nameSuggestions.map(party => (
+                    {nameSuggestions.map((party) => (
                       <button
                         key={party.id}
                         onClick={() => selectCustomer(party)}
                         className="w-full text-left px-4 py-2 hover:bg-blue-50 transition-colors"
                       >
-                        <p className="font-semibold text-gray-900">{party.name}</p>
+                        <p className="font-semibold text-gray-900">
+                          {party.name}
+                        </p>
                         <p className="text-sm text-gray-500">{party.phone}</p>
                       </button>
                     ))}
@@ -596,7 +1041,9 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
               </div>
 
               <div className="relative">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Phone Number
+                </label>
                 <input
                   type="text"
                   value={formData.customerPhone}
@@ -609,13 +1056,15 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
                 />
                 {showPhoneSuggestions && phoneSuggestions.length > 0 && (
                   <div className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                    {phoneSuggestions.map(party => (
+                    {phoneSuggestions.map((party) => (
                       <button
                         key={party.id}
                         onClick={() => selectCustomer(party)}
                         className="w-full text-left px-4 py-2 hover:bg-blue-50 transition-colors"
                       >
-                        <p className="font-semibold text-gray-900">{party.name}</p>
+                        <p className="font-semibold text-gray-900">
+                          {party.name}
+                        </p>
                         <p className="text-sm text-gray-500">{party.phone}</p>
                       </button>
                     ))}
@@ -624,32 +1073,50 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Address</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Address
+                </label>
                 <input
                   type="text"
                   value={formData.customerAddress}
-                  onChange={(e) => setFormData({ ...formData, customerAddress: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      customerAddress: e.target.value,
+                    })
+                  }
                   placeholder="Enter address"
                   className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">PAN / VAT Number</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  PAN / VAT Number
+                </label>
                 <input
                   type="text"
                   value={formData.customerPanVat}
-                  onChange={(e) => setFormData({ ...formData, customerPanVat: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, customerPanVat: e.target.value })
+                  }
                   placeholder="Enter PAN/VAT"
                   className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Customer Type</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Customer Type
+                </label>
                 <select
                   value={formData.customerType}
-                  onChange={(e) => setFormData({ ...formData, customerType: e.target.value as CustomerType })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      customerType: e.target.value as CustomerType,
+                    })
+                  }
                   className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="retail">Retail</option>
@@ -667,22 +1134,29 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
             <div className="flex items-center space-x-3">
               <Barcode className="w-6 h-6" />
               <div className="flex-1">
-                <label className="block text-sm text-purple-100 mb-1">Scan Barcode</label>
+                <label className="block text-sm text-purple-100 mb-1">
+                  Scan Barcode
+                </label>
                 <input
                   ref={barcodeInputRef}
                   type="text"
                   value={barcodeInput}
                   onChange={(e) => setBarcodeInput(e.target.value)}
                   onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       e.preventDefault();
-                      const item = inventory.find(i => i.barcode === barcodeInput.trim());
+                      const item = inventory.find(
+                        (i) => i.barcode === barcodeInput.trim()
+                      );
                       if (item) {
                         addItemToCart(item);
                       } else {
-                        alert('Item not found with this barcode');
+                        popup.showError(
+                          "Item not found with this barcode",
+                          "Barcode Not Found"
+                        );
                       }
-                      setBarcodeInput('');
+                      setBarcodeInput("");
                     }
                   }}
                   placeholder="Scan or enter barcode..."
@@ -698,7 +1172,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
               <Package className="w-5 h-5 text-blue-600" />
               <span>Add Items</span>
             </h4>
-            
+
             <div className="relative mb-4">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
@@ -710,7 +1184,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
               />
               {showItemSuggestions && filteredItems.length > 0 && (
                 <div className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
-                  {filteredItems.map(item => (
+                  {filteredItems.map((item) => (
                     <button
                       key={item.id}
                       onClick={() => addItemToCart(item)}
@@ -718,21 +1192,33 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-semibold text-gray-900">{item.name}</p>
+                          <p className="font-semibold text-gray-900">
+                            {item.name}
+                          </p>
                           <div className="flex items-center space-x-3 mt-1">
                             {item.partNumber && (
-                              <span className="text-xs text-gray-500">PN: {item.partNumber}</span>
+                              <span className="text-xs text-gray-500">
+                                PN: {item.partNumber}
+                              </span>
                             )}
                             {item.barcode && (
-                              <span className="text-xs text-gray-500">BC: {item.barcode}</span>
+                              <span className="text-xs text-gray-500">
+                                BC: {item.barcode}
+                              </span>
                             )}
-                            <span className="text-xs text-blue-600">Stock: {item.quantity}</span>
+                            <span className="text-xs text-blue-600">
+                              Stock: {item.quantity}
+                            </span>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-blue-600">रू{getCustomerPricing(item).toLocaleString()}</p>
+                          <p className="font-bold text-blue-600">
+                            Rs{getCustomerPricing(item).toLocaleString()}
+                          </p>
                           {item.warrantyPeriod && (
-                            <span className="text-xs text-gray-500">{item.warrantyPeriod}</span>
+                            <span className="text-xs text-gray-500">
+                              {item.warrantyPeriod}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -747,37 +1233,61 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
               <div className="text-center py-12 bg-gray-50 rounded-lg">
                 <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-500">No items added yet</p>
-                <p className="text-sm text-gray-400 mt-1">Search and add items to the bill</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  Search and add items to the bill
+                </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-900">S.N</th>
-                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-900">Part Name</th>
-                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-900">Warranty</th>
-                      <th className="px-3 py-3 text-center text-xs font-bold text-gray-900">Quantity</th>
-                      <th className="px-3 py-3 text-right text-xs font-bold text-gray-900">Rate</th>
-                      <th className="px-3 py-3 text-right text-xs font-bold text-gray-900">Amount</th>
-                      <th className="px-3 py-3 text-center text-xs font-bold text-gray-900">Action</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-900">
+                        S.N
+                      </th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-900">
+                        Part Name
+                      </th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-900">
+                        Warranty
+                      </th>
+                      <th className="px-3 py-3 text-center text-xs font-bold text-gray-900">
+                        Quantity
+                      </th>
+                      <th className="px-3 py-3 text-right text-xs font-bold text-gray-900">
+                        Rate
+                      </th>
+                      <th className="px-3 py-3 text-right text-xs font-bold text-gray-900">
+                        Amount
+                      </th>
+                      <th className="px-3 py-3 text-center text-xs font-bold text-gray-900">
+                        Action
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {formData.items.map((item, index) => (
                       <tr key={index} className="border-t border-gray-200">
-                        <td className="px-3 py-3 text-sm text-gray-700">{index + 1}</td>
+                        <td className="px-3 py-3 text-sm text-gray-700">
+                          {index + 1}
+                        </td>
                         <td className="px-3 py-3">
-                          <p className="text-sm font-semibold text-gray-900">{item.itemName}</p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {item.itemName}
+                          </p>
                         </td>
                         <td className="px-3 py-3">
                           <select
-                            value={item.warranty || 'No Warranty'}
-                            onChange={(e) => updateItem(index, 'warranty', e.target.value)}
+                            value={item.warranty || "No Warranty"}
+                            onChange={(e) =>
+                              updateItem(index, "warranty", e.target.value)
+                            }
                             className="text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                           >
-                            {WARRANTY_OPTIONS.map(option => (
-                              <option key={option} value={option}>{option}</option>
+                            {WARRANTY_OPTIONS.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
                             ))}
                           </select>
                         </td>
@@ -786,7 +1296,13 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
                             type="number"
                             min="1"
                             value={item.quantity}
-                            onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                            onChange={(e) =>
+                              updateItem(
+                                index,
+                                "quantity",
+                                parseInt(e.target.value) || 1
+                              )
+                            }
                             className="w-20 text-center px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
                         </td>
@@ -795,12 +1311,20 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
                             type="number"
                             min="0"
                             value={item.price}
-                            onChange={(e) => updateItem(index, 'price', parseFloat(e.target.value) || 0)}
+                            onChange={(e) =>
+                              updateItem(
+                                index,
+                                "price",
+                                parseFloat(e.target.value) || 0
+                              )
+                            }
                             className="w-24 text-right px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
                         </td>
                         <td className="px-3 py-3 text-right">
-                          <span className="font-bold text-blue-600">रू{item.total.toLocaleString()}</span>
+                          <span className="font-bold text-blue-600">
+                            Rs{item.total.toLocaleString()}
+                          </span>
                         </td>
                         <td className="px-3 py-3 text-center">
                           <button
@@ -831,31 +1355,49 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Subtotal:</span>
-                <span className="font-semibold text-gray-900">रू{formData.subtotal.toLocaleString()}</span>
+                <span className="font-semibold text-gray-900">
+                  Rs{formData.subtotal.toLocaleString()}
+                </span>
               </div>
 
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">Discount</label>
+                <label className="block text-sm font-semibold text-gray-700">
+                  Discount
+                </label>
                 <div className="flex items-center space-x-2">
                   <input
                     type="number"
                     min="0"
                     value={formData.discount}
-                    onChange={(e) => setFormData({ ...formData, discount: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        discount: parseFloat(e.target.value) || 0,
+                      })
+                    }
                     className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <select
                     value={formData.discountType}
-                    onChange={(e) => setFormData({ ...formData, discountType: e.target.value as 'percentage' | 'fixed' })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        discountType: e.target.value as "percentage" | "fixed",
+                      })
+                    }
                     className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="percentage">%</option>
-                    <option value="fixed">रू</option>
+                    <option value="fixed">Rs</option>
                   </select>
                 </div>
                 {formData.discount > 0 && (
                   <p className="text-xs text-red-600">
-                    -रू{(formData.discountType === 'percentage' ? (formData.subtotal * formData.discount) / 100 : formData.discount).toLocaleString()}
+                    -Rs
+                    {(formData.discountType === "percentage"
+                      ? (formData.subtotal * formData.discount) / 100
+                      : formData.discount
+                    ).toLocaleString()}
                   </p>
                 )}
               </div>
@@ -863,51 +1405,92 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Tax ({formData.tax}%):</span>
                 <span className="font-semibold text-gray-900">
-                  रू{((formData.subtotal - (formData.discountType === 'percentage' ? (formData.subtotal * formData.discount) / 100 : formData.discount)) * formData.tax / 100).toLocaleString()}
+                  Rs
+                  {(
+                    ((formData.subtotal -
+                      (formData.discountType === "percentage"
+                        ? (formData.subtotal * formData.discount) / 100
+                        : formData.discount)) *
+                      formData.tax) /
+                    100
+                  ).toLocaleString()}
                 </span>
               </div>
 
               <div className="border-t-2 border-gray-300 pt-3 mt-3">
                 <div className="flex justify-between">
                   <span className="font-bold text-gray-900">Total:</span>
-                  <span className="text-2xl font-bold text-blue-600">रू{formData.total.toLocaleString()}</span>
+                  <span className="text-2xl font-bold text-blue-600">
+                    Rs{formData.total.toLocaleString()}
+                  </span>
                 </div>
               </div>
             </div>
 
+            {/* Branch Selection */}
+            {currentUser?.role !== "cashier" && (
+              <div className="mt-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Branch
+                </label>
+                <select
+                  value={selectedBranchId ?? ""}
+                  onChange={(e) => setSelectedBranchId(Number(e.target.value))}
+                  className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                      {b.location ? ` (${b.location})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Payment Method */}
             <div className="mt-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Method</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Payment Method
+              </label>
               <select
                 value={formData.paymentMethod}
-                onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value as any, bankAccountId: undefined })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    paymentMethod: e.target.value as any,
+                    bankAccountId: undefined,
+                  })
+                }
                 className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="cash">Cash</option>
-                <option value="credit">Credit</option>
-                <option value="cheque">Cheque</option>
-                <optgroup label="Bank Accounts">
-                  {bankAccounts.map(account => (
-                    <option key={account.id} value={account.accountType} data-account-id={account.id}>
-                      {account.accountName} ({account.accountType.toUpperCase()})
-                    </option>
-                  ))}
-                </optgroup>
               </select>
 
               {/* Bank Account Selection */}
-              {(formData.paymentMethod === 'esewa' || formData.paymentMethod === 'fonepay' || formData.paymentMethod === 'bank') && (
+              {(formData.paymentMethod === "esewa" ||
+                formData.paymentMethod === "fonepay" ||
+                formData.paymentMethod === "bank") && (
                 <div className="mt-3">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Select Account</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Select Account
+                  </label>
                   <select
-                    value={formData.bankAccountId || ''}
-                    onChange={(e) => setFormData({ ...formData, bankAccountId: e.target.value })}
+                    value={formData.bankAccountId || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        bankAccountId: e.target.value,
+                      })
+                    }
                     className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select account...</option>
                     {bankAccounts
-                      .filter(acc => acc.accountType === formData.paymentMethod)
-                      .map(account => (
+                      .filter(
+                        (acc) => acc.accountType === formData.paymentMethod
+                      )
+                      .map((account) => (
                         <option key={account.id} value={account.id}>
                           {account.accountName}
                         </option>
@@ -919,10 +1502,14 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
 
             {/* Notes */}
             <div className="mt-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Notes (Optional)</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Notes (Optional)
+              </label>
               <textarea
                 value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, notes: e.target.value })
+                }
                 placeholder="Add any notes..."
                 rows={3}
                 className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
@@ -932,7 +1519,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
             {/* Action Buttons */}
             <div className="mt-6 space-y-3">
               <button
-                onClick={() => handleSaveBill('paid')}
+                onClick={() => handleSaveBill("paid")}
                 disabled={formData.items.length === 0}
                 className="w-full flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -940,7 +1527,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
                 <span>Save & Mark Paid</span>
               </button>
               <button
-                onClick={() => handleSaveBill('pending')}
+                onClick={() => handleSaveBill("pending")}
                 disabled={formData.items.length === 0}
                 className="w-full flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-xl hover:from-orange-700 hover:to-orange-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -948,7 +1535,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
                 <span>Save as Pending</span>
               </button>
               <button
-                onClick={() => handleSaveBill('draft')}
+                onClick={() => handleSaveBill("draft")}
                 disabled={formData.items.length === 0}
                 className="w-full flex items-center justify-center space-x-2 px-6 py-3 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -965,6 +1552,22 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({ editingBil
           </div>
         </div>
       </div>
+
+      {/* Popup Container */}
+      <PopupContainer
+        showSuccessPopup={popup.showSuccessPopup}
+        successTitle={popup.successTitle}
+        successMessage={popup.successMessage}
+        onSuccessClose={popup.hideSuccess}
+        showErrorPopup={popup.showErrorPopup}
+        errorTitle={popup.errorTitle}
+        errorMessage={popup.errorMessage}
+        errorType={popup.errorType}
+        onErrorClose={popup.hideError}
+        showConfirmDialog={popup.showConfirmDialog}
+        confirmConfig={popup.confirmConfig}
+        onConfirmCancel={popup.hideConfirm}
+      />
     </div>
   );
 };

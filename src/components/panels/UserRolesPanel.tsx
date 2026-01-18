@@ -8,6 +8,8 @@ import {
 import { getFromStorage, saveToStorage } from '../../utils/mockData';
 import { useAuth } from '../../contexts/AuthContext';
 import { User, UserRole } from '../../types';
+import { PopupContainer } from '../PopupContainer';
+import { useCustomPopup } from '../../hooks/useCustomPopup';
 import { Pagination } from '../common/Pagination';
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -15,7 +17,6 @@ const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Admin',
   inventory_manager: 'Inventory Manager',
   cashier: 'Cashier',
-  finance: 'Finance',
 };
 
 const ROLE_COLORS: Record<UserRole, { bg: string; text: string; badge: string }> = {
@@ -23,7 +24,6 @@ const ROLE_COLORS: Record<UserRole, { bg: string; text: string; badge: string }>
   admin: { bg: 'bg-purple-50', text: 'text-purple-700', badge: 'bg-gradient-to-r from-purple-500 to-indigo-600' },
   inventory_manager: { bg: 'bg-blue-50', text: 'text-blue-700', badge: 'bg-gradient-to-r from-blue-500 to-cyan-600' },
   cashier: { bg: 'bg-green-50', text: 'text-green-700', badge: 'bg-gradient-to-r from-green-500 to-emerald-600' },
-  finance: { bg: 'bg-orange-50', text: 'text-orange-700', badge: 'bg-gradient-to-r from-orange-500 to-amber-600' },
 };
 
 interface RolePermissions {
@@ -78,16 +78,11 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissions> = {
     priceEditing: { viewPrices: true, editPrices: false, setDiscounts: true, bulkUpdate: false },
     supplierManagement: { viewSuppliers: false, addSuppliers: false, editSuppliers: false, deleteSuppliers: false },
   },
-  finance: {
-    inventoryAccess: { view: true, add: false, edit: false, delete: false },
-    financialAccess: { viewReports: true, viewTransactions: true, exportData: true, manageBudget: true },
-    priceEditing: { viewPrices: true, editPrices: true, setDiscounts: true, bulkUpdate: false },
-    supplierManagement: { viewSuppliers: true, addSuppliers: false, editSuppliers: false, deleteSuppliers: false },
-  },
 };
 
 export const UserRolesPanel: React.FC = () => {
   const { currentUser, refreshUser } = useAuth();
+  const popup = useCustomPopup();
   const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole | 'all'>('all');
@@ -118,7 +113,10 @@ export const UserRolesPanel: React.FC = () => {
 
   const loadUsers = () => {
     const allUsers = getFromStorage('users', []);
-    setUsers(allUsers.filter((u: User) => u.workspaceId === currentUser?.workspaceId));
+    // Only show users from current workspace (4 roles: super_admin, admin, inventory_manager, cashier)
+    setUsers(allUsers.filter((u: User) => 
+      u.workspaceId === currentUser?.workspaceId
+    ));
   };
 
   const handleOpenSidebar = (user?: User) => {
@@ -216,7 +214,7 @@ export const UserRolesPanel: React.FC = () => {
     
     // Cannot delete own account
     if (userId === currentUser?.id) {
-      alert('❌ You cannot delete your own account.');
+      popup.showError('You cannot delete your own account.', '❌ Action Not Allowed', 'warning');
       return;
     }
     
@@ -236,7 +234,7 @@ export const UserRolesPanel: React.FC = () => {
 
   const handleBulkDelete = () => {
     if (selectedUsers.length === 0) {
-      alert('Please select users to delete');
+      popup.showError('Please select at least one user to delete.', 'No Selection', 'warning');
       return;
     }
 
@@ -244,7 +242,7 @@ export const UserRolesPanel: React.FC = () => {
     
     // Check if trying to delete own account
     if (selectedUsers.includes(currentUser?.id || '')) {
-      alert('❌ You cannot delete your own account.');
+      popup.showError('You cannot delete your own account.', '❌ Action Not Allowed', 'warning');
       return;
     }
     
@@ -287,7 +285,7 @@ export const UserRolesPanel: React.FC = () => {
     
     // Cannot toggle own status
     if (userId === currentUser?.id) {
-      alert('❌ You cannot change your own status.');
+      popup.showError('You cannot change your own status.', '❌ Action Not Allowed', 'warning');
       return;
     }
     
@@ -485,7 +483,7 @@ export const UserRolesPanel: React.FC = () => {
           >
             All Users ({users.length})
           </button>
-          {(['inventory_manager', 'cashier', 'finance'] as UserRole[]).map((role) => {
+          {(['inventory_manager', 'cashier'] as UserRole[]).map((role) => {
             const colors = ROLE_COLORS[role];
             return (
               <button
@@ -640,8 +638,8 @@ export const UserRolesPanel: React.FC = () => {
                 <div className="text-center mb-4">
                   <h4 className="text-gray-900 font-semibold text-lg mb-1">{user.name}</h4>
                   <div className="flex flex-col items-center space-y-1">
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${ROLE_COLORS[user.role].bg} ${ROLE_COLORS[user.role].text}`}>
-                      {ROLE_LABELS[user.role]}
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${ROLE_COLORS[user.role]?.bg || 'bg-gray-50'} ${ROLE_COLORS[user.role]?.text || 'text-gray-700'}`}>
+                      {ROLE_LABELS[user.role] || user.role}
                     </span>
                     {user.role === 'super_admin' && (
                       <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-300">
@@ -726,6 +724,8 @@ export const UserRolesPanel: React.FC = () => {
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
+            totalItems={filteredUsers.length}
+            itemsPerPage={itemsPerPage}
             onPageChange={setCurrentPage}
           />
         )}
@@ -904,6 +904,8 @@ export const UserRolesPanel: React.FC = () => {
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
+            totalItems={filteredUsers.length}
+            itemsPerPage={itemsPerPage}
             onPageChange={setCurrentPage}
           />
         )}
@@ -1066,7 +1068,6 @@ export const UserRolesPanel: React.FC = () => {
                   >
                     <option value="inventory_manager">Inventory Manager</option>
                     <option value="cashier">Cashier</option>
-                    <option value="finance">Finance</option>
                   </select>
                 </div>
 
@@ -1268,6 +1269,22 @@ export const UserRolesPanel: React.FC = () => {
           </div>
         </>
       )}
+
+      {/* Popup Container */}
+      <PopupContainer
+        showSuccessPopup={popup.showSuccessPopup}
+        successTitle={popup.successTitle}
+        successMessage={popup.successMessage}
+        onSuccessClose={popup.hideSuccess}
+        showErrorPopup={popup.showErrorPopup}
+        errorTitle={popup.errorTitle}
+        errorMessage={popup.errorMessage}
+        errorType={popup.errorType}
+        onErrorClose={popup.hideError}
+        showConfirmDialog={popup.showConfirmDialog}
+        confirmConfig={popup.confirmConfig}
+        onConfirmCancel={popup.hideConfirm}
+      />
     </div>
   );
 };

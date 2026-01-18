@@ -1,6 +1,15 @@
-import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { User, Building, Phone, MapPin, FileText, ArrowRight, Upload, X } from 'lucide-react';
+import React, { useState } from "react";
+import { motion } from "motion/react";
+import {
+  User,
+  Building,
+  Phone,
+  MapPin,
+  FileText,
+  ArrowRight,
+  Upload,
+  X,
+} from "lucide-react";
 
 interface ProfileCompletionProps {
   userEmail: string;
@@ -8,18 +17,18 @@ interface ProfileCompletionProps {
   onSkip?: () => void;
 }
 
-export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({ 
-  userEmail, 
+export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
+  userEmail,
   onComplete,
-  onSkip 
+  onSkip,
 }) => {
   const [profileData, setProfileData] = useState({
-    businessName: '',
-    ownerName: '',
-    phone: '',
-    address: '',
-    panVatNumber: '',
-    password: ''
+    businessName: "",
+    ownerName: "",
+    phone: "",
+    address: "",
+    panVatNumber: "",
+    password: "",
   });
 
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -29,11 +38,16 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
+      const allowedTypes = [
+        "image/png",
+        "image/jpeg",
+        "image/jpg",
+        "application/pdf",
+      ];
       if (allowedTypes.includes(file.type)) {
         setUploadedFile(file);
       } else {
-        alert('Please upload a PNG, JPG, or PDF file');
+        alert("Please upload a PNG, JPG, or PDF file");
       }
     }
   };
@@ -49,9 +63,11 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
 
     try {
       // Get current user and update their profile
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-      
+      const users = JSON.parse(localStorage.getItem("users") || "[]");
+      const currentUser = JSON.parse(
+        localStorage.getItem("currentUser") || "{}"
+      );
+
       const updatedUsers = users.map((user: any) => {
         if (user.id === currentUser.id) {
           return {
@@ -62,24 +78,26 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
             address: profileData.address,
             panVatNumber: profileData.panVatNumber,
             password: profileData.password,
-            profileComplete: true
+            profileComplete: true,
           };
         }
         return user;
       });
 
-      localStorage.setItem('users', JSON.stringify(updatedUsers));
-      
+      localStorage.setItem("users", JSON.stringify(updatedUsers));
+
       // Update current user
-      const updatedCurrentUser = updatedUsers.find((u: any) => u.id === currentUser.id);
-      localStorage.setItem('currentUser', JSON.stringify(updatedCurrentUser));
-      localStorage.removeItem('needsProfileCompletion');
+      const updatedCurrentUser = updatedUsers.find(
+        (u: any) => u.id === currentUser.id
+      );
+      localStorage.setItem("currentUser", JSON.stringify(updatedCurrentUser));
+      localStorage.removeItem("needsProfileCompletion");
 
       setTimeout(() => {
         onComplete();
       }, 500);
     } catch (err: any) {
-      setError(err.message || 'Failed to update profile');
+      setError(err.message || "Failed to update profile");
     } finally {
       setIsLoading(false);
     }
@@ -87,7 +105,7 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
 
   const handleSkip = () => {
     if (onSkip) {
-      localStorage.removeItem('needsProfileCompletion');
+      localStorage.removeItem("needsProfileCompletion");
       onSkip();
     }
   };
@@ -107,10 +125,12 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
             Complete Your Profile
           </h2>
           <p className="text-gray-600">
-            Let's set up your account. This helps us personalize your experience.
+            Let's set up your account. This helps us personalize your
+            experience.
           </p>
           <p className="text-sm text-gray-500 mt-2">
-            Logged in as: <span className="font-medium text-indigo-600">{userEmail}</span>
+            Logged in as:{" "}
+            <span className="font-medium text-indigo-600">{userEmail}</span>
           </p>
         </div>
 
@@ -137,7 +157,12 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
               <input
                 type="text"
                 value={profileData.businessName}
-                onChange={(e) => setProfileData({ ...profileData, businessName: e.target.value })}
+                onChange={(e) =>
+                  setProfileData({
+                    ...profileData,
+                    businessName: e.target.value,
+                  })
+                }
                 className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
                 placeholder="Your Auto Parts Shop"
                 required
@@ -157,7 +182,9 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
               <input
                 type="text"
                 value={profileData.ownerName}
-                onChange={(e) => setProfileData({ ...profileData, ownerName: e.target.value })}
+                onChange={(e) =>
+                  setProfileData({ ...profileData, ownerName: e.target.value })
+                }
                 className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
                 placeholder="John Doe"
                 required
@@ -177,7 +204,9 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
               <input
                 type="tel"
                 value={profileData.phone}
-                onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                onChange={(e) =>
+                  setProfileData({ ...profileData, phone: e.target.value })
+                }
                 className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
                 placeholder="+977 9801234567"
                 required
@@ -197,7 +226,9 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
               <input
                 type="password"
                 value={profileData.password}
-                onChange={(e) => setProfileData({ ...profileData, password: e.target.value })}
+                onChange={(e) =>
+                  setProfileData({ ...profileData, password: e.target.value })
+                }
                 className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
                 placeholder="Create a secure password"
                 required
@@ -219,9 +250,11 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
               <input
                 type="text"
                 value={profileData.address}
-                onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
+                onChange={(e) =>
+                  setProfileData({ ...profileData, address: e.target.value })
+                }
                 className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
-                placeholder="Kathmandu, Nepal"
+                placeholder="Pokhara, Nepal"
                 required
               />
             </div>
@@ -239,7 +272,12 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
               <input
                 type="text"
                 value={profileData.panVatNumber}
-                onChange={(e) => setProfileData({ ...profileData, panVatNumber: e.target.value })}
+                onChange={(e) =>
+                  setProfileData({
+                    ...profileData,
+                    panVatNumber: e.target.value,
+                  })
+                }
                 className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
                 placeholder="123456789"
                 required
@@ -250,7 +288,8 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
           {/* Document Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Business Verification Document <span className="text-gray-500">(Optional)</span>
+              Business Verification Document{" "}
+              <span className="text-gray-500">(Optional)</span>
             </label>
             <div className="relative">
               <input
@@ -261,13 +300,28 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
               />
               <div
                 className={`w-full py-3 px-4 border-2 ${
-                  uploadedFile ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-indigo-500'
+                  uploadedFile
+                    ? "border-green-500 bg-green-50"
+                    : "border-gray-200 hover:border-indigo-500"
                 } rounded-xl flex items-center justify-between transition-all cursor-pointer`}
               >
                 <div className="flex items-center space-x-3">
-                  <Upload size={20} className={uploadedFile ? 'text-green-600' : 'text-gray-400'} />
-                  <span className={`text-sm ${uploadedFile ? 'text-green-700 font-medium' : 'text-gray-600'}`}>
-                    {uploadedFile ? uploadedFile.name : 'Click to upload document (PNG, JPG, PDF)'}
+                  <Upload
+                    size={20}
+                    className={
+                      uploadedFile ? "text-green-600" : "text-gray-400"
+                    }
+                  />
+                  <span
+                    className={`text-sm ${
+                      uploadedFile
+                        ? "text-green-700 font-medium"
+                        : "text-gray-600"
+                    }`}
+                  >
+                    {uploadedFile
+                      ? uploadedFile.name
+                      : "Click to upload document (PNG, JPG, PDF)"}
                   </span>
                 </div>
                 {uploadedFile && (
@@ -294,7 +348,7 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
               type="submit"
               disabled={isLoading}
               className={`flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-xl font-semibold flex items-center justify-center space-x-2 hover:shadow-lg transition-all ${
-                isLoading ? 'opacity-70 cursor-not-allowed' : ''
+                isLoading ? "opacity-70 cursor-not-allowed" : ""
               }`}
             >
               {isLoading ? (

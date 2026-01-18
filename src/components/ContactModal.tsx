@@ -1,18 +1,30 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, Mail, Phone, MessageSquare, User, Send, CheckCircle, Sparkles } from 'lucide-react';
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  X,
+  Mail,
+  Phone,
+  MessageSquare,
+  User,
+  Send,
+  CheckCircle,
+  Sparkles,
+} from "lucide-react";
 
 interface ContactModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
+export const ContactModal: React.FC<ContactModalProps> = ({
+  isOpen,
+  onClose,
+}) => {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    message: ''
+    name: "",
+    email: "",
+    phone: "",
+    message: "",
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,17 +33,17 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate API call
     setTimeout(() => {
-      // Store contact request in localStorage
-      const contactRequests = JSON.parse(localStorage.getItem('contactRequests') || '[]');
+      const contactRequests = JSON.parse(
+        localStorage.getItem("contactRequests") || "[]"
+      );
       const newRequest = {
         ...formData,
         timestamp: new Date().toISOString(),
-        id: Date.now().toString()
+        id: Date.now().toString(),
       };
       contactRequests.push(newRequest);
-      localStorage.setItem('contactRequests', JSON.stringify(contactRequests));
+      localStorage.setItem("contactRequests", JSON.stringify(contactRequests));
 
       setIsSubmitting(false);
       setIsSubmitted(true);
@@ -39,16 +51,18 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
       // Reset after 3 seconds
       setTimeout(() => {
         setIsSubmitted(false);
-        setFormData({ name: '', email: '', phone: '', message: '' });
+        setFormData({ name: "", email: "", phone: "", message: "" });
         onClose();
       }, 3000);
     }, 1500);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
@@ -88,11 +102,11 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
                     transition={{
                       duration: Math.random() * 10 + 10,
                       repeat: Infinity,
-                      repeatType: "reverse"
+                      repeatType: "reverse",
                     }}
                     style={{
-                      left: Math.random() * 100 + '%',
-                      top: Math.random() * 100 + '%',
+                      left: Math.random() * 100 + "%",
+                      top: Math.random() * 100 + "%",
                     }}
                   />
                 ))}
@@ -240,7 +254,9 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
                       <div className="grid md:grid-cols-2 gap-3 text-sm">
                         <div className="flex items-center gap-2">
                           <Mail size={16} className="text-indigo-600" />
-                          <span className="text-gray-700">support@servespares.com</span>
+                          <span className="text-gray-700">
+                            support@servespares.com
+                          </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Phone size={16} className="text-indigo-600" />
@@ -256,7 +272,10 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 1.1 }}
-                      whileHover={{ scale: 1.02, boxShadow: "0 20px 40px rgba(99, 102, 241, 0.3)" }}
+                      whileHover={{
+                        scale: 1.02,
+                        boxShadow: "0 20px 40px rgba(99, 102, 241, 0.3)",
+                      }}
                       whileTap={{ scale: 0.98 }}
                       className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
@@ -264,7 +283,11 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
                         <>
                           <motion.div
                             animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            transition={{
+                              duration: 1,
+                              repeat: Infinity,
+                              ease: "linear",
+                            }}
                             className="w-6 h-6 border-3 border-white border-t-transparent rounded-full"
                           />
                           <span>Sending...</span>
@@ -308,7 +331,8 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
                       transition={{ delay: 0.3 }}
                       className="text-gray-600 text-lg mb-6"
                     >
-                      Thank you for reaching out! Our team will get back to you within 24 hours.
+                      Thank you for reaching out! Our team will get back to you
+                      within 24 hours.
                     </motion.p>
 
                     <motion.div
@@ -318,7 +342,9 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
                       className="flex items-center justify-center gap-2 text-indigo-600"
                     >
                       <Sparkles size={20} />
-                      <span className="font-semibold">We appreciate your interest!</span>
+                      <span className="font-semibold">
+                        We appreciate your interest!
+                      </span>
                       <Sparkles size={20} />
                     </motion.div>
                   </motion.div>

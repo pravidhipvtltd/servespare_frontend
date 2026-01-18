@@ -1,304 +1,513 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Settings, Package, TrendingUp, ArrowRight, Mail, Lock, User, 
-  Eye, EyeOff, Building, MapPin, Wrench, Star, Zap, Shield, FileText, Upload, X, Info, Phone, Chrome, Facebook
-} from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
-import { OTPVerification } from './OTPVerification';
-import { EmailOTPLogin } from './EmailOTPLogin';
-import { ForgotPassword } from './ForgotPassword';
-import { createClient } from '@supabase/supabase-js';
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  Settings,
+  Package,
+  TrendingUp,
+  ArrowRight,
+  Mail,
+  Lock,
+  User,
+  Eye,
+  EyeOff,
+  Building,
+  MapPin,
+  Wrench,
+  Star,
+  Zap,
+  Shield,
+  Globe,
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { getFromStorage, saveToStorage } from "../utils/mockData";
+import {
+  authTranslations,
+  languageNames,
+  languageFlags,
+  AuthLanguage,
+} from "../contexts/AuthLanguageTranslations";
+import { BusinessRegistrationForm } from "./BusinessRegistrationForm";
 
 interface ModernAuthPageProps {
-  initialMode?: 'login' | 'register';
+  initialMode?: "login" | "register";
   onBack: () => void;
 }
 
-export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({ initialMode = 'login', onBack }) => {
-  const [mode, setMode] = useState<'login' | 'register'>(initialMode);
+export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
+  initialMode = "login",
+  onBack,
+}) => {
+  const [mode, setMode] = useState<"login" | "register">(initialMode);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // Email OTP Login Flow
-  const [emailOtpMode, setEmailOtpMode] = useState(false);
-  
-  // Forgot Password Flow
+  const [language, setLanguage] = useState<AuthLanguage>("en");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [forgotPasswordStep, setForgotPasswordStep] = useState<
+    "email" | "code" | "newPassword"
+  >("email");
+  const [resetCode, setResetCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetSuccess, setResetSuccess] = useState(false);
+  const [resetToken, setResetToken] = useState("");
+  const [isFirstTimeLogin, setIsFirstTimeLogin] = useState(false);
+
   const { login } = useAuth();
+
+  // Translation helper
+  const t = (key: string) => authTranslations[language][key] || key;
 
   // Login State
   const [loginData, setLoginData] = useState({
-    identifier: '',
-    password: ''
+    identifier: "",
+    password: "",
   });
 
-  // Register State
-  const [registerData, setRegisterData] = useState({
-    businessName: '',
-    ownerName: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: '',
-    address: '',
-    panVatNumber: ''
-  });
+  // Forgot Password Handlers
+  const handleSendResetCode = async () => {
+    setError(null);
+    setIsLoading(true);
 
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [showOtpVerification, setShowOtpVerification] = useState(false);
-  const [registrationEmail, setRegistrationEmail] = useState('');
-  const [showAPIConfigModal, setShowAPIConfigModal] = useState(false);
-  const [apiErrors, setApiErrors] = useState<{ email?: string; sms?: string }>({});
+    const API_URL = `${import.meta.env.VITE_API_BASE_URL}/otp/request/`;
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Check file type
-      const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
-      if (allowedTypes.includes(file.type)) {
-        setUploadedFile(file);
-      } else {
-        alert('Please upload a PNG, JPG, or PDF file');
+    try {
+      console.log("📧 [OTP] Requesting OTP for:", forgotPasswordEmail);
+
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
+        },
+        body: JSON.stringify({
+          identifier: forgotPasswordEmail,
+        }),
+      });
+
+      console.log("📡 [OTP] Response status:", response.status);
+
+      let result;
+      try {
+        const text = await response.text();
+        console.log("📡 [OTP] Response text:", text);
+        result = text ? JSON.parse(text) : {};
+      } catch (jsonError) {
+        console.error("❌ [OTP] Failed to parse JSON:", jsonError);
+        setError(" Please try again.");
+        setIsLoading(false);
+        return;
       }
+
+      if (!response.ok) {
+        setError(
+          result.message ||
+            result.detail ||
+            result.error ||
+            "Failed to send OTP. Please check your email and try again."
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      console.log("✅ [OTP] OTP sent successfully");
+      setForgotPasswordStep("code");
+      setError(null);
+    } catch (err: any) {
+      console.error("❌ [OTP] Network error:", err);
+      setError(
+        "Cannot connect to server. Please check your internet connection."
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const removeFile = () => {
-    setUploadedFile(null);
+  const handleVerifyCode = async () => {
+    setError(null);
+    setIsLoading(true);
+
+    const API_URL = `${import.meta.env.VITE_API_BASE_URL}/otp/verify/`;
+
+    try {
+      console.log("🔐 [OTP] Verifying OTP:", resetCode);
+
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
+        },
+        body: JSON.stringify({
+          identifier: forgotPasswordEmail,
+          otp: resetCode,
+        }),
+      });
+
+      console.log("📡 [OTP Verify] Response status:", response.status);
+
+      let result;
+      try {
+        const text = await response.text();
+        console.log("📡 [OTP Verify] Response text:", text);
+        result = text ? JSON.parse(text) : {};
+      } catch (jsonError) {
+        console.error("❌ [OTP Verify] Failed to parse JSON:", jsonError);
+        setError("Server error. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
+      if (!response.ok) {
+        setError(
+          result.message ||
+            result.detail ||
+            result.error ||
+            "Invalid or expired OTP. Please try again."
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      console.log("✅ [OTP] OTP verified successfully");
+
+      // Extract token
+      const token =
+        result.token || result.access_token || result.access || result.key;
+      if (token) {
+        console.log("✅ [Verify OTP] Token found:", token);
+        setResetToken(token);
+        setForgotPasswordStep("newPassword");
+        setError(null);
+      } else {
+        console.error("❌ [Verify OTP] No token found in response:", result);
+        setError(
+          "Verification successful but no token received. Please contact support."
+        );
+      }
+    } catch (err: any) {
+      console.error("❌ [OTP Verify] Network error:", err);
+      setError(
+        "Cannot connect to server. Please check your internet connection."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const handleResetPassword = async () => {
+    setError(null);
+
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
+    setIsLoading(true);
+
+    const API_URL = `${
+      import.meta.env.VITE_API_BASE_URL
+    }/users/first_time_password_change/`;
+
+    try {
+      console.log("🔐 [Reset Password] Attempting password reset...");
+
+      if (!resetToken) {
+        setError("Missing reset token. Please try verifying OTP again.");
+        setIsLoading(false);
+        return;
+      }
+
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${resetToken}`,
+          "ngrok-skip-browser-warning": "true",
+        },
+        body: JSON.stringify({
+          new_password: newPassword,
+          new_password_confirm: confirmPassword,
+        }),
+      });
+
+      console.log("📡 [Reset Password] Response status:", response.status);
+
+      let result;
+      try {
+        const text = await response.text();
+        console.log("📡 [Reset Password] Response text:", text);
+        result = text ? JSON.parse(text) : {};
+      } catch (jsonError) {
+        console.error("❌ [Reset Password] Failed to parse JSON:", jsonError);
+        setError("Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
+      if (!response.ok) {
+        setError(
+          result.message ||
+            result.detail ||
+            result.error ||
+            "Failed to reset password. Please try again."
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      // Success
+      setResetSuccess(true);
+      console.log("✅ [Reset Password] Password reset successful");
+
+      setTimeout(() => {
+        setShowForgotPassword(false);
+        setResetSuccess(false);
+        setForgotPasswordStep("email");
+        setForgotPasswordEmail("");
+        setResetCode("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setResetToken("");
+      }, 2000);
+    } catch (err: any) {
+      console.error("❌ [Reset Password] Network error:", err);
+      setError(
+        "Cannot connect to server. Please check your internet connection."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const closeForgotPasswordModal = () => {
+    setShowForgotPassword(false);
+    setForgotPasswordStep("email");
+    setForgotPasswordEmail("");
+    setResetCode("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setResetToken("");
+    setError(null);
+    setResetSuccess(false);
+    setIsFirstTimeLogin(false);
+  };
+
+  // If register mode, show BusinessRegistrationForm
+  if (mode === "register") {
+    return (
+      <BusinessRegistrationForm
+        onBack={onBack}
+        onSuccess={() => {
+          setMode("login");
+        }}
+      />
+    );
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
 
-    try {
-      const result = await login(loginData.identifier, loginData.password);
-      
-      if (!result.success) {
-        setError(result.message || 'Login failed');
-      }
-      // If successful, the AuthContext will automatically update and redirect
-    } catch (err) {
-      setError('An unexpected error occurred');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setIsLoading(true);
-
-    // Validate passwords match
-    if (registerData.password !== registerData.confirmPassword) {
-      setError('Passwords do not match');
-      setIsLoading(false);
-      return;
-    }
+    // Use proxy in development to avoid CORS issues
+    const API_URL = import.meta.env.DEV
+      ? "/api/auth/login/"
+      : `${import.meta.env.VITE_API_BASE_URL}/auth/login/`;
 
     try {
-      // Send OTP to email only
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-9e3b22f5/send-otp`, {
-        method: 'POST',
+      console.log("🔐 [Login] Calling backend API:", API_URL);
+      console.log("🔐 [Login] Username:", loginData.identifier);
+
+      // Call backend API directly
+      const response = await fetch(`${API_URL}`, {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${publicAnonKey}`
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true", // Bypass ngrok browser warning
         },
         body: JSON.stringify({
-          email: registerData.email
-        })
+          username: loginData.identifier,
+          password: loginData.password,
+        }),
       });
 
-      const result = await response.json();
+      console.log("📡 [Login] Response status:", response.status);
+      console.log("📡 [Login] Response ok:", response.ok);
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to send OTP');
-      }
-
-      // Store registration data and show OTP verification
-      setRegistrationEmail(registerData.email);
-      setShowOtpVerification(true);
-
-      // For testing: if email fails, show OTP in alert
-      if (result.otp) {
-        console.log('🔐 TEST OTP:', result.otp);
-        alert(`📧 TESTING MODE\n\nYour OTP is: ${result.otp}\n\nEmail delivery is in test mode. Check console for details.`);
-      }
-      
-    } catch (err: any) {
-      setError(err.message || 'Failed to send OTP. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSocialLogin = async (provider: string) => {
-    if (provider === 'email') {
-      // Show email OTP login flow
-      setEmailOtpMode(true);
-      return;
-    }
-
-    // Handle Facebook and Google login
-    try {
-      const supabaseUrl = `https://${projectId}.supabase.co`;
-      const supabase = createClient(supabaseUrl, publicAnonKey);
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: provider as 'facebook' | 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
-      });
-
-      if (error) {
-        console.error(`${provider} login error:`, error);
-        alert(`${provider} login failed: ${error.message}\n\nPlease ensure ${provider} auth is configured in Supabase dashboard.`);
+      // Handle non-JSON responses
+      let result;
+      try {
+        const text = await response.text();
+        console.log("📡 [Login] Response text:", text);
+        result = text ? JSON.parse(text) : {};
+      } catch (jsonError) {
+        console.error("❌ [Login] Failed to parse JSON:", jsonError);
+        setError(`Unable to login, Please try again,`);
         return;
       }
 
-      // After successful OAuth, handle the user session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        // Check if user exists in our system
-        const users = JSON.parse(localStorage.getItem('users') || '[]');
-        let existingUser = users.find((u: any) => u.email === session.user.email);
-
-        if (!existingUser) {
-          // Create new user with minimal data
-          const newUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-          existingUser = {
-            id: newUserId,
-            email: session.user.email,
-            name: session.user.user_metadata.full_name || session.user.email?.split('@')[0],
-            role: 'admin' as const,
-            isActive: true,
-            profileComplete: false,
-            createdAt: new Date().toISOString(),
-            language: 'en' as const,
-            permissions: [],
-            oauthProvider: provider
-          };
-
-          users.push(existingUser);
-          localStorage.setItem('users', JSON.stringify(users));
+      if (!response.ok) {
+        if (response.status === 400 || response.status === 401) {
+          setError(
+            result.message ||
+              result.detail ||
+              "Username or password do not match."
+          );
+        } else if (response.status === 403) {
+          setError(
+            result.message ||
+              result.detail ||
+              "Access forbidden. Please check your Django CORS settings or contact administrator."
+          );
+          console.error(
+            "❌ [Login] 403 Forbidden - Check Django CORS configuration"
+          );
+        } else {
+          setError(
+            result.message ||
+              result.detail ||
+              `Login failed (${response.status}). Please try again.`
+          );
         }
+        return;
+      }
 
-        localStorage.setItem('currentUser', JSON.stringify(existingUser));
-        if (!existingUser.profileComplete) {
-          localStorage.setItem('needsProfileCompletion', 'true');
+      // Check if user must change password (first time login)
+      if (result.user?.must_change_password === true) {
+        console.log(
+          "🔒 [Login] First time login detected - user must change password"
+        );
+        setIsFirstTimeLogin(true);
+
+        // Store user email for OTP flow
+        const userEmail = result.user.email;
+        if (userEmail) {
+          setForgotPasswordEmail(userEmail);
+
+          // Automatically request OTP for password change
+          try {
+            const otpResponse = await fetch(
+              `${import.meta.env.VITE_API_BASE_URL}/otp/request/`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "ngrok-skip-browser-warning": "true",
+                },
+                body: JSON.stringify({
+                  identifier: userEmail,
+                }),
+              }
+            );
+
+            if (otpResponse.ok) {
+              console.log("✅ [Login] OTP sent for password change");
+              setForgotPasswordStep("code");
+              setShowForgotPassword(true);
+            } else {
+              // If OTP request fails, show email step
+              setForgotPasswordStep("email");
+              setShowForgotPassword(true);
+              setError("Please verify your email to change your password.");
+            }
+          } catch (otpErr) {
+            console.error("❌ [Login] Failed to request OTP:", otpErr);
+            setForgotPasswordStep("email");
+            setShowForgotPassword(true);
+          }
+        } else {
+          setError(
+            "First time login detected. Please use Forgot Password to set your new password."
+          );
         }
+        return;
+      }
 
-        // Refresh the page to load the dashboard
+      if (result.must_reset) {
+        console.log(
+          "🔒 [Login] First time login detected - redirecting to password change"
+        );
+        const accessToken =
+          result.tokens?.access || result.access || result.access_token;
+        if (accessToken) {
+          setResetToken(accessToken);
+          setForgotPasswordStep("newPassword");
+          setShowForgotPassword(true);
+        } else {
+          setError(
+            "First time login detected, but unable to start password change flow."
+          );
+        }
+        return;
+      }
+
+      // Validate response structure
+      if (!result.tokens || !result.tokens.access) {
+        console.error("❌ [Login] Invalid response structure:", result);
+        setError(
+          "Invalid response from server. Missing authentication tokens."
+        );
+        return;
+      }
+
+      // Check if user role is customer and deny access BEFORE storing anything
+      const userFromResponse =
+        typeof result.user === "string" ? JSON.parse(result.user) : result.user;
+      const userRole = userFromResponse?.role || userFromResponse?.user_role;
+
+      console.log("🔍 [Login] User role from API:", userRole);
+
+      if (userRole === "customer") {
+        setError("Username or password do not match.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Store tokens
+      localStorage.setItem("accessToken", result.tokens.access);
+      localStorage.setItem("refreshToken", result.tokens.refresh);
+      localStorage.setItem(
+        "user",
+        typeof result.user === "string"
+          ? result.user
+          : JSON.stringify(result.user)
+      );
+
+      console.log("✅ [Login] Tokens stored successfully");
+
+      // Use AuthContext login to set user state and handle role-based routing
+      const loginResult = await login(loginData.identifier, loginData.password);
+
+      if (loginResult.success) {
+        console.log("✅ [Login] AuthContext login successful, reloading...");
+        // Reload to navigate to dashboard (role-based routing will happen automatically)
         window.location.reload();
+      } else {
+        setError(loginResult.message || "Login failed. Please try again.");
       }
     } catch (err: any) {
-      console.error(`${provider} login error:`, err);
-      alert(`Failed to login with ${provider}. Please try again.`);
+      console.error("❌ [Login] Network error:", err);
+      if (
+        err.message?.includes("Failed to fetch") ||
+        err.message?.includes("CORS")
+      ) {
+        setError(
+          "Cannot connect to server. Please check your internet connection and ensure the backend is running."
+        );
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
-
-  // If Email OTP mode is active
-  if (emailOtpMode) {
-    return (
-      <EmailOTPLogin
-        onBack={() => setEmailOtpMode(false)}
-        onSuccess={(email) => {
-          // EmailOTPLogin handles the redirect internally
-          // This callback is just for cleanup
-          setEmailOtpMode(false);
-        }}
-      />
-    );
-  }
-
-  // If Forgot Password mode is active
-  if (showForgotPassword) {
-    return (
-      <ForgotPassword
-        onBack={() => setShowForgotPassword(false)}
-        onSuccess={() => {
-          setShowForgotPassword(false);
-          setMode('login');
-        }}
-      />
-    );
-  }
-
-  // If OTP verification is active, show that instead
-  if (showOtpVerification) {
-    return (
-      <OTPVerification
-        email={registrationEmail}
-        onVerified={() => {
-          // After OTP is verified, complete registration by saving user to localStorage
-          try {
-            // Generate a unique ID for the new user
-            const newUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-            
-            // Create the new user object
-            const newUser = {
-              id: newUserId,
-              name: registerData.ownerName,
-              email: registerData.email,
-              phone: registerData.phone,
-              password: registerData.password,
-              role: 'admin' as const, // New registrations get admin role by default
-              businessName: registerData.businessName,
-              address: registerData.address,
-              panVatNumber: registerData.panVatNumber,
-              isActive: true, // New users are active by default
-              createdAt: new Date().toISOString(),
-              language: 'en' as const,
-              permissions: [] // Permissions will be set by super admin later
-            };
-            
-            // Get existing users from localStorage
-            const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
-            
-            // Add the new user
-            existingUsers.push(newUser);
-            
-            // Save back to localStorage
-            localStorage.setItem('users', JSON.stringify(existingUsers));
-            
-            console.log('✅ New user registered successfully:', newUser.email);
-            
-            // Show success message and redirect to login
-            alert('🎉 Registration successful! You can now login with your credentials.');
-            setShowOtpVerification(false);
-            setMode('login');
-            
-            // Clear the registration data
-            setRegisterData({
-              businessName: '',
-              ownerName: '',
-              email: '',
-              phone: '',
-              password: '',
-              confirmPassword: '',
-              address: '',
-              panVatNumber: ''
-            });
-            setUploadedFile(null);
-          } catch (error) {
-            console.error('Error saving user:', error);
-            alert('Registration completed but there was an error. Please contact support.');
-          }
-        }}
-        onBack={() => {
-          setShowOtpVerification(false);
-        }}
-      />
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
@@ -318,49 +527,273 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({ initialMode = 'l
             </button>
 
             <AnimatePresence mode="wait">
-              {mode === 'login' ? (
-                <LoginForm
-                  key="login"
-                  loginData={loginData}
-                  setLoginData={setLoginData}
-                  showPassword={showPassword}
-                  setShowPassword={setShowPassword}
-                  isLoading={isLoading}
-                  error={error}
-                  handleLogin={handleLogin}
-                  handleSocialLogin={handleSocialLogin}
-                  switchToRegister={() => setMode('register')}
-                  setShowForgotPassword={setShowForgotPassword}
-                />
-              ) : (
-                <RegisterForm
-                  key="register"
-                  registerData={registerData}
-                  setRegisterData={setRegisterData}
-                  showPassword={showPassword}
-                  setShowPassword={setShowPassword}
-                  showConfirmPassword={showConfirmPassword}
-                  setShowConfirmPassword={setShowConfirmPassword}
-                  uploadedFile={uploadedFile}
-                  handleFileUpload={handleFileUpload}
-                  removeFile={removeFile}
-                  isLoading={isLoading}
-                  error={error}
-                  handleRegister={handleRegister}
-                  handleSocialLogin={handleSocialLogin}
-                  switchToLogin={() => setMode('login')}
-                />
-              )}
+              <LoginForm
+                key="login"
+                loginData={loginData}
+                setLoginData={setLoginData}
+                showPassword={showPassword}
+                setShowPassword={setShowPassword}
+                isLoading={isLoading}
+                error={error}
+                handleLogin={handleLogin}
+                switchToRegister={() => setMode("register")}
+                language={language}
+                setLanguage={setLanguage}
+                t={t}
+                setShowForgotPassword={setShowForgotPassword}
+              />
             </AnimatePresence>
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      <AnimatePresence>
+        {showForgotPassword && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={closeForgotPasswordModal}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+            >
+              <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white relative">
+                {/* Back Arrow */}
+                <button
+                  onClick={() => {
+                    if (forgotPasswordStep === "code") {
+                      setForgotPasswordStep("email");
+                      setResetCode("");
+                      setError(null);
+                    } else if (forgotPasswordStep === "newPassword") {
+                      setForgotPasswordStep("code");
+                      setNewPassword("");
+                      setConfirmPassword("");
+                      setError(null);
+                    } else {
+                      closeForgotPasswordModal();
+                    }
+                  }}
+                  className="absolute left-1 top-9 pt-1  text-white hover:text-indigo-100 transition-colors"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                </button>
+
+                <h3 className="text-2xl font-bold">
+                  {isFirstTimeLogin ? "Change Password" : "Reset Password"}
+                </h3>
+                <p className="text-indigo-100 text-sm mt-1">
+                  {forgotPasswordStep === "email" &&
+                    "Enter your email to receive a verification code"}
+                  {forgotPasswordStep === "code" &&
+                    "Enter the code sent to your email"}
+                  {forgotPasswordStep === "newPassword" &&
+                    (isFirstTimeLogin
+                      ? "Create your new password to continue"
+                      : "Create your new password")}
+                </p>
+              </div>
+
+              <div className="p-6">
+                {resetSuccess ? (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="text-center py-8"
+                  >
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Shield className="w-8 h-8 text-green-600" />
+                    </div>
+                    <h4 className="text-xl font-bold text-gray-900 mb-2">
+                      {isFirstTimeLogin
+                        ? "Password Changed Successfully!"
+                        : "Password Reset Successfully!"}
+                    </h4>
+                    <p className="text-gray-600">
+                      You can now login with your new password
+                    </p>
+                  </motion.div>
+                ) : (
+                  <>
+                    {error && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm mb-4"
+                      >
+                        {error}
+                      </motion.div>
+                    )}
+
+                    {/* Email Step */}
+                    {forgotPasswordStep === "email" && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Email Address
+                          </label>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                              <Mail className="text-gray-400" size={20} />
+                            </div>
+                            <input
+                              type="email"
+                              value={forgotPasswordEmail}
+                              onChange={(e) =>
+                                setForgotPasswordEmail(e.target.value)
+                              }
+                              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
+                              placeholder="admin@example.com"
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={handleSendResetCode}
+                          disabled={isLoading || !forgotPasswordEmail}
+                          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isLoading ? "Sending..." : "Send Reset Code"}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Code Verification Step */}
+                    {forgotPasswordStep === "code" && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Verification Code
+                          </label>
+                          <input
+                            type="text"
+                            value={resetCode}
+                            onChange={(e) => setResetCode(e.target.value)}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-center text-2xl font-mono tracking-widest"
+                            placeholder="000000"
+                            maxLength={6}
+                            required
+                          />
+                        </div>
+
+                        <button
+                          onClick={handleVerifyCode}
+                          disabled={isLoading || resetCode.length < 6}
+                          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isLoading ? "Verifying..." : "Verify Code"}
+                        </button>
+
+                        <button
+                          onClick={() => setForgotPasswordStep("email")}
+                          className="w-full text-gray-600 hover:text-gray-900 text-sm"
+                        >
+                          ← Back to email
+                        </button>
+                      </div>
+                    )}
+
+                    {/* New Password Step */}
+                    {forgotPasswordStep === "newPassword" && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            New Password
+                          </label>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                              <Lock className="text-gray-400" size={20} />
+                            </div>
+                            <input
+                              type="password"
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
+                              placeholder="Enter new password"
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Confirm Password
+                          </label>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                              <Lock className="text-gray-400" size={20} />
+                            </div>
+                            <input
+                              type="password"
+                              value={confirmPassword}
+                              onChange={(e) =>
+                                setConfirmPassword(e.target.value)
+                              }
+                              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
+                              placeholder="Confirm new password"
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={handleResetPassword}
+                          disabled={
+                            isLoading || !newPassword || !confirmPassword
+                          }
+                          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isLoading
+                            ? isFirstTimeLogin
+                              ? "Changing..."
+                              : "Resetting..."
+                            : isFirstTimeLogin
+                            ? "Change Password"
+                            : "Reset Password"}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <button
+                  onClick={closeForgotPasswordModal}
+                  className="w-full mt-4 text-gray-600 hover:text-gray-900 py-2 text-sm font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
 // Left Visual Component
-const LeftVisual: React.FC<{ mode: 'login' | 'register' }> = ({ mode }) => {
+const LeftVisual: React.FC<{ mode: "login" | "register" }> = ({ mode }) => {
   const floatingIcons = [
     { icon: <Settings size={40} />, delay: 0 },
     { icon: <Package size={35} />, delay: 0.2 },
@@ -375,10 +808,14 @@ const LeftVisual: React.FC<{ mode: 'login' | 'register' }> = ({ mode }) => {
     <div className="relative bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 p-12 flex flex-col justify-center overflow-hidden">
       {/* Animated Background Pattern */}
       <div className="absolute inset-0 opacity-10">
-        <div className="w-full h-full" style={{ 
-          backgroundImage: 'radial-gradient(circle, white 2px, transparent 2px)',
-          backgroundSize: '40px 40px'
-        }} />
+        <div
+          className="w-full h-full"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle, white 2px, transparent 2px)",
+            backgroundSize: "40px 40px",
+          }}
+        />
       </div>
 
       {/* Floating Icons */}
@@ -387,17 +824,17 @@ const LeftVisual: React.FC<{ mode: 'login' | 'register' }> = ({ mode }) => {
           key={index}
           className="absolute text-white opacity-20"
           initial={{ opacity: 0, scale: 0 }}
-          animate={{ 
+          animate={{
             opacity: [0.1, 0.3, 0.1],
             scale: [1, 1.2, 1],
             x: [0, Math.random() * 50 - 25, 0],
             y: [0, Math.random() * 50 - 25, 0],
           }}
-          transition={{ 
+          transition={{
             delay: item.delay,
             duration: 5,
             repeat: Infinity,
-            repeatType: "reverse"
+            repeatType: "reverse",
           }}
           style={{
             left: `${Math.random() * 80 + 10}%`,
@@ -424,18 +861,20 @@ const LeftVisual: React.FC<{ mode: 'login' | 'register' }> = ({ mode }) => {
             <Settings size={48} className="text-white" />
           </motion.div>
 
-          <h1 className="text-5xl font-bold mb-4">
-            Serve Spares
-          </h1>
-          <p className="text-2xl mb-8 opacity-90">
-            Inventory System
-          </p>
-          
+          <h1 className="text-5xl font-bold mb-4">Serve Spares</h1>
+          <p className="text-2xl mb-8 opacity-90">Inventory System</p>
+
           <div className="space-y-4 mb-8">
-            <FeatureItem icon={<Package />} text="Complete Inventory Management" />
-            <FeatureItem icon={<TrendingUp />} text="Real-time Analytics & Reports" />
+            <FeatureItem
+              icon={<Package />}
+              text="Complete Inventory Management"
+            />
+            <FeatureItem
+              icon={<TrendingUp />}
+              text="Real-time Analytics & Reports"
+            />
             <FeatureItem icon={<Shield />} text="Secure Multi-Role Access" />
-            <FeatureItem icon={<Zap />} text="8-Language Support" />
+            <FeatureItem icon={<Zap />} text="Bilingual Support (EN/NE)" />
           </div>
 
           {/* Stats */}
@@ -457,11 +896,11 @@ const LeftVisual: React.FC<{ mode: 'login' | 'register' }> = ({ mode }) => {
   );
 };
 
-const FeatureItem: React.FC<{ icon: React.ReactNode; text: string }> = ({ icon, text }) => (
-  <motion.div
-    whileHover={{ x: 10 }}
-    className="flex items-center space-x-3"
-  >
+const FeatureItem: React.FC<{ icon: React.ReactNode; text: string }> = ({
+  icon,
+  text,
+}) => (
+  <motion.div whileHover={{ x: 10 }} className="flex items-center space-x-3">
     <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
       {icon}
     </div>
@@ -469,7 +908,10 @@ const FeatureItem: React.FC<{ icon: React.ReactNode; text: string }> = ({ icon, 
   </motion.div>
 );
 
-const StatCard: React.FC<{ number: string; label: string }> = ({ number, label }) => (
+const StatCard: React.FC<{ number: string; label: string }> = ({
+  number,
+  label,
+}) => (
   <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-center">
     <div className="text-2xl font-bold">{number}</div>
     <div className="text-sm opacity-90">{label}</div>
@@ -477,199 +919,158 @@ const StatCard: React.FC<{ number: string; label: string }> = ({ number, label }
 );
 
 // Login Form Component
-const LoginForm: React.FC<any> = ({ 
-  loginData, setLoginData, showPassword, setShowPassword, 
-  isLoading, error,
-  handleLogin, handleSocialLogin, switchToRegister,
-  setShowForgotPassword
-}) => (
-  <motion.div
-    initial={{ opacity: 0, x: 20 }}
-    animate={{ opacity: 1, x: 0 }}
-    exit={{ opacity: 0, x: -20 }}
-    transition={{ duration: 0.3 }}
-  >
-    <div className="mb-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-4xl font-bold mb-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-            Welcome Back!
-          </h2>
-          <p className="text-gray-600">Login to continue to your dashboard</p>
-        </div>
-        {/* Test Credentials Tooltip */}
-        <div className="relative group">
-          <button
-            type="button"
-            className="w-10 h-10 bg-indigo-100 hover:bg-indigo-200 rounded-full flex items-center justify-center transition-colors"
+const LoginForm: React.FC<any> = ({
+  loginData,
+  setLoginData,
+  showPassword,
+  setShowPassword,
+  isLoading,
+  error,
+  handleLogin,
+  switchToRegister,
+  language,
+  setLanguage,
+  t,
+  setShowForgotPassword,
+}) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="w-full"
+    >
+      <div className="mb-8">
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">
+          {t("auth.welcome")}
+        </h2>
+        <p className="text-gray-600">{t("auth.subtitle")}</p>
+      </div>
+
+      <form onSubmit={handleLogin} className="space-y-5">
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm"
           >
-            <Info size={20} className="text-indigo-600" />
-          </button>
-          <div className="absolute right-0 top-12 w-80 bg-gray-900 text-white text-xs rounded-xl p-4 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-            <div className="font-semibold mb-3 text-sm text-indigo-300">🔑 Test Credentials:</div>
-            <div className="space-y-2">
-              <div className="bg-gray-800 p-2 rounded">
-                <div className="text-indigo-400 font-medium">Super Admin:</div>
-                <div>superadmin@autoparts.com / super123</div>
-              </div>
-              <div className="bg-gray-800 p-2 rounded">
-                <div className="text-purple-400 font-medium">Chief Admin:</div>
-                <div>admin.chief@servespares.com / ChiefAdmin@2024</div>
-              </div>
-              <div className="bg-gray-800 p-2 rounded">
-                <div className="text-blue-400 font-medium">Admin:</div>
-                <div>admin@autoparts.com / admin123</div>
-              </div>
-              <div className="bg-gray-800 p-2 rounded">
-                <div className="text-green-400 font-medium">Inventory Manager:</div>
-                <div>manager@autoparts.com / manager123</div>
-              </div>
-              <div className="bg-gray-800 p-2 rounded">
-                <div className="text-yellow-400 font-medium">Cashier:</div>
-                <div>cashier@autoparts.com / cashier123</div>
-              </div>
-              <div className="bg-gray-800 p-2 rounded">
-                <div className="text-pink-400 font-medium">Finance:</div>
-                <div>finance@autoparts.com / finance123</div>
-              </div>
-            </div>
-            <div className="mt-2 text-gray-400 text-center">Hover to view credentials</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <form onSubmit={handleLogin} className="space-y-5">
-      {/* Error Message */}
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm"
-        >
-          {error}
-        </motion.div>
-      )}
-
-      {/* Email/Phone/Username */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Email, Phone or Username
-        </label>
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <Mail className="text-gray-400" size={20} />
-          </div>
-          <input
-            type="text"
-            value={loginData.identifier}
-            onChange={(e) => setLoginData({ ...loginData, identifier: e.target.value })}
-            className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
-            placeholder="Enter your email, phone or username"
-            required
-          />
-        </div>
-      </div>
-
-      {/* Password */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Password
-        </label>
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <Lock className="text-gray-400" size={20} />
-          </div>
-          <input
-            type={showPassword ? 'text' : 'password'}
-            value={loginData.password}
-            onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-            className="w-full pl-12 pr-12 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
-            placeholder="Enter your password"
-            required
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
-          >
-            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-          </button>
-        </div>
-      </div>
-
-      {/* Forgot Password */}
-      <div className="text-right">
-        <button type="button" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium" onClick={() => setShowForgotPassword(true)}>
-          Forgot Password?
-        </button>
-      </div>
-
-      {/* Login Button */}
-      <motion.button
-        whileHover={{ scale: isLoading ? 1 : 1.02 }}
-        whileTap={{ scale: isLoading ? 1 : 0.98 }}
-        type="submit"
-        disabled={isLoading}
-        className={`w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-xl font-semibold flex items-center justify-center space-x-2 hover:shadow-lg transition-all ${
-          isLoading ? 'opacity-70 cursor-not-allowed' : ''
-        }`}
-      >
-        {isLoading ? (
-          <>
-            <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
-            <span>Logging in...</span>
-          </>
-        ) : (
-          <>
-            <span>Log In</span>
-            <ArrowRight size={20} />
-          </>
+            {error}
+          </motion.div>
         )}
-      </motion.button>
 
-      {/* Divider */}
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-200"></div>
+        {/* Email */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            {t("auth.email.label")}
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Mail className="text-gray-400" size={20} />
+            </div>
+            <input
+              type="text"
+              value={loginData.identifier}
+              onChange={(e) =>
+                setLoginData({ ...loginData, identifier: e.target.value })
+              }
+              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
+              placeholder={t("auth.email.placeholder")}
+              required
+            />
+          </div>
         </div>
-        <div className="relative flex justify-center text-sm">
-          <span className="px-4 bg-white text-gray-500">OR</span>
+
+        {/* Password */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            {t("auth.password.label")}
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Lock className="text-gray-400" size={20} />
+            </div>
+            <input
+              type={showPassword ? "text" : "password"}
+              value={loginData.password}
+              onChange={(e) =>
+                setLoginData({ ...loginData, password: e.target.value })
+              }
+              className="w-full pl-12 pr-12 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
+              placeholder={t("auth.password.placeholder")}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Email OTP Login */}
-      <SocialButton 
-        icon={<Mail size={20} />} 
-        text="Continue with Email" 
-        onClick={() => handleSocialLogin('email')}
-        color="bg-indigo-600"
-      />
-
-      {/* Sign Up Link */}
-      <div className="text-center pt-4">
-        <p className="text-gray-600">
-          Don't have an account?{' '}
+        {/* Forgot Password Link */}
+        <div className="text-right">
           <button
             type="button"
-            onClick={switchToRegister}
-            className="text-indigo-600 hover:text-indigo-700 font-semibold"
+            onClick={() => setShowForgotPassword(true)}
+            className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
           >
-            Sign Up
+            Forgot Password?
           </button>
-        </p>
-      </div>
-    </form>
-  </motion.div>
-);
+        </div>
+
+        {/* Login Button */}
+        <motion.button
+          whileHover={{ scale: isLoading ? 1 : 1.02 }}
+          whileTap={{ scale: isLoading ? 1 : 0.98 }}
+          type="submit"
+          disabled={isLoading}
+          className={`w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-xl font-semibold flex items-center justify-center space-x-2 hover:shadow-lg transition-all ${
+            isLoading ? "opacity-70 cursor-not-allowed" : ""
+          }`}
+        >
+          {isLoading ? (
+            <>
+              <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>{t("auth.login.loading")}</span>
+            </>
+          ) : (
+            <>
+              <span>{t("auth.login.button")}</span>
+              <ArrowRight size={20} />
+            </>
+          )}
+        </motion.button>
+
+        {/* Sign Up Link */}
+        <div className="text-center pt-4">
+          <p className="text-gray-600">
+            {t("auth.signup.prompt")}{" "}
+            <button
+              type="button"
+              onClick={switchToRegister}
+              className="text-indigo-600 hover:text-indigo-700 font-semibold"
+            >
+              {t("auth.signup.link")}
+            </button>
+          </p>
+        </div>
+      </form>
+    </motion.div>
+  );
+};
 
 // Register Form Component
-const RegisterForm: React.FC<any> = ({ 
-  registerData, setRegisterData, showPassword, setShowPassword,
-  showConfirmPassword, setShowConfirmPassword,
-  uploadedFile, handleFileUpload, removeFile,
-  isLoading, error,
-  handleRegister, handleSocialLogin, switchToLogin 
+const RegisterForm: React.FC<any> = ({
+  registerData,
+  setRegisterData,
+  showPassword,
+  setShowPassword,
+  isLoading,
+  error,
+  handleRegister,
+  switchToLogin,
 }) => (
   <motion.div
     initial={{ opacity: 0, x: 20 }}
@@ -681,19 +1082,20 @@ const RegisterForm: React.FC<any> = ({
       <h2 className="text-4xl font-bold mb-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
         Create Account
       </h2>
-      <p className="text-gray-600">Join thousands of businesses using Serve Spares</p>
+      <p className="text-gray-600">
+        Join thousands of businesses using Serve Spares
+      </p>
     </div>
 
     <form onSubmit={handleRegister} className="space-y-4">
       {/* Error Message */}
-      {registerData && error && (
+      {error && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex items-start space-x-2"
+          className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm"
         >
-          <X size={18} className="flex-shrink-0 mt-0.5" />
-          <span>{error}</span>
+          {error}
         </motion.div>
       )}
 
@@ -709,7 +1111,9 @@ const RegisterForm: React.FC<any> = ({
           <input
             type="text"
             value={registerData.businessName}
-            onChange={(e) => setRegisterData({ ...registerData, businessName: e.target.value })}
+            onChange={(e) =>
+              setRegisterData({ ...registerData, businessName: e.target.value })
+            }
             className="w-full pl-10 pr-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
             placeholder="Your Auto Parts Shop"
             required
@@ -729,7 +1133,9 @@ const RegisterForm: React.FC<any> = ({
           <input
             type="text"
             value={registerData.ownerName}
-            onChange={(e) => setRegisterData({ ...registerData, ownerName: e.target.value })}
+            onChange={(e) =>
+              setRegisterData({ ...registerData, ownerName: e.target.value })
+            }
             className="w-full pl-10 pr-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
             placeholder="John Doe"
             required
@@ -749,7 +1155,9 @@ const RegisterForm: React.FC<any> = ({
           <input
             type="email"
             value={registerData.email}
-            onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
+            onChange={(e) =>
+              setRegisterData({ ...registerData, email: e.target.value })
+            }
             className="w-full pl-10 pr-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
             placeholder="john@example.com"
             required
@@ -757,159 +1165,33 @@ const RegisterForm: React.FC<any> = ({
         </div>
       </div>
 
-      {/* Phone Number */}
+      {/* Password */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Phone Number
+          Password
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Phone className="text-gray-400" size={18} />
+            <Lock className="text-gray-400" size={18} />
           </div>
           <input
-            type="tel"
-            value={registerData.phone}
-            onChange={(e) => setRegisterData({ ...registerData, phone: e.target.value })}
-            className="w-full pl-10 pr-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
-            placeholder="+977 9801234567"
+            type={showPassword ? "text" : "password"}
+            value={registerData.password}
+            onChange={(e) =>
+              setRegisterData({ ...registerData, password: e.target.value })
+            }
+            className="w-full pl-10 pr-10 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
+            placeholder="••••••••"
             required
           />
-        </div>
-      </div>
-
-      {/* Password & Confirm Password */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Password
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Lock className="text-gray-400" size={18} />
-            </div>
-            <input
-              type={showPassword ? 'text' : 'password'}
-              value={registerData.password}
-              onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-              className="w-full pl-10 pr-10 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
-              placeholder="••••••••"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-            >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Confirm Password
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Lock className="text-gray-400" size={18} />
-            </div>
-            <input
-              type={showConfirmPassword ? 'text' : 'password'}
-              value={registerData.confirmPassword}
-              onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
-              className="w-full pl-10 pr-10 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
-              placeholder="••••••••"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-            >
-              {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Address */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Address
-        </label>
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <MapPin className="text-gray-400" size={18} />
-          </div>
-          <input
-            type="text"
-            value={registerData.address}
-            onChange={(e) => setRegisterData({ ...registerData, address: e.target.value })}
-            className="w-full pl-10 pr-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
-            placeholder="Kathmandu, Nepal"
-            required
-          />
-        </div>
-      </div>
-
-      {/* PAN/VAT Number */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          PAN/VAT Number
-        </label>
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <FileText className="text-gray-400" size={18} />
-          </div>
-          <input
-            type="text"
-            value={registerData.panVatNumber}
-            onChange={(e) => setRegisterData({ ...registerData, panVatNumber: e.target.value })}
-            className="w-full pl-10 pr-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors text-sm"
-            placeholder="123456789"
-            required
-          />
-        </div>
-      </div>
-
-      {/* Document Upload for Verification */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Business Verification Document <span className="text-gray-500">(PNG, JPG, PDF)</span>
-        </label>
-        <div className="relative">
-          <input
-            type="file"
-            onChange={handleFileUpload}
-            accept=".png,.jpg,.jpeg,.pdf"
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-            required
-          />
-          <div
-            className={`w-full py-3 px-4 border-2 ${
-              uploadedFile ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-indigo-500'
-            } rounded-xl flex items-center justify-between transition-all cursor-pointer`}
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
           >
-            <div className="flex items-center space-x-3">
-              <Upload size={20} className={uploadedFile ? 'text-green-600' : 'text-gray-400'} />
-              <span className={`text-sm ${uploadedFile ? 'text-green-700 font-medium' : 'text-gray-600'}`}>
-                {uploadedFile ? uploadedFile.name : 'Click to upload document'}
-              </span>
-            </div>
-            {uploadedFile && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeFile();
-                }}
-                className="text-gray-400 hover:text-red-600 transition-colors"
-              >
-                <X size={18} />
-              </button>
-            )}
-          </div>
+            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
         </div>
-        <p className="text-xs text-gray-500 mt-1">Upload your business registration or PAN/VAT certificate</p>
       </div>
 
       {/* Register Button */}
@@ -919,13 +1201,13 @@ const RegisterForm: React.FC<any> = ({
         type="submit"
         disabled={isLoading}
         className={`w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-xl font-semibold flex items-center justify-center space-x-2 hover:shadow-lg transition-all mt-4 ${
-          isLoading ? 'opacity-70 cursor-not-allowed' : ''
+          isLoading ? "opacity-70 cursor-not-allowed" : ""
         }`}
       >
         {isLoading ? (
           <>
             <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
-            <span>Sending OTP...</span>
+            <span>Creating Account...</span>
           </>
         ) : (
           <>
@@ -935,38 +1217,10 @@ const RegisterForm: React.FC<any> = ({
         )}
       </motion.button>
 
-      {/* Divider */}
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-200"></div>
-        </div>
-        <div className="relative flex justify-center text-sm">
-          <span className="px-4 bg-white text-gray-500">OR</span>
-        </div>
-      </div>
-
-      {/* Social Signup */}
-      <div className="space-y-2">
-        <SocialButton 
-          icon={<Chrome size={18} />} 
-          text="Sign up with Google" 
-          onClick={() => handleSocialLogin('google')}
-          color="bg-red-600"
-          compact
-        />
-        <SocialButton 
-          icon={<Facebook size={18} />} 
-          text="Sign up with Facebook" 
-          onClick={() => handleSocialLogin('facebook')}
-          color="bg-blue-600"
-          compact
-        />
-      </div>
-
       {/* Login Link */}
       <div className="text-center pt-2">
         <p className="text-sm text-gray-600">
-          Already have an account?{' '}
+          Already have an account?{" "}
           <button
             type="button"
             onClick={switchToLogin}
@@ -978,24 +1232,4 @@ const RegisterForm: React.FC<any> = ({
       </div>
     </form>
   </motion.div>
-);
-
-// Social Button Component
-const SocialButton: React.FC<{ 
-  icon: React.ReactNode; 
-  text: string; 
-  onClick: () => void;
-  color: string;
-  compact?: boolean;
-}> = ({ icon, text, onClick, color, compact = false }) => (
-  <motion.button
-    whileHover={{ scale: 1.02 }}
-    whileTap={{ scale: 0.98 }}
-    type="button"
-    onClick={onClick}
-    className={`w-full ${color} text-white ${compact ? 'py-2.5' : 'py-3'} rounded-xl font-medium flex items-center justify-center space-x-2 hover:shadow-lg transition-all`}
-  >
-    {icon}
-    <span className={compact ? 'text-sm' : ''}>{text}</span>
-  </motion.button>
 );

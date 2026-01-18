@@ -1,67 +1,84 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Building, Mail, Phone, MapPin, CreditCard, ArrowRight, ArrowLeft, Check, Lock } from 'lucide-react';
-import { Invoice } from './Invoice';
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  X,
+  User,
+  Building,
+  Mail,
+  Phone,
+  MapPin,
+  CreditCard,
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  Lock,
+} from "lucide-react";
+import { Invoice } from "./Invoice";
 
 interface PricingCheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
   planName: string;
   planPrice: number;
-  billingCycle: 'monthly' | 'yearly';
+  billingCycle: "monthly" | "yearly";
 }
 
-type Step = 'details' | 'payment' | 'success';
-type CardType = 'visa' | 'mastercard' | 'amex' | 'discover' | 'unknown';
+type Step = "details" | "payment" | "success";
+type CardType = "visa" | "mastercard" | "amex" | "discover" | "unknown";
 
 export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
   isOpen,
   onClose,
   planName,
   planPrice,
-  billingCycle
+  billingCycle,
 }) => {
-  const [currentStep, setCurrentStep] = useState<Step>('details');
+  const [currentStep, setCurrentStep] = useState<Step>("details");
   const [formData, setFormData] = useState({
     // Personal Details
-    fullName: '',
-    email: '',
-    phone: '',
-    
+    fullName: "",
+    email: "",
+    phone: "",
+
     // Business Details
-    businessName: '',
-    address: '',
-    city: '',
-    panVatNumber: '',
-    
+    businessName: "",
+    address: "",
+    city: "",
+    panVatNumber: "",
+
     // Payment
-    paymentMethod: '',
-    
+    paymentMethod: "",
+
     // Card Details
-    cardName: '',
-    cardNumber: '',
-    cardExpiry: '',
-    cardCVC: '',
-    
+    cardName: "",
+    cardNumber: "",
+    cardExpiry: "",
+    cardCVC: "",
+
     // Other Payment Methods
-    cashAppTag: '',
-    stripeEmail: '',
-    wiseEmail: '',
-    esewaId: '',
-    khaltiNumber: '',
-    fonepayNumber: ''
+    cashAppTag: "",
+    stripeEmail: "",
+    wiseEmail: "",
+    esewaId: "",
+    khaltiNumber: "",
+    fonepayNumber: "",
   });
 
-  const [cardType, setCardType] = useState<CardType>('unknown');
-  const [invoiceNumber, setInvoiceNumber] = useState('');
-  const [invoiceDate, setInvoiceDate] = useState('');
+  const [cardType, setCardType] = useState<CardType>("unknown");
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [invoiceDate, setInvoiceDate] = useState("");
 
   // Currency conversion rate (NPR to USD)
   const USD_CONVERSION_RATE = 0.0075; // 1 NPR = 0.0075 USD (approximately 1 USD = 133 NPR)
-  
+
   // Determine if payment method is international
   const isInternationalPayment = () => {
-    return formData.cardNumber || formData.cashAppTag || formData.stripeEmail || formData.wiseEmail;
+    return (
+      formData.cardNumber ||
+      formData.cashAppTag ||
+      formData.stripeEmail ||
+      formData.wiseEmail
+    );
   };
 
   // Determine if payment method is Nepal
@@ -80,114 +97,120 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
   // Get currency symbol
   const getCurrency = () => {
     if (isInternationalPayment()) {
-      return 'USD';
+      return "USD";
     }
-    return 'NPR';
+    return "NPR";
   };
 
   // Detect card type based on card number
   const detectCardType = (number: string): CardType => {
-    const cleaned = number.replace(/\s/g, '');
-    
+    const cleaned = number.replace(/\s/g, "");
+
     // Visa: starts with 4
     if (/^4/.test(cleaned)) {
-      return 'visa';
+      return "visa";
     }
     // Mastercard: starts with 51-55 or 2221-2720
-    if (/^5[1-5]/.test(cleaned) || /^2(2[2-9][0-9]|[3-6][0-9]{2}|7[0-1][0-9]|720)/.test(cleaned)) {
-      return 'mastercard';
+    if (
+      /^5[1-5]/.test(cleaned) ||
+      /^2(2[2-9][0-9]|[3-6][0-9]{2}|7[0-1][0-9]|720)/.test(cleaned)
+    ) {
+      return "mastercard";
     }
     // American Express: starts with 34 or 37
     if (/^3[47]/.test(cleaned)) {
-      return 'amex';
+      return "amex";
     }
     // Discover: starts with 6011, 622126-622925, 644-649, 65
     if (/^6011|^622[1-9]|^64[4-9]|^65/.test(cleaned)) {
-      return 'discover';
+      return "discover";
     }
-    
-    return 'unknown';
+
+    return "unknown";
   };
 
   // Format card number with spaces
   const formatCardNumber = (value: string) => {
-    const cleaned = value.replace(/\s/g, '');
+    const cleaned = value.replace(/\s/g, "");
     const type = detectCardType(cleaned);
     setCardType(type);
-    
+
     // American Express format: 1234 123456 12345
-    if (type === 'amex') {
+    if (type === "amex") {
       const match = cleaned.match(/(\d{1,4})(\d{1,6})?(\d{1,5})?/);
       if (match) {
-        return [match[1], match[2], match[3]].filter(Boolean).join(' ');
+        return [match[1], match[2], match[3]].filter(Boolean).join(" ");
       }
     }
-    
+
     // Standard format: 1234 1234 1234 1234
     const match = cleaned.match(/(\d{1,4})/g);
-    return match ? match.join(' ') : cleaned;
+    return match ? match.join(" ") : cleaned;
   };
 
   // Format expiry date
   const formatExpiry = (value: string) => {
-    const cleaned = value.replace(/\D/g, '');
+    const cleaned = value.replace(/\D/g, "");
     if (cleaned.length >= 2) {
-      return cleaned.slice(0, 2) + '/' + cleaned.slice(2, 4);
+      return cleaned.slice(0, 2) + "/" + cleaned.slice(2, 4);
     }
     return cleaned;
   };
 
   const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleCardNumberChange = (value: string) => {
     const formatted = formatCardNumber(value);
-    if (formatted.replace(/\s/g, '').length <= 16) {
-      handleChange('cardNumber', formatted);
+    if (formatted.replace(/\s/g, "").length <= 16) {
+      handleChange("cardNumber", formatted);
     }
   };
 
   const handleExpiryChange = (value: string) => {
     const formatted = formatExpiry(value);
     if (formatted.length <= 5) {
-      handleChange('cardExpiry', formatted);
+      handleChange("cardExpiry", formatted);
     }
   };
 
   const handleCVCChange = (value: string) => {
-    const cleaned = value.replace(/\D/g, '');
-    const maxLength = cardType === 'amex' ? 4 : 3;
+    const cleaned = value.replace(/\D/g, "");
+    const maxLength = cardType === "amex" ? 4 : 3;
     if (cleaned.length <= maxLength) {
-      handleChange('cardCVC', cleaned);
+      handleChange("cardCVC", cleaned);
     }
   };
 
   // Check if card details are required
   const requiresCardDetails = () => {
-    return formData.paymentMethod === 'card' || formData.paymentMethod === 'mastercard';
+    return (
+      formData.paymentMethod === "card" ||
+      formData.paymentMethod === "mastercard"
+    );
   };
 
   const handleContinueToPayment = (e: React.FormEvent) => {
     e.preventDefault();
-    setCurrentStep('payment');
+    setCurrentStep("payment");
   };
 
   const handlePaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Process payment
-    setCurrentStep('success');
-    
+    setCurrentStep("success");
+
     // Auto-close after 3 seconds
     setTimeout(() => {
       onClose();
-      setCurrentStep('details');
+      setCurrentStep("details");
     }, 3000);
   };
 
   const handleBack = () => {
-    if (currentStep === 'payment') {
-      setCurrentStep('details');
+    if (currentStep === "payment") {
+      setCurrentStep("details");
     }
   };
 
@@ -220,34 +243,65 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
             >
               <X size={24} />
             </button>
-            
+
             <h2 className="text-3xl font-bold mb-2">
-              {currentStep === 'details' && 'Complete Your Details'}
-              {currentStep === 'payment' && 'Choose Payment Method'}
-              {currentStep === 'success' && 'Payment Successful!'}
+              {currentStep === "details" && "Complete Your Details"}
+              {currentStep === "payment" && "Choose Payment Method"}
+              {currentStep === "success" && "Payment Successful!"}
             </h2>
             <p className="text-white/90">
-              {planName} Plan - NPR {planPrice.toLocaleString()} / {billingCycle === 'monthly' ? 'month' : 'year'}
+              {planName} Plan - NPR {planPrice.toLocaleString()} /{" "}
+              {billingCycle === "monthly" ? "month" : "year"}
             </p>
 
             {/* Progress Indicator */}
             <div className="flex items-center space-x-4 mt-6">
-              <div className={`flex items-center space-x-2 ${currentStep === 'details' ? 'text-white' : 'text-white/60'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'details' ? 'bg-white text-indigo-600' : 'bg-white/20'}`}>
+              <div
+                className={`flex items-center space-x-2 ${
+                  currentStep === "details" ? "text-white" : "text-white/60"
+                }`}
+              >
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    currentStep === "details"
+                      ? "bg-white text-indigo-600"
+                      : "bg-white/20"
+                  }`}
+                >
                   1
                 </div>
                 <span className="text-sm font-medium">Details</span>
               </div>
               <div className="flex-1 h-0.5 bg-white/30" />
-              <div className={`flex items-center space-x-2 ${currentStep === 'payment' ? 'text-white' : 'text-white/60'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'payment' ? 'bg-white text-indigo-600' : 'bg-white/20'}`}>
+              <div
+                className={`flex items-center space-x-2 ${
+                  currentStep === "payment" ? "text-white" : "text-white/60"
+                }`}
+              >
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    currentStep === "payment"
+                      ? "bg-white text-indigo-600"
+                      : "bg-white/20"
+                  }`}
+                >
                   2
                 </div>
                 <span className="text-sm font-medium">Payment</span>
               </div>
               <div className="flex-1 h-0.5 bg-white/30" />
-              <div className={`flex items-center space-x-2 ${currentStep === 'success' ? 'text-white' : 'text-white/60'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'success' ? 'bg-white text-indigo-600' : 'bg-white/20'}`}>
+              <div
+                className={`flex items-center space-x-2 ${
+                  currentStep === "success" ? "text-white" : "text-white/60"
+                }`}
+              >
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    currentStep === "success"
+                      ? "bg-white text-indigo-600"
+                      : "bg-white/20"
+                  }`}
+                >
                   <Check size={16} />
                 </div>
                 <span className="text-sm font-medium">Done</span>
@@ -258,7 +312,7 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
           {/* Content */}
           <div className="p-8">
             <AnimatePresence mode="wait">
-              {currentStep === 'details' && (
+              {currentStep === "details" && (
                 <motion.form
                   key="details"
                   initial={{ opacity: 0, x: -20 }}
@@ -273,7 +327,7 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                       <User className="text-indigo-600" />
                       <span>Personal Information</span>
                     </h3>
-                    
+
                     <div className="grid md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -282,13 +336,15 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                         <input
                           type="text"
                           value={formData.fullName}
-                          onChange={(e) => handleChange('fullName', e.target.value)}
+                          onChange={(e) =>
+                            handleChange("fullName", e.target.value)
+                          }
                           className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"
                           placeholder="John Doe"
                           required
                         />
                       </div>
-                      
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Email Address *
@@ -296,13 +352,15 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                         <input
                           type="email"
                           value={formData.email}
-                          onChange={(e) => handleChange('email', e.target.value)}
+                          onChange={(e) =>
+                            handleChange("email", e.target.value)
+                          }
                           className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"
                           placeholder="john@example.com"
                           required
                         />
                       </div>
-                      
+
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Phone Number *
@@ -314,7 +372,9 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                           <input
                             type="tel"
                             value={formData.phone}
-                            onChange={(e) => handleChange('phone', e.target.value)}
+                            onChange={(e) =>
+                              handleChange("phone", e.target.value)
+                            }
                             className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-r-xl focus:border-indigo-500 focus:outline-none"
                             placeholder="9812345678"
                             required
@@ -330,7 +390,7 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                       <Building className="text-indigo-600" />
                       <span>Business Information</span>
                     </h3>
-                    
+
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -339,13 +399,15 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                         <input
                           type="text"
                           value={formData.businessName}
-                          onChange={(e) => handleChange('businessName', e.target.value)}
+                          onChange={(e) =>
+                            handleChange("businessName", e.target.value)
+                          }
                           className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"
                           placeholder="Auto Parts Store"
                           required
                         />
                       </div>
-                      
+
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Business Address *
@@ -353,13 +415,15 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                         <input
                           type="text"
                           value={formData.address}
-                          onChange={(e) => handleChange('address', e.target.value)}
+                          onChange={(e) =>
+                            handleChange("address", e.target.value)
+                          }
                           className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"
                           placeholder="Street Address"
                           required
                         />
                       </div>
-                      
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           City *
@@ -367,13 +431,13 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                         <input
                           type="text"
                           value={formData.city}
-                          onChange={(e) => handleChange('city', e.target.value)}
+                          onChange={(e) => handleChange("city", e.target.value)}
                           className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"
-                          placeholder="Kathmandu"
+                          placeholder="Pokhara"
                           required
                         />
                       </div>
-                      
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           PAN/VAT Number (Optional)
@@ -381,7 +445,9 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                         <input
                           type="text"
                           value={formData.panVatNumber}
-                          onChange={(e) => handleChange('panVatNumber', e.target.value)}
+                          onChange={(e) =>
+                            handleChange("panVatNumber", e.target.value)
+                          }
                           className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"
                           placeholder="123456789"
                         />
@@ -402,7 +468,7 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                 </motion.form>
               )}
 
-              {currentStep === 'payment' && (
+              {currentStep === "payment" && (
                 <motion.form
                   key="payment"
                   initial={{ opacity: 0, x: -20 }}
@@ -423,10 +489,14 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                       <span>💵</span>
                       <span>USD</span>
                     </div>
-                    
-                    <h4 className="font-bold text-gray-800 mb-1 text-lg">Card Payment</h4>
-                    <p className="text-sm text-gray-600 mb-5">Accepts Visa, Mastercard, Amex, Discover - Auto-detected</p>
-                    
+
+                    <h4 className="font-bold text-gray-800 mb-1 text-lg">
+                      Card Payment
+                    </h4>
+                    <p className="text-sm text-gray-600 mb-5">
+                      Accepts Visa, Mastercard, Amex, Discover - Auto-detected
+                    </p>
+
                     <div className="space-y-4">
                       {/* Card Number with Auto-Detection */}
                       <div>
@@ -437,45 +507,63 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                           <input
                             type="text"
                             value={formData.cardNumber}
-                            onChange={(e) => handleCardNumberChange(e.target.value)}
+                            onChange={(e) =>
+                              handleCardNumberChange(e.target.value)
+                            }
                             className={`w-full px-4 py-3.5 border-2 rounded-xl focus:outline-none pr-14 transition-all ${
-                              formData.cardNumber 
-                                ? cardType !== 'unknown' 
-                                  ? 'border-green-400 bg-white' 
-                                  : 'border-gray-300 bg-white'
-                                : 'border-gray-300 bg-white'
-                            } ${formData.cardNumber && cardType !== 'unknown' ? 'focus:border-green-500' : 'focus:border-indigo-500'}`}
+                              formData.cardNumber
+                                ? cardType !== "unknown"
+                                  ? "border-green-400 bg-white"
+                                  : "border-gray-300 bg-white"
+                                : "border-gray-300 bg-white"
+                            } ${
+                              formData.cardNumber && cardType !== "unknown"
+                                ? "focus:border-green-500"
+                                : "focus:border-indigo-500"
+                            }`}
                             placeholder="Enter card number"
                             required
                           />
                           <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
-                            {cardType === 'visa' && (
+                            {cardType === "visa" && (
                               <div className="flex items-center space-x-1 bg-blue-100 px-2 py-1 rounded">
                                 <span className="text-xl">💳</span>
-                                <span className="text-xs font-bold text-blue-700">VISA</span>
+                                <span className="text-xs font-bold text-blue-700">
+                                  VISA
+                                </span>
                               </div>
                             )}
-                            {cardType === 'mastercard' && (
+                            {cardType === "mastercard" && (
                               <div className="flex items-center space-x-1 bg-red-100 px-2 py-1 rounded">
                                 <span className="text-xl">🔴</span>
-                                <span className="text-xs font-bold text-red-700">MC</span>
+                                <span className="text-xs font-bold text-red-700">
+                                  MC
+                                </span>
                               </div>
                             )}
-                            {cardType === 'amex' && (
+                            {cardType === "amex" && (
                               <div className="flex items-center space-x-1 bg-blue-100 px-2 py-1 rounded">
                                 <span className="text-xl">💙</span>
-                                <span className="text-xs font-bold text-blue-700">AMEX</span>
+                                <span className="text-xs font-bold text-blue-700">
+                                  AMEX
+                                </span>
                               </div>
                             )}
-                            {cardType === 'discover' && (
+                            {cardType === "discover" && (
                               <div className="flex items-center space-x-1 bg-orange-100 px-2 py-1 rounded">
                                 <span className="text-xl">🧡</span>
-                                <span className="text-xs font-bold text-orange-700">DISC</span>
+                                <span className="text-xs font-bold text-orange-700">
+                                  DISC
+                                </span>
                               </div>
                             )}
-                            {cardType === 'unknown' && formData.cardNumber.length > 0 && (
-                              <CreditCard className="text-gray-400" size={24} />
-                            )}
+                            {cardType === "unknown" &&
+                              formData.cardNumber.length > 0 && (
+                                <CreditCard
+                                  className="text-gray-400"
+                                  size={24}
+                                />
+                              )}
                             {!formData.cardNumber && (
                               <div className="flex space-x-1 opacity-40">
                                 <span className="text-sm">💳</span>
@@ -486,20 +574,27 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                           </div>
                         </div>
                         <p className="text-xs text-gray-500 mt-2 flex items-center space-x-1">
-                          {cardType === 'unknown' && formData.cardNumber.length === 0 && (
-                            <span>✨ Card type will be auto-detected as you type</span>
-                          )}
-                          {cardType === 'unknown' && formData.cardNumber.length > 0 && (
-                            <span>⚠️ Please enter a valid card number</span>
-                          )}
-                          {cardType !== 'unknown' && (
+                          {cardType === "unknown" &&
+                            formData.cardNumber.length === 0 && (
+                              <span>
+                                ✨ Card type will be auto-detected as you type
+                              </span>
+                            )}
+                          {cardType === "unknown" &&
+                            formData.cardNumber.length > 0 && (
+                              <span>⚠️ Please enter a valid card number</span>
+                            )}
+                          {cardType !== "unknown" && (
                             <>
                               <span className="text-green-600">✓</span>
                               <span className="text-green-600 font-medium">
-                                {cardType === 'visa' && 'Visa card detected'}
-                                {cardType === 'mastercard' && 'Mastercard detected'}
-                                {cardType === 'amex' && 'American Express detected'}
-                                {cardType === 'discover' && 'Discover card detected'}
+                                {cardType === "visa" && "Visa card detected"}
+                                {cardType === "mastercard" &&
+                                  "Mastercard detected"}
+                                {cardType === "amex" &&
+                                  "American Express detected"}
+                                {cardType === "discover" &&
+                                  "Discover card detected"}
                               </span>
                             </>
                           )}
@@ -514,10 +609,12 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                         <input
                           type="text"
                           value={formData.cardName}
-                          onChange={(e) => handleChange('cardName', e.target.value)}
+                          onChange={(e) =>
+                            handleChange("cardName", e.target.value)
+                          }
                           className="w-full px-4 py-3.5 border-2 border-gray-300 rounded-xl focus:border-indigo-500 focus:outline-none bg-white"
                           placeholder="Name as shown on card"
-                          style={{ textTransform: 'uppercase' }}
+                          style={{ textTransform: "uppercase" }}
                           required
                         />
                       </div>
@@ -546,11 +643,15 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                             value={formData.cardCVC}
                             onChange={(e) => handleCVCChange(e.target.value)}
                             className="w-full px-4 py-3.5 border-2 border-gray-300 rounded-xl focus:border-indigo-500 focus:outline-none bg-white"
-                            placeholder={cardType === 'amex' ? '4 digits' : '3 digits'}
+                            placeholder={
+                              cardType === "amex" ? "4 digits" : "3 digits"
+                            }
                             required
                           />
                           <p className="text-xs text-gray-500 mt-1">
-                            {cardType === 'amex' ? '4 digits on front' : '3 digits on back'}
+                            {cardType === "amex"
+                              ? "4 digits on front"
+                              : "3 digits on back"}
                           </p>
                         </div>
                       </div>
@@ -570,7 +671,9 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                   {/* Divider */}
                   <div className="flex items-center space-x-4">
                     <div className="flex-1 h-px bg-gray-300"></div>
-                    <span className="text-sm text-gray-500 font-medium">OR PAY WITH</span>
+                    <span className="text-sm text-gray-500 font-medium">
+                      OR PAY WITH
+                    </span>
                     <div className="flex-1 h-px bg-gray-300"></div>
                   </div>
 
@@ -588,11 +691,15 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                       <input
                         type="text"
                         value={formData.cashAppTag}
-                        onChange={(e) => handleChange('cashAppTag', e.target.value)}
+                        onChange={(e) =>
+                          handleChange("cashAppTag", e.target.value)
+                        }
                         className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none text-sm"
                         placeholder="$cashtag"
                       />
-                      <p className="text-xs text-gray-500 mt-2">Enter your Cash App tag</p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Enter your Cash App tag
+                      </p>
                     </div>
 
                     {/* Stripe */}
@@ -607,11 +714,15 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                       <input
                         type="email"
                         value={formData.stripeEmail}
-                        onChange={(e) => handleChange('stripeEmail', e.target.value)}
+                        onChange={(e) =>
+                          handleChange("stripeEmail", e.target.value)
+                        }
                         className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none text-sm"
                         placeholder="email@example.com"
                       />
-                      <p className="text-xs text-gray-500 mt-2">Enter your Stripe email</p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Enter your Stripe email
+                      </p>
                     </div>
 
                     {/* Wise */}
@@ -626,11 +737,15 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                       <input
                         type="email"
                         value={formData.wiseEmail}
-                        onChange={(e) => handleChange('wiseEmail', e.target.value)}
+                        onChange={(e) =>
+                          handleChange("wiseEmail", e.target.value)
+                        }
                         className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-sm"
                         placeholder="email@example.com"
                       />
-                      <p className="text-xs text-gray-500 mt-2">Enter your Wise email</p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Enter your Wise email
+                      </p>
                     </div>
                   </div>
 
@@ -641,13 +756,15 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                       <span>🇳🇵</span>
                       <span>NPR</span>
                     </div>
-                    
+
                     <h4 className="font-bold text-gray-800 mb-1 text-lg flex items-center space-x-2">
                       <span>🇳🇵</span>
                       <span>Nepal Payment Options</span>
                     </h4>
-                    <p className="text-sm text-gray-600 mb-5">Local payment methods for Nepal</p>
-                    
+                    <p className="text-sm text-gray-600 mb-5">
+                      Local payment methods for Nepal
+                    </p>
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {/* eSewa */}
                       <div className="bg-white border-2 border-green-200 rounded-xl p-4">
@@ -658,11 +775,15 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                         <input
                           type="text"
                           value={formData.esewaId}
-                          onChange={(e) => handleChange('esewaId', e.target.value)}
+                          onChange={(e) =>
+                            handleChange("esewaId", e.target.value)
+                          }
                           className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none text-sm"
                           placeholder="eSewa ID"
                         />
-                        <p className="text-xs text-gray-500 mt-2">Enter your eSewa ID</p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Enter your eSewa ID
+                        </p>
                       </div>
 
                       {/* Khalti */}
@@ -674,11 +795,15 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                         <input
                           type="text"
                           value={formData.khaltiNumber}
-                          onChange={(e) => handleChange('khaltiNumber', e.target.value)}
+                          onChange={(e) =>
+                            handleChange("khaltiNumber", e.target.value)
+                          }
                           className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none text-sm"
                           placeholder="98XXXXXXXX"
                         />
-                        <p className="text-xs text-gray-500 mt-2">Enter your Khalti number</p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Enter your Khalti number
+                        </p>
                       </div>
 
                       {/* FonePay */}
@@ -690,11 +815,15 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                         <input
                           type="text"
                           value={formData.fonepayNumber}
-                          onChange={(e) => handleChange('fonepayNumber', e.target.value)}
+                          onChange={(e) =>
+                            handleChange("fonepayNumber", e.target.value)
+                          }
                           className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-sm"
                           placeholder="98XXXXXXXX"
                         />
-                        <p className="text-xs text-gray-500 mt-2">Enter your FonePay number</p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Enter your FonePay number
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -709,12 +838,16 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Billing:</span>
-                        <span className="font-semibold capitalize">{billingCycle}</span>
+                        <span className="font-semibold capitalize">
+                          {billingCycle}
+                        </span>
                       </div>
                       <div className="border-t border-indigo-200 my-3" />
                       <div className="flex justify-between text-lg">
                         <span className="font-bold">Total:</span>
-                        <span className="font-bold text-indigo-600">{getCurrency()} {getDisplayPrice()}</span>
+                        <span className="font-bold text-indigo-600">
+                          {getCurrency()} {getDisplayPrice()}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -731,7 +864,7 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                       <ArrowLeft size={20} />
                       <span>Back</span>
                     </motion.button>
-                    
+
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
@@ -745,7 +878,7 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                 </motion.form>
               )}
 
-              {currentStep === 'success' && (
+              {currentStep === "success" && (
                 <motion.div
                   key="success"
                   initial={{ opacity: 0, scale: 0.8 }}
@@ -761,12 +894,14 @@ export const PricingCheckoutModal: React.FC<PricingCheckoutModalProps> = ({
                   >
                     <Check className="text-white" size={48} />
                   </motion.div>
-                  
-                  <h3 className="text-3xl font-bold mb-4">Payment Successful!</h3>
+
+                  <h3 className="text-3xl font-bold mb-4">
+                    Payment Successful!
+                  </h3>
                   <p className="text-xl text-gray-600 mb-8">
                     Welcome to {planName} Plan
                   </p>
-                  
+
                   <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-2xl p-6 max-w-md mx-auto">
                     <p className="text-gray-700 mb-4">
                       A confirmation email has been sent to:

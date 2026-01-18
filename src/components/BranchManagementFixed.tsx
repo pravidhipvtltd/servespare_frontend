@@ -1,12 +1,23 @@
 // Fixed Branch Management View Component
-import React, { useState } from 'react';
-import { 
-  Building2, Users, ShoppingCart, DollarSign, Plus, Edit, Trash2, Eye,
-  Mail, Phone, MapPin, X, Check
-} from 'lucide-react';
-import { Workspace, User, Bill } from '../types';
-import { getFromStorage, saveToStorage } from '../utils/mockData';
-import { ViewBranchModal, EditBranchModal } from './SuperAdminModals';
+import React, { useState } from "react";
+import {
+  Building2,
+  Users,
+  ShoppingCart,
+  DollarSign,
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
+  Mail,
+  Phone,
+  MapPin,
+  X,
+  Check,
+} from "lucide-react";
+import { Workspace, User, Bill } from "../types";
+import { getFromStorage, saveToStorage } from "../utils/mockData";
+import { ViewBranchModal, EditBranchModal } from "./SuperAdminModals";
 
 interface BranchManagementViewProps {
   workspaces: Workspace[];
@@ -15,26 +26,28 @@ interface BranchManagementViewProps {
   onUpdate: () => void;
 }
 
-export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({ 
-  workspaces, 
-  users, 
-  bills, 
-  onUpdate 
+export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
+  workspaces,
+  users,
+  bills,
+  onUpdate,
 }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(null);
+  const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(
+    null
+  );
   const [formData, setFormData] = useState({
-    name: '',
-    contactEmail: '',
-    contactPhone: '',
-    address: ''
+    name: "",
+    contactEmail: "",
+    contactPhone: "",
+    address: "",
   });
 
   const handleAddBranch = () => {
     if (!formData.name) {
-      alert('⚠️ Please enter branch name');
+      alert("⚠️ Please enter branch name");
       return;
     }
 
@@ -47,21 +60,27 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
       createdAt: new Date().toISOString(),
     };
 
-    const allWorkspaces: Workspace[] = getFromStorage('workspaces', []);
-    saveToStorage('workspaces', [...allWorkspaces, newWorkspace]);
+    const allWorkspaces: Workspace[] = getFromStorage("workspaces", []);
+    saveToStorage("workspaces", [...allWorkspaces, newWorkspace]);
     onUpdate();
     setShowAddModal(false);
-    setFormData({ name: '', contactEmail: '', contactPhone: '', address: '' });
-    alert('✅ Branch created successfully!');
+    setFormData({ name: "", contactEmail: "", contactPhone: "", address: "" });
+    alert("✅ Branch created successfully!");
   };
 
   const deleteBranch = (workspaceId: string) => {
-    if (window.confirm('⚠️ Are you sure you want to delete this branch? This action cannot be undone.')) {
-      const allWorkspaces: Workspace[] = getFromStorage('workspaces', []);
-      const updatedWorkspaces = allWorkspaces.filter(w => w.id !== workspaceId);
-      saveToStorage('workspaces', updatedWorkspaces);
+    if (
+      window.confirm(
+        "⚠️ Are you sure you want to delete this branch? This action cannot be undone."
+      )
+    ) {
+      const allWorkspaces: Workspace[] = getFromStorage("workspaces", []);
+      const updatedWorkspaces = allWorkspaces.filter(
+        (w) => w.id !== workspaceId
+      );
+      saveToStorage("workspaces", updatedWorkspaces);
       onUpdate();
-      alert('✅ Branch deleted successfully!');
+      alert("✅ Branch deleted successfully!");
     }
   };
 
@@ -86,8 +105,12 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-gray-900 text-2xl font-bold">Branch Management</h2>
-          <p className="text-gray-600">Manage all business locations, stores, and branches</p>
+          <h2 className="text-gray-900 text-2xl font-bold">
+            Branch Management
+          </h2>
+          <p className="text-gray-600">
+            Manage all business locations, stores, and branches
+          </p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
@@ -112,12 +135,22 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
       {/* Branches Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {workspaces.map((workspace: Workspace) => {
-          const branchUsers = users.filter((u: User) => u.workspaceId === workspace.id);
-          const branchBills = bills.filter((b: Bill) => b.workspaceId === workspace.id);
-          const branchRevenue = branchBills.reduce((sum: number, b: Bill) => sum + b.total, 0);
-          
+          const branchUsers = users.filter(
+            (u: User) => u.workspaceId === workspace.id
+          );
+          const branchBills = bills.filter(
+            (b: Bill) => b.workspaceId === workspace.id
+          );
+          const branchRevenue = branchBills.reduce(
+            (sum: number, b: Bill) => sum + b.total,
+            0
+          );
+
           return (
-            <div key={workspace.id} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-lg transition-all">
+            <div
+              key={workspace.id}
+              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-lg transition-all"
+            >
               {/* Header */}
               <div className="flex items-center justify-between mb-4">
                 <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
@@ -129,8 +162,10 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
               </div>
 
               {/* Branch Name */}
-              <h3 className="text-gray-900 font-bold text-xl mb-4">{workspace.name}</h3>
-              
+              <h3 className="text-gray-900 font-bold text-xl mb-4">
+                {workspace.name}
+              </h3>
+
               {/* Stats */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
@@ -138,23 +173,29 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
                     <Users className="w-4 h-4 text-gray-600" />
                     <span className="text-gray-700 text-sm">Users</span>
                   </div>
-                  <span className="text-gray-900 font-bold">{branchUsers.length}</span>
+                  <span className="text-gray-900 font-bold">
+                    {branchUsers.length}
+                  </span>
                 </div>
-                
+
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                   <div className="flex items-center space-x-2">
                     <ShoppingCart className="w-4 h-4 text-gray-600" />
                     <span className="text-gray-700 text-sm">Sales</span>
                   </div>
-                  <span className="text-gray-900 font-bold">{branchBills.length}</span>
+                  <span className="text-gray-900 font-bold">
+                    {branchBills.length}
+                  </span>
                 </div>
-                
+
                 <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl">
                   <div className="flex items-center space-x-2">
                     <DollarSign className="w-4 h-4 text-green-600" />
                     <span className="text-green-700 text-sm">Revenue</span>
                   </div>
-                  <span className="text-green-600 font-bold">NPR {branchRevenue.toLocaleString()}</span>
+                  <span className="text-green-600 font-bold">
+                    NPR {branchRevenue.toLocaleString()}
+                  </span>
                 </div>
               </div>
 
@@ -178,7 +219,7 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
 
               {/* Action Buttons */}
               <div className="mt-4 flex space-x-2">
-                <button 
+                <button
                   onClick={() => openViewModal(workspace)}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center justify-center space-x-2"
                   title="View Details"
@@ -186,14 +227,14 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
                   <Eye className="w-4 h-4" />
                   <span>View</span>
                 </button>
-                <button 
+                <button
                   onClick={() => openEditModal(workspace)}
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                   title="Edit Branch"
                 >
                   <Edit className="w-4 h-4 text-gray-600" />
                 </button>
-                <button 
+                <button
                   onClick={() => deleteBranch(workspace.id)}
                   className="px-4 py-2 border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
                   title="Delete Branch"
@@ -217,15 +258,24 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
                   <Building2 className="w-6 h-6 text-purple-600" />
                 </div>
                 <div>
-                  <h3 className="text-gray-900 font-bold text-xl">Add New Branch</h3>
-                  <p className="text-gray-600 text-sm">Create a new business location</p>
+                  <h3 className="text-gray-900 font-bold text-xl">
+                    Add New Branch
+                  </h3>
+                  <p className="text-gray-600 text-sm">
+                    Create a new business location
+                  </p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => {
                   setShowAddModal(false);
-                  setFormData({ name: '', contactEmail: '', contactPhone: '', address: '' });
-                }} 
+                  setFormData({
+                    name: "",
+                    contactEmail: "",
+                    contactPhone: "",
+                    address: "",
+                  });
+                }}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <X className="w-6 h-6 text-gray-600" />
@@ -242,12 +292,16 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g., Main Store Kathmandu"
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  placeholder="e.g., Main Store Pokhara"
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   autoFocus
                 />
-                <p className="text-gray-500 text-xs mt-1">This field is required</p>
+                <p className="text-gray-500 text-xs mt-1">
+                  This field is required
+                </p>
               </div>
 
               <div>
@@ -258,7 +312,9 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
                 <input
                   type="email"
                   value={formData.contactEmail}
-                  onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, contactEmail: e.target.value })
+                  }
                   placeholder="branch@servespares.com"
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
@@ -272,7 +328,9 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
                 <input
                   type="tel"
                   value={formData.contactPhone}
-                  onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, contactPhone: e.target.value })
+                  }
                   placeholder="+977-1234567890"
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
@@ -285,7 +343,9 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
                 </label>
                 <textarea
                   value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, address: e.target.value })
+                  }
                   placeholder="Street address, City, Postal Code"
                   rows={3}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
@@ -298,7 +358,12 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
               <button
                 onClick={() => {
                   setShowAddModal(false);
-                  setFormData({ name: '', contactEmail: '', contactPhone: '', address: '' });
+                  setFormData({
+                    name: "",
+                    contactEmail: "",
+                    contactPhone: "",
+                    address: "",
+                  });
                 }}
                 className="flex-1 px-6 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 font-semibold transition-colors"
               >

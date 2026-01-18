@@ -3,6 +3,8 @@ import { Clock, DollarSign, TrendingUp, TrendingDown, Minus, X, Eye, Flag, XCirc
 import { getFromStorage, saveToStorage } from '../../utils/mockData';
 import { useAuth } from '../../contexts/AuthContext';
 import { CashDrawerShift, CashTransaction } from '../../types';
+import { PopupContainer } from '../PopupContainer';
+import { useCustomPopup } from '../../hooks/useCustomPopup';
 
 const STATUS_COLORS = {
   open: 'bg-blue-100 text-blue-700 border-blue-300',
@@ -18,6 +20,7 @@ const STATUS_LABELS = {
 
 export const CashDrawerMonitorPanel: React.FC = () => {
   const { currentUser } = useAuth();
+  const popup = useCustomPopup();
   const [shifts, setShifts] = useState<CashDrawerShift[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
@@ -43,30 +46,33 @@ export const CashDrawerMonitorPanel: React.FC = () => {
   };
 
   const handleForceCloseShift = (shift: CashDrawerShift) => {
-    if (!confirm(`Are you sure you want to force-close ${shift.cashierName}'s shift?`)) {
-      return;
-    }
+    popup.showConfirm(
+      'Force Close Shift',
+      `Are you sure you want to force-close ${shift.cashierName}'s shift? This action will immediately end their active session.`,
+      () => {
+        const allShifts = getFromStorage('cashDrawerShifts', []);
+        const updatedShifts = allShifts.map((s: CashDrawerShift) => {
+          if (s.id === shift.id) {
+            const closingTime = new Date().toISOString();
+            const duration = new Date(closingTime).getTime() - new Date(s.openedAt).getTime();
+            
+            return {
+              ...s,
+              status: 'force_closed',
+              closedAt: closingTime,
+              closingAmount: s.actualAmount || s.openingAmount,
+              difference: (s.actualAmount || s.openingAmount) - (s.expectedAmount || s.openingAmount),
+            };
+          }
+          return s;
+        });
 
-    const allShifts = getFromStorage('cashDrawerShifts', []);
-    const updatedShifts = allShifts.map((s: CashDrawerShift) => {
-      if (s.id === shift.id) {
-        const closingTime = new Date().toISOString();
-        const duration = new Date(closingTime).getTime() - new Date(s.openedAt).getTime();
-        
-        return {
-          ...s,
-          status: 'force_closed',
-          closedAt: closingTime,
-          closingAmount: s.actualAmount || s.openingAmount,
-          difference: (s.actualAmount || s.openingAmount) - (s.expectedAmount || s.openingAmount),
-        };
-      }
-      return s;
-    });
-
-    saveToStorage('cashDrawerShifts', updatedShifts);
-    loadShifts();
-    alert('Shift force-closed successfully');
+        saveToStorage('cashDrawerShifts', updatedShifts);
+        loadShifts();
+        popup.showSuccess('Shift Force-Closed', `${shift.cashierName}'s shift has been successfully force-closed.`);
+      },
+      'destructive'
+    );
   };
 
   const handleViewShift = (shift: CashDrawerShift) => {
@@ -93,7 +99,7 @@ export const CashDrawerMonitorPanel: React.FC = () => {
 
   const handleFlagShift = () => {
     if (!shiftToFlag || !flagReason.trim()) {
-      alert('Please provide a reason for flagging this shift');
+      popup.showError('Please provide a reason for flagging this shift.', 'Reason Required', 'warning');
       return;
     }
 
@@ -114,30 +120,33 @@ export const CashDrawerMonitorPanel: React.FC = () => {
     saveToStorage('cashDrawerShifts', updatedShifts);
     loadShifts();
     handleCloseFlagModal();
-    alert('Shift flagged successfully');
+    popup.showSuccess('Shift Flagged', 'The shift has been flagged for review successfully.');
   };
 
   const handleUnflagShift = (shift: CashDrawerShift) => {
-    if (!confirm('Are you sure you want to remove the flag from this shift?')) {
-      return;
-    }
+    popup.showConfirm(
+      'Remove Flag',
+      'Are you sure you want to remove the flag from this shift? This will clear all flag information.',
+      () => {
+        const allShifts = getFromStorage('cashDrawerShifts', []);
+        const updatedShifts = allShifts.map((s: CashDrawerShift) => {
+          if (s.id === shift.id) {
+            return {
+              ...s,
+              flagged: false,
+              flagReason: undefined,
+              flaggedBy: undefined,
+              flaggedAt: undefined,
+            };
+          }
+          return s;
+        });
 
-    const allShifts = getFromStorage('cashDrawerShifts', []);
-    const updatedShifts = allShifts.map((s: CashDrawerShift) => {
-      if (s.id === shift.id) {
-        return {
-          ...s,
-          flagged: false,
-          flagReason: undefined,
-          flaggedBy: undefined,
-          flaggedAt: undefined,
-        };
+        saveToStorage('cashDrawerShifts', updatedShifts);
+        loadShifts();
+        popup.showSuccess('Flag Removed', 'The flag has been removed from this shift successfully.');
       }
-      return s;
-    });
-
-    saveToStorage('cashDrawerShifts', updatedShifts);
-    loadShifts();
+    );
   };
 
   const calculateDuration = (openedAt: string, closedAt?: string) => {
@@ -561,6 +570,18 @@ export const CashDrawerMonitorPanel: React.FC = () => {
                           NPR {Math.abs(selectedShift.difference).toLocaleString()}
                         </p>
                       </div>
+                      {/* Show variance reason if exists */}
+                      {selectedShift.varianceReason && (
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                          <div className="flex items-start space-x-2">
+                            <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                            <div>
+                              <p className="text-gray-700">Cashier's Reason:</p>
+                              <p className="text-gray-900 mt-1">{selectedShift.varianceReason}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -739,6 +760,22 @@ export const CashDrawerMonitorPanel: React.FC = () => {
           animation: glow-green 2s ease-in-out infinite;
         }
       `}</style>
+
+      {/* Popup Container */}
+      <PopupContainer
+        showSuccessPopup={popup.showSuccessPopup}
+        successTitle={popup.successTitle}
+        successMessage={popup.successMessage}
+        onSuccessClose={popup.hideSuccess}
+        showErrorPopup={popup.showErrorPopup}
+        errorTitle={popup.errorTitle}
+        errorMessage={popup.errorMessage}
+        errorType={popup.errorType}
+        onErrorClose={popup.hideError}
+        showConfirmDialog={popup.showConfirmDialog}
+        confirmConfig={popup.confirmConfig}
+        onConfirmCancel={popup.hideConfirm}
+      />
     </div>
   );
 };

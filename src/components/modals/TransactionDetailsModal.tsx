@@ -1,15 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
-  X, Search, Filter, Calendar, ArrowDownCircle, ArrowUpCircle,
-  Receipt, RefreshCw, TrendingUp, TrendingDown, Clock,
-  FileText, DollarSign, Download
-} from 'lucide-react';
-import { getFromStorage } from '../../utils/mockData';
-import { BankAccount } from '../panels/BankAccountsPanel';
+  X,
+  Search,
+  Filter,
+  Calendar,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Receipt,
+  RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  Clock,
+  FileText,
+  DollarSign,
+  Download,
+} from "lucide-react";
+import { getFromStorage } from "../../utils/mockData";
+import { BankAccount } from "../panels/BankAccountsPanel";
 
 interface Transaction {
   id: string;
-  type: 'credit' | 'debit';
+  type: "credit" | "debit";
   source: string;
   amount: number;
   description: string;
@@ -23,11 +34,13 @@ interface TransactionDetailsModalProps {
   onClose: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  filter: 'all' | 'credit' | 'debit';
-  onFilterChange: (filter: 'all' | 'credit' | 'debit') => void;
+  filter: "all" | "credit" | "debit";
+  onFilterChange: (filter: "all" | "credit" | "debit") => void;
 }
 
-export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
+export const TransactionDetailsModal: React.FC<
+  TransactionDetailsModalProps
+> = ({
   account,
   onClose,
   searchQuery,
@@ -45,13 +58,13 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
     const allTransactions: Transaction[] = [];
 
     // Get cash transactions (transfers to this account)
-    const cashTxns = getFromStorage('cashTransactions', []);
+    const cashTxns = getFromStorage("cashTransactions", []);
     cashTxns.forEach((txn: any) => {
-      if (txn.bankAccountId === account.id && txn.type === 'transfer') {
+      if (txn.bankAccountId === account.id && txn.type === "transfer") {
         allTransactions.push({
           id: txn.id,
-          type: 'credit',
-          source: 'Cash Transfer',
+          type: "credit",
+          source: "Cash Transfer",
           amount: txn.amount,
           description: txn.description || `Transfer from Cash Drawer`,
           date: txn.date,
@@ -61,16 +74,13 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
     });
 
     // Get bill payments (if payment method matches this account type)
-    const bills = getFromStorage('bills', []);
+    const bills = getFromStorage("bills", []);
     bills.forEach((bill: any) => {
-      if (
-        bill.bankAccountId === account.id &&
-        bill.paymentStatus === 'paid'
-      ) {
+      if (bill.bankAccountId === account.id && bill.paymentStatus === "paid") {
         allTransactions.push({
           id: `BILL-${bill.id}`,
-          type: 'credit',
-          source: 'Bill Payment',
+          type: "credit",
+          source: "Bill Payment",
           amount: bill.total,
           description: `Payment from ${bill.customerName} - Bill #${bill.billNumber}`,
           billId: bill.billNumber,
@@ -81,24 +91,31 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
     });
 
     // Sort by date (newest first)
-    allTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    allTransactions.sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
 
     setTransactions(allTransactions);
   };
 
   // Calculate stats
-  const totalCredit = transactions.filter(t => t.type === 'credit').reduce((sum, t) => sum + t.amount, 0);
-  const totalDebit = transactions.filter(t => t.type === 'debit').reduce((sum, t) => sum + t.amount, 0);
+  const totalCredit = transactions
+    .filter((t) => t.type === "credit")
+    .reduce((sum, t) => sum + t.amount, 0);
+  const totalDebit = transactions
+    .filter((t) => t.type === "debit")
+    .reduce((sum, t) => sum + t.amount, 0);
   const netBalance = totalCredit - totalDebit;
 
   // Filter transactions
   const filteredTransactions = transactions.filter((txn) => {
-    const matchesSearch = 
+    const matchesSearch =
       txn.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       txn.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (txn.billId && txn.billId.toLowerCase().includes(searchQuery.toLowerCase()));
+      (txn.billId &&
+        txn.billId.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const matchesFilter = filter === 'all' || txn.type === filter;
+    const matchesFilter = filter === "all" || txn.type === filter;
 
     return matchesSearch && matchesFilter;
   });
@@ -112,17 +129,17 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
             <div>
               <h3 className="text-2xl font-bold">Transaction History</h3>
               <p className="text-blue-100 mt-1">{account.accountName}</p>
-              {account.accountType === 'bank' && (
+              {account.accountType === "bank" && (
                 <p className="text-sm text-blue-100 mt-1">
                   {account.bankName} - {account.accountNumber}
                 </p>
               )}
-              {account.accountType === 'esewa' && (
+              {account.accountType === "esewa" && (
                 <p className="text-sm text-blue-100 mt-1">
                   eSewa ID: {account.esewaId}
                 </p>
               )}
-              {account.accountType === 'fonepay' && (
+              {account.accountType === "fonepay" && (
                 <p className="text-sm text-blue-100 mt-1">
                   FonePay ID: {account.fonepayId}
                 </p>
@@ -145,7 +162,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
               <span className="text-sm text-gray-600">Current Balance</span>
             </div>
             <p className="text-2xl font-bold text-blue-900">
-              रू{account.currentBalance.toLocaleString()}
+              Rs{account.currentBalance.toLocaleString()}
             </p>
           </div>
 
@@ -155,10 +172,11 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
               <span className="text-sm text-gray-600">Total Credits</span>
             </div>
             <p className="text-2xl font-bold text-green-900">
-              रू{totalCredit.toLocaleString()}
+              Rs{totalCredit.toLocaleString()}
             </p>
             <p className="text-xs text-gray-500 mt-1">
-              {transactions.filter(t => t.type === 'credit').length} transactions
+              {transactions.filter((t) => t.type === "credit").length}{" "}
+              transactions
             </p>
           </div>
 
@@ -168,10 +186,11 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
               <span className="text-sm text-gray-600">Total Debits</span>
             </div>
             <p className="text-2xl font-bold text-red-900">
-              रू{totalDebit.toLocaleString()}
+              Rs{totalDebit.toLocaleString()}
             </p>
             <p className="text-xs text-gray-500 mt-1">
-              {transactions.filter(t => t.type === 'debit').length} transactions
+              {transactions.filter((t) => t.type === "debit").length}{" "}
+              transactions
             </p>
           </div>
 
@@ -180,8 +199,12 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
               <TrendingUp className="w-5 h-5 text-purple-600" />
               <span className="text-sm text-gray-600">Net Flow</span>
             </div>
-            <p className={`text-2xl font-bold ${netBalance >= 0 ? 'text-green-900' : 'text-red-900'}`}>
-              रू{netBalance.toLocaleString()}
+            <p
+              className={`text-2xl font-bold ${
+                netBalance >= 0 ? "text-green-900" : "text-red-900"
+              }`}
+            >
+              Rs{netBalance.toLocaleString()}
             </p>
             <p className="text-xs text-gray-500 mt-1">
               {transactions.length} total transactions
@@ -205,9 +228,9 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
 
             <div className="flex space-x-2">
               {[
-                { value: 'all', label: 'All', icon: Filter },
-                { value: 'credit', label: 'Credits', icon: ArrowDownCircle },
-                { value: 'debit', label: 'Debits', icon: ArrowUpCircle },
+                { value: "all", label: "All", icon: Filter },
+                { value: "credit", label: "Credits", icon: ArrowDownCircle },
+                { value: "debit", label: "Debits", icon: ArrowUpCircle },
               ].map((filterOption) => {
                 const Icon = filterOption.icon;
                 return (
@@ -216,8 +239,8 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
                     onClick={() => onFilterChange(filterOption.value as any)}
                     className={`px-4 py-2 rounded-lg font-semibold flex items-center space-x-2 transition-all ${
                       filter === filterOption.value
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -234,9 +257,13 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
           {filteredTransactions.length === 0 ? (
             <div className="text-center py-16">
               <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-gray-900 text-xl mb-2">No Transactions Found</h3>
+              <h3 className="text-gray-900 text-xl mb-2">
+                No Transactions Found
+              </h3>
               <p className="text-gray-500">
-                {searchQuery ? 'Try adjusting your search or filter' : 'Transactions will appear here'}
+                {searchQuery
+                  ? "Try adjusting your search or filter"
+                  : "Transactions will appear here"}
               </p>
             </div>
           ) : (
@@ -245,19 +272,21 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
                 <div
                   key={txn.id}
                   className={`bg-white rounded-xl border-2 p-4 hover:shadow-md transition-all ${
-                    txn.type === 'credit' ? 'border-green-200' : 'border-red-200'
+                    txn.type === "credit"
+                      ? "border-green-200"
+                      : "border-red-200"
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <div
                         className={`p-3 rounded-full ${
-                          txn.type === 'credit'
-                            ? 'bg-green-100 text-green-600'
-                            : 'bg-red-100 text-red-600'
+                          txn.type === "credit"
+                            ? "bg-green-100 text-green-600"
+                            : "bg-red-100 text-red-600"
                         }`}
                       >
-                        {txn.type === 'credit' ? (
+                        {txn.type === "credit" ? (
                           <ArrowDownCircle className="w-6 h-6" />
                         ) : (
                           <ArrowUpCircle className="w-6 h-6" />
@@ -265,12 +294,14 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
                       </div>
                       <div>
                         <div className="flex items-center space-x-3 mb-1">
-                          <p className="font-semibold text-gray-900">{txn.description}</p>
+                          <p className="font-semibold text-gray-900">
+                            {txn.description}
+                          </p>
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-bold ${
-                              txn.type === 'credit'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-red-100 text-red-700'
+                              txn.type === "credit"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
                             }`}
                           >
                             {txn.type.toUpperCase()}
@@ -283,8 +314,15 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
                           </span>
                           <span className="flex items-center space-x-1">
                             <Clock className="w-4 h-4" />
-                            <span>{new Date(txn.date).toLocaleDateString('en-NP')}</span>
-                            <span>{new Date(txn.date).toLocaleTimeString('en-NP', { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span>
+                              {new Date(txn.date).toLocaleDateString("en-NP")}
+                            </span>
+                            <span>
+                              {new Date(txn.date).toLocaleTimeString("en-NP", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
                           </span>
                           {txn.billId && (
                             <span className="text-blue-600 font-mono text-xs">
@@ -297,12 +335,17 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
                     <div className="text-right">
                       <p
                         className={`text-2xl font-bold ${
-                          txn.type === 'credit' ? 'text-green-600' : 'text-red-600'
+                          txn.type === "credit"
+                            ? "text-green-600"
+                            : "text-red-600"
                         }`}
                       >
-                        {txn.type === 'credit' ? '+' : '-'}रू{txn.amount.toLocaleString()}
+                        {txn.type === "credit" ? "+" : "-"}Rs
+                        {txn.amount.toLocaleString()}
                       </p>
-                      <p className="text-xs text-gray-400 font-mono mt-1">{txn.id}</p>
+                      <p className="text-xs text-gray-400 font-mono mt-1">
+                        {txn.id}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -315,13 +358,14 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
         <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-600">
-              Showing {filteredTransactions.length} of {transactions.length} transactions
+              Showing {filteredTransactions.length} of {transactions.length}{" "}
+              transactions
             </div>
             <div className="flex space-x-3">
               <button
                 onClick={() => {
                   /* Add export functionality */
-                  alert('Export functionality coming soon!');
+                  alert("Export functionality coming soon!");
                 }}
                 className="flex items-center space-x-2 px-4 py-2 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >

@@ -1,13 +1,36 @@
 // System Settings - Clean & Comprehensive
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
-  Settings, Building2, Mail, Phone, Globe, MapPin, Save, Upload,
-  DollarSign, Percent, Clock, Bell, Database, Shield, Key, Lock,
-  AlertCircle, CheckCircle, Palette, FileText, Printer, Download,
-  RefreshCw, Trash2, Eye, EyeOff, Languages
-} from 'lucide-react';
-import { getFromStorage, saveToStorage } from '../utils/mockData';
-import { useLanguage } from '../contexts/LanguageContext';
+  Settings,
+  Building2,
+  Mail,
+  Phone,
+  Globe,
+  MapPin,
+  Save,
+  Upload,
+  DollarSign,
+  Percent,
+  Clock,
+  Bell,
+  Database,
+  Shield,
+  Key,
+  Lock,
+  AlertCircle,
+  CheckCircle,
+  Palette,
+  FileText,
+  Printer,
+  Download,
+  RefreshCw,
+  Trash2,
+  Eye,
+  EyeOff,
+  Languages,
+} from "lucide-react";
+import { getFromStorage, saveToStorage } from "../utils/mockData";
+import { useLanguage } from "../contexts/LanguageContext";
 
 interface SystemSettings {
   // Company Information
@@ -17,71 +40,73 @@ interface SystemSettings {
   companyAddress: string;
   companyWebsite: string;
   taxNumber: string;
-  
+
   // Business Settings
   currency: string;
   taxRate: number;
   lowStockThreshold: number;
   fiscalYearStart: string;
-  
+
   // Notification Settings
   emailNotifications: boolean;
   lowStockAlerts: boolean;
   paymentReminders: boolean;
   dailyReports: boolean;
-  
+
   // Security Settings
   passwordMinLength: number;
   sessionTimeout: number;
   twoFactorAuth: boolean;
-  
+
   // Billing Settings
   invoicePrefix: string;
   invoiceNumbering: string;
   receiptFooter: string;
-  
+
   // System Settings
   autoBackup: boolean;
   backupFrequency: string;
   dataRetention: number;
 }
 
-export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpdate }) => {
-  const [activeTab, setActiveTab] = useState('company');
+export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({
+  onUpdate,
+}) => {
+  const [activeTab, setActiveTab] = useState("company");
   const [settings, setSettings] = useState<SystemSettings>({
     // Company Information
-    companyName: 'Serve Spares',
-    companyEmail: 'info@servespares.com',
-    companyPhone: '+977-9800000000',
-    companyAddress: 'Kathmandu, Nepal',
-    companyWebsite: 'www.servespares.com',
-    taxNumber: 'TAX-123456',
-    
+    companyName: "Serve Spares",
+    companyEmail: "info@servespares.com",
+    companyPhone: "+977-9800000000",
+    companyAddress: "Pokhara, Nepal",
+    companyWebsite: "www.servespares.com",
+    taxNumber: "TAX-123456",
+
     // Business Settings
-    currency: 'NPR',
+    currency: "NPR",
     taxRate: 13,
     lowStockThreshold: 10,
-    fiscalYearStart: '01-01',
-    
+    fiscalYearStart: "01-01",
+
     // Notification Settings
     emailNotifications: true,
     lowStockAlerts: true,
     paymentReminders: true,
     dailyReports: false,
-    
+
     // Security Settings
     passwordMinLength: 6,
     sessionTimeout: 60,
     twoFactorAuth: false,
-    
+
     // Billing Settings
-    invoicePrefix: 'INV',
-    invoiceNumbering: 'sequential',
-    receiptFooter: 'Thank you for your business!',
-    
+    invoicePrefix: "INV",
+    invoiceNumbering: "sequential",
+    receiptFooter: "Thank you for your business!",
+
     // System Settings
     autoBackup: true,
-    backupFrequency: 'daily',
+    backupFrequency: "daily",
     dataRetention: 365,
   });
 
@@ -89,7 +114,7 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    const savedSettings = getFromStorage('systemSettings', null);
+    const savedSettings = getFromStorage("systemSettings", null);
     if (savedSettings) {
       setSettings(savedSettings);
     }
@@ -101,25 +126,29 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
   };
 
   const saveSettings = () => {
-    saveToStorage('systemSettings', settings);
+    saveToStorage("systemSettings", settings);
     setHasChanges(false);
     onUpdate();
-    alert('✅ System settings saved successfully!');
+    alert("✅ System settings saved successfully!");
   };
 
   const resetToDefaults = () => {
-    if (window.confirm('⚠️ Reset all settings to default values? This cannot be undone.')) {
+    if (
+      window.confirm(
+        "⚠️ Reset all settings to default values? This cannot be undone."
+      )
+    ) {
       const defaultSettings: SystemSettings = {
-        companyName: 'Serve Spares',
-        companyEmail: 'info@servespares.com',
-        companyPhone: '+977-9800000000',
-        companyAddress: 'Kathmandu, Nepal',
-        companyWebsite: 'www.servespares.com',
-        taxNumber: 'TAX-123456',
-        currency: 'NPR',
+        companyName: "Serve Spares",
+        companyEmail: "info@servespares.com",
+        companyPhone: "+977-9800000000",
+        companyAddress: "Pokhara, Nepal",
+        companyWebsite: "www.servespares.com",
+        taxNumber: "TAX-123456",
+        currency: "NPR",
         taxRate: 13,
         lowStockThreshold: 10,
-        fiscalYearStart: '01-01',
+        fiscalYearStart: "01-01",
         emailNotifications: true,
         lowStockAlerts: true,
         paymentReminders: true,
@@ -127,28 +156,28 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
         passwordMinLength: 6,
         sessionTimeout: 60,
         twoFactorAuth: false,
-        invoicePrefix: 'INV',
-        invoiceNumbering: 'sequential',
-        receiptFooter: 'Thank you for your business!',
+        invoicePrefix: "INV",
+        invoiceNumbering: "sequential",
+        receiptFooter: "Thank you for your business!",
         autoBackup: true,
-        backupFrequency: 'daily',
+        backupFrequency: "daily",
         dataRetention: 365,
       };
       setSettings(defaultSettings);
-      saveToStorage('systemSettings', defaultSettings);
+      saveToStorage("systemSettings", defaultSettings);
       setHasChanges(false);
       onUpdate();
-      alert('✅ Settings reset to defaults!');
+      alert("✅ Settings reset to defaults!");
     }
   };
 
   const tabs = [
-    { id: 'company', label: 'Company Info', icon: Building2 },
-    { id: 'business', label: 'Business', icon: DollarSign },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'security', label: 'Security', icon: Shield },
-    { id: 'billing', label: 'Billing', icon: FileText },
-    { id: 'system', label: 'System', icon: Database },
+    { id: "company", label: "Company Info", icon: Building2 },
+    { id: "business", label: "Business", icon: DollarSign },
+    { id: "notifications", label: "Notifications", icon: Bell },
+    { id: "security", label: "Security", icon: Shield },
+    { id: "billing", label: "Billing", icon: FileText },
+    { id: "system", label: "System", icon: Database },
   ];
 
   const { language, setLanguage } = useLanguage();
@@ -162,7 +191,9 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
             <Settings className="w-7 h-7 mr-3 text-purple-600" />
             System Settings
           </h2>
-          <p className="text-gray-600 mt-1">Configure system-wide settings and preferences</p>
+          <p className="text-gray-600 mt-1">
+            Configure system-wide settings and preferences
+          </p>
         </div>
         <div className="flex space-x-3">
           <button
@@ -189,8 +220,12 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
         <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-4 flex items-start space-x-3">
           <AlertCircle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-yellow-800 font-bold">⚠️ You have unsaved changes</p>
-            <p className="text-yellow-700 text-sm mt-1">Click "Save Changes" to apply your modifications.</p>
+            <p className="text-yellow-800 font-bold">
+              ⚠️ You have unsaved changes
+            </p>
+            <p className="text-yellow-700 text-sm mt-1">
+              Click "Save Changes" to apply your modifications.
+            </p>
           </div>
         </div>
       )}
@@ -205,8 +240,8 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
               onClick={() => setActiveTab(tab.id)}
               className={`flex-1 min-w-[150px] px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center space-x-2 ${
                 activeTab === tab.id
-                  ? 'bg-purple-600 text-white shadow-md'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? "bg-purple-600 text-white shadow-md"
+                  : "text-gray-700 hover:bg-gray-100"
               }`}
             >
               <Icon className="w-5 h-5" />
@@ -219,14 +254,16 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
       {/* Tab Content */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         {/* Company Information Tab */}
-        {activeTab === 'company' && (
+        {activeTab === "company" && (
           <div className="space-y-6">
             <div>
               <h3 className="text-gray-900 font-bold text-lg mb-4 flex items-center">
                 <Building2 className="w-5 h-5 mr-2 text-purple-600" />
                 Company Information
               </h3>
-              <p className="text-gray-600 text-sm mb-6">Update your business details and contact information</p>
+              <p className="text-gray-600 text-sm mb-6">
+                Update your business details and contact information
+              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -239,7 +276,9 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                   <input
                     type="text"
                     value={settings.companyName}
-                    onChange={(e) => handleChange('companyName', e.target.value)}
+                    onChange={(e) =>
+                      handleChange("companyName", e.target.value)
+                    }
                     className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
@@ -254,7 +293,7 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                   <input
                     type="text"
                     value={settings.taxNumber}
-                    onChange={(e) => handleChange('taxNumber', e.target.value)}
+                    onChange={(e) => handleChange("taxNumber", e.target.value)}
                     className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
@@ -269,7 +308,9 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                   <input
                     type="email"
                     value={settings.companyEmail}
-                    onChange={(e) => handleChange('companyEmail', e.target.value)}
+                    onChange={(e) =>
+                      handleChange("companyEmail", e.target.value)
+                    }
                     className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
@@ -284,7 +325,9 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                   <input
                     type="tel"
                     value={settings.companyPhone}
-                    onChange={(e) => handleChange('companyPhone', e.target.value)}
+                    onChange={(e) =>
+                      handleChange("companyPhone", e.target.value)
+                    }
                     className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
@@ -299,7 +342,9 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                   <input
                     type="text"
                     value={settings.companyWebsite}
-                    onChange={(e) => handleChange('companyWebsite', e.target.value)}
+                    onChange={(e) =>
+                      handleChange("companyWebsite", e.target.value)
+                    }
                     className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
@@ -313,7 +358,9 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                   <MapPin className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
                   <textarea
                     value={settings.companyAddress}
-                    onChange={(e) => handleChange('companyAddress', e.target.value)}
+                    onChange={(e) =>
+                      handleChange("companyAddress", e.target.value)
+                    }
                     rows={3}
                     className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
@@ -324,14 +371,16 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
         )}
 
         {/* Business Settings Tab */}
-        {activeTab === 'business' && (
+        {activeTab === "business" && (
           <div className="space-y-6">
             <div>
               <h3 className="text-gray-900 font-bold text-lg mb-4 flex items-center">
                 <DollarSign className="w-5 h-5 mr-2 text-green-600" />
                 Business Settings
               </h3>
-              <p className="text-gray-600 text-sm mb-6">Configure business rules and financial settings</p>
+              <p className="text-gray-600 text-sm mb-6">
+                Configure business rules and financial settings
+              </p>
             </div>
 
             {/* Language Selection Section */}
@@ -341,25 +390,43 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                 System Language
               </h4>
               <p className="text-gray-600 text-sm mb-4">
-                Choose the language for the entire system. This will update all menus, labels, and messages.
+                Choose the language for the entire system. This will update all
+                menus, labels, and messages.
               </p>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
-                  { code: 'en' as const, name: 'English', nativeName: 'English', flag: '🇺🇸' },
-                  { code: 'ne' as const, name: 'Nepali', nativeName: 'नेपाली', flag: '🇳🇵' },
-                  { code: 'hi' as const, name: 'Hindi', nativeName: 'हिन्दी', flag: '🇮🇳' },
+                  {
+                    code: "en" as const,
+                    name: "English",
+                    nativeName: "English",
+                    flag: "🇺🇸",
+                  },
+                  {
+                    code: "ne" as const,
+                    name: "Nepali",
+                    nativeName: "नेपाली",
+                    flag: "🇳🇵",
+                  },
+                  {
+                    code: "hi" as const,
+                    name: "Hindi",
+                    nativeName: "हिन्दी",
+                    flag: "🇮🇳",
+                  },
                 ].map((lang) => (
                   <button
                     key={lang.code}
                     onClick={() => {
                       setLanguage(lang.code);
-                      alert(`✅ ${lang.name} (${lang.nativeName}) language activated successfully! The system will now display in ${lang.name}.`);
+                      alert(
+                        `✅ ${lang.name} (${lang.nativeName}) language activated successfully! The system will now display in ${lang.name}.`
+                      );
                     }}
                     className={`p-6 rounded-xl border-2 transition-all text-left ${
                       language === lang.code
-                        ? 'border-blue-600 bg-blue-100 shadow-lg scale-105'
-                        : 'border-gray-300 bg-white hover:border-blue-300 hover:shadow-md'
+                        ? "border-blue-600 bg-blue-100 shadow-lg scale-105"
+                        : "border-gray-300 bg-white hover:border-blue-300 hover:shadow-md"
                     }`}
                   >
                     <div className="flex items-center justify-between mb-3">
@@ -368,8 +435,12 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                         <CheckCircle className="w-8 h-8 text-blue-600" />
                       )}
                     </div>
-                    <div className="text-gray-900 font-bold text-lg mb-1">{lang.name}</div>
-                    <div className="text-gray-600 text-lg">{lang.nativeName}</div>
+                    <div className="text-gray-900 font-bold text-lg mb-1">
+                      {lang.name}
+                    </div>
+                    <div className="text-gray-600 text-lg">
+                      {lang.nativeName}
+                    </div>
                     {language === lang.code && (
                       <div className="mt-3 px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-full inline-block">
                         ACTIVE
@@ -385,13 +456,18 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                   Current Language
                 </h5>
                 <div className="text-gray-700">
-                  The system is currently set to{' '}
+                  The system is currently set to{" "}
                   <span className="font-bold text-blue-600">
-                    {language === 'en' ? 'English' : language === 'ne' ? 'Nepali (नेपाली)' : 'Hindi (हिन्दी)'}
+                    {language === "en"
+                      ? "English"
+                      : language === "ne"
+                      ? "Nepali (नेपाली)"
+                      : "Hindi (हिन्दी)"}
                   </span>
                 </div>
                 <p className="text-gray-500 text-sm mt-2">
-                  All users will see the interface in this language. Changes take effect immediately.
+                  All users will see the interface in this language. Changes
+                  take effect immediately.
                 </p>
               </div>
             </div>
@@ -403,7 +479,7 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                 </label>
                 <select
                   value={settings.currency}
-                  onChange={(e) => handleChange('currency', e.target.value)}
+                  onChange={(e) => handleChange("currency", e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="NPR">NPR - Nepali Rupee</option>
@@ -421,7 +497,9 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                   <input
                     type="number"
                     value={settings.taxRate}
-                    onChange={(e) => handleChange('taxRate', parseFloat(e.target.value))}
+                    onChange={(e) =>
+                      handleChange("taxRate", parseFloat(e.target.value))
+                    }
                     min="0"
                     max="100"
                     step="0.01"
@@ -437,11 +515,15 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                 <input
                   type="number"
                   value={settings.lowStockThreshold}
-                  onChange={(e) => handleChange('lowStockThreshold', parseInt(e.target.value))}
+                  onChange={(e) =>
+                    handleChange("lowStockThreshold", parseInt(e.target.value))
+                  }
                   min="1"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
-                <p className="text-gray-500 text-xs mt-1">Alert when stock falls below this number</p>
+                <p className="text-gray-500 text-xs mt-1">
+                  Alert when stock falls below this number
+                </p>
               </div>
 
               <div>
@@ -451,42 +533,59 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                 <input
                   type="text"
                   value={settings.fiscalYearStart}
-                  onChange={(e) => handleChange('fiscalYearStart', e.target.value)}
+                  onChange={(e) =>
+                    handleChange("fiscalYearStart", e.target.value)
+                  }
                   placeholder="MM-DD"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
-                <p className="text-gray-500 text-xs mt-1">Format: MM-DD (e.g., 01-01 for January 1st)</p>
+                <p className="text-gray-500 text-xs mt-1">
+                  Format: MM-DD (e.g., 01-01 for January 1st)
+                </p>
               </div>
             </div>
           </div>
         )}
 
         {/* Notification Settings Tab */}
-        {activeTab === 'notifications' && (
+        {activeTab === "notifications" && (
           <div className="space-y-6">
             <div>
               <h3 className="text-gray-900 font-bold text-lg mb-4 flex items-center">
                 <Bell className="w-5 h-5 mr-2 text-blue-600" />
                 Notification Settings
               </h3>
-              <p className="text-gray-600 text-sm mb-6">Manage notification preferences and alerts</p>
+              <p className="text-gray-600 text-sm mb-6">
+                Manage notification preferences and alerts
+              </p>
             </div>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div className="flex-1">
-                  <div className="text-gray-900 font-semibold">Email Notifications</div>
-                  <div className="text-gray-600 text-sm">Receive system notifications via email</div>
+                  <div className="text-gray-900 font-semibold">
+                    Email Notifications
+                  </div>
+                  <div className="text-gray-600 text-sm">
+                    Receive system notifications via email
+                  </div>
                 </div>
                 <button
-                  onClick={() => handleChange('emailNotifications', !settings.emailNotifications)}
+                  onClick={() =>
+                    handleChange(
+                      "emailNotifications",
+                      !settings.emailNotifications
+                    )
+                  }
                   className={`relative w-16 h-8 rounded-full transition-colors ${
-                    settings.emailNotifications ? 'bg-green-500' : 'bg-gray-300'
+                    settings.emailNotifications ? "bg-green-500" : "bg-gray-300"
                   }`}
                 >
                   <div
                     className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                      settings.emailNotifications ? 'translate-x-8' : 'translate-x-0'
+                      settings.emailNotifications
+                        ? "translate-x-8"
+                        : "translate-x-0"
                     }`}
                   />
                 </button>
@@ -494,18 +593,26 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
 
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div className="flex-1">
-                  <div className="text-gray-900 font-semibold">Low Stock Alerts</div>
-                  <div className="text-gray-600 text-sm">Get notified when items are running low</div>
+                  <div className="text-gray-900 font-semibold">
+                    Low Stock Alerts
+                  </div>
+                  <div className="text-gray-600 text-sm">
+                    Get notified when items are running low
+                  </div>
                 </div>
                 <button
-                  onClick={() => handleChange('lowStockAlerts', !settings.lowStockAlerts)}
+                  onClick={() =>
+                    handleChange("lowStockAlerts", !settings.lowStockAlerts)
+                  }
                   className={`relative w-16 h-8 rounded-full transition-colors ${
-                    settings.lowStockAlerts ? 'bg-green-500' : 'bg-gray-300'
+                    settings.lowStockAlerts ? "bg-green-500" : "bg-gray-300"
                   }`}
                 >
                   <div
                     className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                      settings.lowStockAlerts ? 'translate-x-8' : 'translate-x-0'
+                      settings.lowStockAlerts
+                        ? "translate-x-8"
+                        : "translate-x-0"
                     }`}
                   />
                 </button>
@@ -513,18 +620,26 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
 
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div className="flex-1">
-                  <div className="text-gray-900 font-semibold">Payment Reminders</div>
-                  <div className="text-gray-600 text-sm">Send reminders for pending payments</div>
+                  <div className="text-gray-900 font-semibold">
+                    Payment Reminders
+                  </div>
+                  <div className="text-gray-600 text-sm">
+                    Send reminders for pending payments
+                  </div>
                 </div>
                 <button
-                  onClick={() => handleChange('paymentReminders', !settings.paymentReminders)}
+                  onClick={() =>
+                    handleChange("paymentReminders", !settings.paymentReminders)
+                  }
                   className={`relative w-16 h-8 rounded-full transition-colors ${
-                    settings.paymentReminders ? 'bg-green-500' : 'bg-gray-300'
+                    settings.paymentReminders ? "bg-green-500" : "bg-gray-300"
                   }`}
                 >
                   <div
                     className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                      settings.paymentReminders ? 'translate-x-8' : 'translate-x-0'
+                      settings.paymentReminders
+                        ? "translate-x-8"
+                        : "translate-x-0"
                     }`}
                   />
                 </button>
@@ -532,18 +647,24 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
 
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div className="flex-1">
-                  <div className="text-gray-900 font-semibold">Daily Reports</div>
-                  <div className="text-gray-600 text-sm">Receive daily summary reports</div>
+                  <div className="text-gray-900 font-semibold">
+                    Daily Reports
+                  </div>
+                  <div className="text-gray-600 text-sm">
+                    Receive daily summary reports
+                  </div>
                 </div>
                 <button
-                  onClick={() => handleChange('dailyReports', !settings.dailyReports)}
+                  onClick={() =>
+                    handleChange("dailyReports", !settings.dailyReports)
+                  }
                   className={`relative w-16 h-8 rounded-full transition-colors ${
-                    settings.dailyReports ? 'bg-green-500' : 'bg-gray-300'
+                    settings.dailyReports ? "bg-green-500" : "bg-gray-300"
                   }`}
                 >
                   <div
                     className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                      settings.dailyReports ? 'translate-x-8' : 'translate-x-0'
+                      settings.dailyReports ? "translate-x-8" : "translate-x-0"
                     }`}
                   />
                 </button>
@@ -553,14 +674,16 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
         )}
 
         {/* Security Settings Tab */}
-        {activeTab === 'security' && (
+        {activeTab === "security" && (
           <div className="space-y-6">
             <div>
               <h3 className="text-gray-900 font-bold text-lg mb-4 flex items-center">
                 <Shield className="w-5 h-5 mr-2 text-red-600" />
                 Security Settings
               </h3>
-              <p className="text-gray-600 text-sm mb-6">Configure security and authentication settings</p>
+              <p className="text-gray-600 text-sm mb-6">
+                Configure security and authentication settings
+              </p>
             </div>
 
             <div className="space-y-6">
@@ -571,12 +694,16 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                 <input
                   type="number"
                   value={settings.passwordMinLength}
-                  onChange={(e) => handleChange('passwordMinLength', parseInt(e.target.value))}
+                  onChange={(e) =>
+                    handleChange("passwordMinLength", parseInt(e.target.value))
+                  }
                   min="6"
                   max="20"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
-                <p className="text-gray-500 text-xs mt-1">Minimum 6 characters recommended</p>
+                <p className="text-gray-500 text-xs mt-1">
+                  Minimum 6 characters recommended
+                </p>
               </div>
 
               <div>
@@ -586,12 +713,16 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                 <input
                   type="number"
                   value={settings.sessionTimeout}
-                  onChange={(e) => handleChange('sessionTimeout', parseInt(e.target.value))}
+                  onChange={(e) =>
+                    handleChange("sessionTimeout", parseInt(e.target.value))
+                  }
                   min="15"
                   max="480"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
-                <p className="text-gray-500 text-xs mt-1">Auto logout after inactivity</p>
+                <p className="text-gray-500 text-xs mt-1">
+                  Auto logout after inactivity
+                </p>
               </div>
 
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
@@ -600,17 +731,21 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                     <Lock className="w-5 h-5 mr-2 text-blue-600" />
                     Two-Factor Authentication
                   </div>
-                  <div className="text-gray-600 text-sm mt-1">Add extra security layer to login</div>
+                  <div className="text-gray-600 text-sm mt-1">
+                    Add extra security layer to login
+                  </div>
                 </div>
                 <button
-                  onClick={() => handleChange('twoFactorAuth', !settings.twoFactorAuth)}
+                  onClick={() =>
+                    handleChange("twoFactorAuth", !settings.twoFactorAuth)
+                  }
                   className={`relative w-16 h-8 rounded-full transition-colors ${
-                    settings.twoFactorAuth ? 'bg-green-500' : 'bg-gray-300'
+                    settings.twoFactorAuth ? "bg-green-500" : "bg-gray-300"
                   }`}
                 >
                   <div
                     className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                      settings.twoFactorAuth ? 'translate-x-8' : 'translate-x-0'
+                      settings.twoFactorAuth ? "translate-x-8" : "translate-x-0"
                     }`}
                   />
                 </button>
@@ -620,10 +755,14 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                 <div className="flex items-start space-x-3">
                   <Shield className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-blue-800 font-semibold">Security Recommendations</p>
+                    <p className="text-blue-800 font-semibold">
+                      Security Recommendations
+                    </p>
                     <ul className="text-blue-700 text-sm mt-2 space-y-1 list-disc list-inside">
                       <li>Use strong, unique passwords for all accounts</li>
-                      <li>Enable two-factor authentication for added security</li>
+                      <li>
+                        Enable two-factor authentication for added security
+                      </li>
                       <li>Regularly update passwords every 90 days</li>
                       <li>Review user access permissions monthly</li>
                     </ul>
@@ -635,14 +774,16 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
         )}
 
         {/* Billing Settings Tab */}
-        {activeTab === 'billing' && (
+        {activeTab === "billing" && (
           <div className="space-y-6">
             <div>
               <h3 className="text-gray-900 font-bold text-lg mb-4 flex items-center">
                 <FileText className="w-5 h-5 mr-2 text-orange-600" />
                 Billing Settings
               </h3>
-              <p className="text-gray-600 text-sm mb-6">Configure invoice and receipt settings</p>
+              <p className="text-gray-600 text-sm mb-6">
+                Configure invoice and receipt settings
+              </p>
             </div>
 
             <div className="space-y-6">
@@ -653,10 +794,14 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                 <input
                   type="text"
                   value={settings.invoicePrefix}
-                  onChange={(e) => handleChange('invoicePrefix', e.target.value)}
+                  onChange={(e) =>
+                    handleChange("invoicePrefix", e.target.value)
+                  }
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
-                <p className="text-gray-500 text-xs mt-1">Example: INV-001, INV-002, etc.</p>
+                <p className="text-gray-500 text-xs mt-1">
+                  Example: INV-001, INV-002, etc.
+                </p>
               </div>
 
               <div>
@@ -665,12 +810,18 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                 </label>
                 <select
                   value={settings.invoiceNumbering}
-                  onChange={(e) => handleChange('invoiceNumbering', e.target.value)}
+                  onChange={(e) =>
+                    handleChange("invoiceNumbering", e.target.value)
+                  }
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="sequential">Sequential (1, 2, 3...)</option>
-                  <option value="yearly">Yearly Reset (2024-001, 2024-002...)</option>
-                  <option value="monthly">Monthly Reset (202401-001, 202401-002...)</option>
+                  <option value="yearly">
+                    Yearly Reset (2024-001, 2024-002...)
+                  </option>
+                  <option value="monthly">
+                    Monthly Reset (202401-001, 202401-002...)
+                  </option>
                 </select>
               </div>
 
@@ -680,22 +831,34 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                 </label>
                 <textarea
                   value={settings.receiptFooter}
-                  onChange={(e) => handleChange('receiptFooter', e.target.value)}
+                  onChange={(e) =>
+                    handleChange("receiptFooter", e.target.value)
+                  }
                   rows={3}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
-                <p className="text-gray-500 text-xs mt-1">This message appears at the bottom of every receipt</p>
+                <p className="text-gray-500 text-xs mt-1">
+                  This message appears at the bottom of every receipt
+                </p>
               </div>
 
               <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
-                <h4 className="text-green-900 font-bold mb-3">Receipt Preview</h4>
+                <h4 className="text-green-900 font-bold mb-3">
+                  Receipt Preview
+                </h4>
                 <div className="bg-white p-4 rounded border border-gray-300 text-sm">
                   <div className="text-center mb-4">
-                    <div className="font-bold text-lg">{settings.companyName}</div>
-                    <div className="text-gray-600 text-xs">{settings.companyAddress}</div>
+                    <div className="font-bold text-lg">
+                      {settings.companyName}
+                    </div>
+                    <div className="text-gray-600 text-xs">
+                      {settings.companyAddress}
+                    </div>
                   </div>
                   <div className="border-t border-b border-gray-300 py-2 my-2">
-                    <div className="font-bold">{settings.invoicePrefix}-001</div>
+                    <div className="font-bold">
+                      {settings.invoicePrefix}-001
+                    </div>
                   </div>
                   <div className="text-gray-600 text-xs mt-4 text-center">
                     {settings.receiptFooter}
@@ -707,14 +870,16 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
         )}
 
         {/* System Settings Tab */}
-        {activeTab === 'system' && (
+        {activeTab === "system" && (
           <div className="space-y-6">
             <div>
               <h3 className="text-gray-900 font-bold text-lg mb-4 flex items-center">
                 <Database className="w-5 h-5 mr-2 text-purple-600" />
                 System Settings
               </h3>
-              <p className="text-gray-600 text-sm mb-6">Configure backup and data retention settings</p>
+              <p className="text-gray-600 text-sm mb-6">
+                Configure backup and data retention settings
+              </p>
             </div>
 
             <div className="space-y-6">
@@ -724,17 +889,21 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                     <Database className="w-5 h-5 mr-2 text-purple-600" />
                     Automatic Backups
                   </div>
-                  <div className="text-gray-600 text-sm mt-1">Automatically backup data periodically</div>
+                  <div className="text-gray-600 text-sm mt-1">
+                    Automatically backup data periodically
+                  </div>
                 </div>
                 <button
-                  onClick={() => handleChange('autoBackup', !settings.autoBackup)}
+                  onClick={() =>
+                    handleChange("autoBackup", !settings.autoBackup)
+                  }
                   className={`relative w-16 h-8 rounded-full transition-colors ${
-                    settings.autoBackup ? 'bg-green-500' : 'bg-gray-300'
+                    settings.autoBackup ? "bg-green-500" : "bg-gray-300"
                   }`}
                 >
                   <div
                     className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                      settings.autoBackup ? 'translate-x-8' : 'translate-x-0'
+                      settings.autoBackup ? "translate-x-8" : "translate-x-0"
                     }`}
                   />
                 </button>
@@ -747,7 +916,9 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                   </label>
                   <select
                     value={settings.backupFrequency}
-                    onChange={(e) => handleChange('backupFrequency', e.target.value)}
+                    onChange={(e) =>
+                      handleChange("backupFrequency", e.target.value)
+                    }
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   >
                     <option value="hourly">Every Hour</option>
@@ -765,12 +936,16 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({ onUpda
                 <input
                   type="number"
                   value={settings.dataRetention}
-                  onChange={(e) => handleChange('dataRetention', parseInt(e.target.value))}
+                  onChange={(e) =>
+                    handleChange("dataRetention", parseInt(e.target.value))
+                  }
                   min="30"
                   max="3650"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
-                <p className="text-gray-500 text-xs mt-1">How long to keep historical data (30-3650 days)</p>
+                <p className="text-gray-500 text-xs mt-1">
+                  How long to keep historical data (30-3650 days)
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

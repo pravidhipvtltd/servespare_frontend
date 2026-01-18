@@ -1,14 +1,47 @@
 // Audit Log - Simple, Clear & Fully Detailed
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
-  Shield, Search, Filter, Download, Calendar, Clock, User, Activity,
-  Plus, Edit, Trash2, Eye, Lock, Unlock, CheckCircle, XCircle,
-  AlertTriangle, DollarSign, Package, Users, Settings, FileText,
-  LogIn, LogOut, RefreshCw, Database, Key, Mail, Phone, MapPin,
-  CreditCard, Percent, Tag, Archive, RotateCcw, Save, Upload, Printer
-} from 'lucide-react';
-import { getFromStorage, saveToStorage } from '../utils/mockData';
-import { copyToClipboard } from '../utils/printExport';
+  Shield,
+  Search,
+  Filter,
+  Download,
+  Calendar,
+  Clock,
+  User,
+  Activity,
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
+  Lock,
+  Unlock,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  DollarSign,
+  Package,
+  Users,
+  Settings,
+  FileText,
+  LogIn,
+  LogOut,
+  RefreshCw,
+  Database,
+  Key,
+  Mail,
+  Phone,
+  MapPin,
+  CreditCard,
+  Percent,
+  Tag,
+  Archive,
+  RotateCcw,
+  Save,
+  Upload,
+  Printer,
+} from "lucide-react";
+import { getFromStorage, saveToStorage } from "../utils/mockData";
+import { copyToClipboard } from "../utils/printExport";
 
 interface AuditLog {
   id: string;
@@ -20,7 +53,7 @@ interface AuditLog {
   module: string;
   details: string;
   ipAddress?: string;
-  status: 'success' | 'failed' | 'warning';
+  status: "success" | "failed" | "warning";
   changes?: {
     field: string;
     oldValue: string;
@@ -28,60 +61,237 @@ interface AuditLog {
   }[];
 }
 
+interface ApiAuditLog {
+  id: number;
+  created: string;
+  modified: string;
+  user: number;
+  user_username: string;
+  tenant: number;
+  tenant_name: string;
+  action: string;
+  entity: string;
+  object_id: string;
+  method: string;
+  path: string;
+  status_code: number;
+  ip_address: string;
+  user_agent: string;
+  payload: any;
+  extra: any;
+}
+
+interface ApiResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: ApiAuditLog[];
+}
+
 export const AuditLogDetailed: React.FC<{ users: any[] }> = ({ users }) => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [dateFilter, setDateFilter] = useState('all');
-  const [actionFilter, setActionFilter] = useState('all');
-  const [moduleFilter, setModuleFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [actionFilter, setActionFilter] = useState("all");
+  const [moduleFilter, setModuleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
   const logsPerPage = 20;
 
   useEffect(() => {
     loadAuditLogs();
-  }, []);
+  }, [currentPage]);
 
-  const loadAuditLogs = () => {
-    let savedLogs = getFromStorage('auditLogs', []);
-    
-    // Generate sample logs if empty
-    if (savedLogs.length === 0) {
-      savedLogs = generateSampleLogs();
-      saveToStorage('auditLogs', savedLogs);
+  const loadAuditLogs = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem("accessToken");
+
+      if (!token) {
+        throw new Error("No authentication token found. Please log in again.");
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/audit-logs/?page=${currentPage}`,
+        {
+          headers: {
+            "ngrok-skip-browser-warning": "true",
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.status === 401) {
+        // Token is invalid or expired
+        const errorData = await response.json().catch(() => ({}));
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        throw new Error("Session expired. Please log in again.");
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.detail || `HTTP error! status: ${response.status}`
+        );
+      }
+
+      const data: ApiResponse = await response.json();
+      setTotalCount(data.count);
+
+      // Map API response to component interface
+      const mappedLogs: AuditLog[] = data.results.map((apiLog) => ({
+        id: apiLog.id.toString(),
+        timestamp: apiLog.created,
+        userId: apiLog.user.toString(),
+        userName: apiLog.user_username || "Unknown User",
+        userRole: apiLog.tenant_name || "user",
+        action: apiLog.action,
+        module: apiLog.entity || "System",
+        details: `${apiLog.method} ${apiLog.path}${
+          apiLog.object_id ? ` (ID: ${apiLog.object_id})` : ""
+        }`,
+        ipAddress: apiLog.ip_address,
+        status:
+          apiLog.status_code >= 200 && apiLog.status_code < 300
+            ? "success"
+            : apiLog.status_code >= 400
+            ? "failed"
+            : "warning",
+        changes: apiLog.payload
+          ? Object.entries(apiLog.payload).map(([key, value]) => ({
+              field: key,
+              oldValue: "",
+              newValue: String(value),
+            }))
+          : undefined,
+      }));
+
+      setLogs(mappedLogs);
+    } catch (err) {
+      console.error("Error fetching audit logs:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to load audit logs"
+      );
+
+      // Fallback to sample data on error
+      const sampleLogs = generateSampleLogs();
+      setLogs(sampleLogs);
+      setTotalCount(sampleLogs.length);
+    } finally {
+      setIsLoading(false);
     }
-    
-    setLogs(savedLogs);
   };
 
   const generateSampleLogs = (): AuditLog[] => {
     const actions = [
-      { action: 'login', module: 'Authentication', details: 'User logged into the system', status: 'success' },
-      { action: 'logout', module: 'Authentication', details: 'User logged out of the system', status: 'success' },
-      { action: 'create_user', module: 'User Management', details: 'Created new user account', status: 'success' },
-      { action: 'update_user', module: 'User Management', details: 'Updated user profile information', status: 'success' },
-      { action: 'delete_user', module: 'User Management', details: 'Deleted user account', status: 'success' },
-      { action: 'create_bill', module: 'Billing', details: 'Created new invoice/bill', status: 'success' },
-      { action: 'update_inventory', module: 'Inventory', details: 'Updated inventory item', status: 'success' },
-      { action: 'add_inventory', module: 'Inventory', details: 'Added new inventory item', status: 'success' },
-      { action: 'delete_inventory', module: 'Inventory', details: 'Removed inventory item', status: 'warning' },
-      { action: 'create_party', module: 'Parties', details: 'Created new customer/supplier', status: 'success' },
-      { action: 'update_settings', module: 'Settings', details: 'Modified system settings', status: 'success' },
-      { action: 'password_reset', module: 'Security', details: 'Reset user password', status: 'success' },
-      { action: 'failed_login', module: 'Authentication', details: 'Failed login attempt', status: 'failed' },
-      { action: 'permission_change', module: 'Security', details: 'Changed user permissions', status: 'success' },
-      { action: 'export_data', module: 'Reports', details: 'Exported financial report', status: 'success' },
+      {
+        action: "login",
+        module: "Authentication",
+        details: "User logged into the system",
+        status: "success",
+      },
+      {
+        action: "logout",
+        module: "Authentication",
+        details: "User logged out of the system",
+        status: "success",
+      },
+      {
+        action: "create_user",
+        module: "User Management",
+        details: "Created new user account",
+        status: "success",
+      },
+      {
+        action: "update_user",
+        module: "User Management",
+        details: "Updated user profile information",
+        status: "success",
+      },
+      {
+        action: "delete_user",
+        module: "User Management",
+        details: "Deleted user account",
+        status: "success",
+      },
+      {
+        action: "create_bill",
+        module: "Billing",
+        details: "Created new invoice/bill",
+        status: "success",
+      },
+      {
+        action: "update_inventory",
+        module: "Inventory",
+        details: "Updated inventory item",
+        status: "success",
+      },
+      {
+        action: "add_inventory",
+        module: "Inventory",
+        details: "Added new inventory item",
+        status: "success",
+      },
+      {
+        action: "delete_inventory",
+        module: "Inventory",
+        details: "Removed inventory item",
+        status: "warning",
+      },
+      {
+        action: "create_party",
+        module: "Parties",
+        details: "Created new customer/supplier",
+        status: "success",
+      },
+      {
+        action: "update_settings",
+        module: "Settings",
+        details: "Modified system settings",
+        status: "success",
+      },
+      {
+        action: "password_reset",
+        module: "Security",
+        details: "Reset user password",
+        status: "success",
+      },
+      {
+        action: "failed_login",
+        module: "Authentication",
+        details: "Failed login attempt",
+        status: "failed",
+      },
+      {
+        action: "permission_change",
+        module: "Security",
+        details: "Changed user permissions",
+        status: "success",
+      },
+      {
+        action: "export_data",
+        module: "Reports",
+        details: "Exported financial report",
+        status: "success",
+      },
     ];
 
     const sampleLogs: AuditLog[] = [];
     const now = new Date();
 
     for (let i = 0; i < 50; i++) {
-      const user = users[Math.floor(Math.random() * users.length)] || { 
-        id: 'user1', 
-        name: 'Admin User', 
-        role: 'super_admin' 
+      const user = users[Math.floor(Math.random() * users.length)] || {
+        id: "user1",
+        name: "Admin User",
+        role: "super_admin",
       };
       const actionData = actions[Math.floor(Math.random() * actions.length)];
       const daysAgo = Math.floor(Math.random() * 30);
@@ -97,21 +307,34 @@ export const AuditLogDetailed: React.FC<{ users: any[] }> = ({ users }) => {
         module: actionData.module,
         details: actionData.details,
         ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`,
-        status: actionData.status as 'success' | 'failed' | 'warning',
-        changes: actionData.action.includes('update') ? [
-          { field: 'Email', oldValue: 'old@example.com', newValue: 'new@example.com' },
-          { field: 'Phone', oldValue: '+977-9800000000', newValue: '+977-9811111111' }
-        ] : undefined
+        status: actionData.status as "success" | "failed" | "warning",
+        changes: actionData.action.includes("update")
+          ? [
+              {
+                field: "Email",
+                oldValue: "old@example.com",
+                newValue: "new@example.com",
+              },
+              {
+                field: "Phone",
+                oldValue: "+977-9800000000",
+                newValue: "+977-9811111111",
+              },
+            ]
+          : undefined,
       });
     }
 
-    return sampleLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return sampleLogs.sort(
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
   };
 
   // Filter logs
-  const filteredLogs = logs.filter(log => {
+  const filteredLogs = logs.filter((log) => {
     // Search filter
-    const searchMatch = 
+    const searchMatch =
       log.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.module.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -119,84 +342,97 @@ export const AuditLogDetailed: React.FC<{ users: any[] }> = ({ users }) => {
 
     // Date filter
     let dateMatch = true;
-    if (dateFilter !== 'all') {
+    if (dateFilter !== "all") {
       const logDate = new Date(log.timestamp);
       const now = new Date();
-      const daysDiff = Math.floor((now.getTime() - logDate.getTime()) / (1000 * 60 * 60 * 24));
-      
-      if (dateFilter === 'today') dateMatch = daysDiff === 0;
-      else if (dateFilter === 'week') dateMatch = daysDiff <= 7;
-      else if (dateFilter === 'month') dateMatch = daysDiff <= 30;
+      const daysDiff = Math.floor(
+        (now.getTime() - logDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      if (dateFilter === "today") dateMatch = daysDiff === 0;
+      else if (dateFilter === "week") dateMatch = daysDiff <= 7;
+      else if (dateFilter === "month") dateMatch = daysDiff <= 30;
     }
 
     // Action filter
-    const actionMatch = actionFilter === 'all' || log.action === actionFilter;
+    const actionMatch = actionFilter === "all" || log.action === actionFilter;
 
     // Module filter
-    const moduleMatch = moduleFilter === 'all' || log.module === moduleFilter;
+    const moduleMatch = moduleFilter === "all" || log.module === moduleFilter;
 
     // Status filter
-    const statusMatch = statusFilter === 'all' || log.status === statusFilter;
+    const statusMatch = statusFilter === "all" || log.status === statusFilter;
 
-    return searchMatch && dateMatch && actionMatch && moduleMatch && statusMatch;
+    return (
+      searchMatch && dateMatch && actionMatch && moduleMatch && statusMatch
+    );
   });
 
-  // Pagination
-  const totalPages = Math.ceil(filteredLogs.length / logsPerPage);
+  // Pagination - API handles pagination
+  const totalPages = Math.ceil(totalCount / logsPerPage);
   const startIndex = (currentPage - 1) * logsPerPage;
   const endIndex = startIndex + logsPerPage;
-  const currentLogs = filteredLogs.slice(startIndex, endIndex);
+  const currentLogs = filteredLogs;
 
   // Get unique values for filters
-  const uniqueActions = Array.from(new Set(logs.map(l => l.action)));
-  const uniqueModules = Array.from(new Set(logs.map(l => l.module)));
+  const uniqueActions = Array.from(new Set(logs.map((l) => l.action)));
+  const uniqueModules = Array.from(new Set(logs.map((l) => l.module)));
 
   // Statistics
-  const todayLogs = logs.filter(l => {
+  const todayLogs = logs.filter((l) => {
     const logDate = new Date(l.timestamp);
     const today = new Date();
     return logDate.toDateString() === today.toDateString();
   });
 
-  const successLogs = logs.filter(l => l.status === 'success');
-  const failedLogs = logs.filter(l => l.status === 'failed');
-  const warningLogs = logs.filter(l => l.status === 'warning');
+  const successLogs = logs.filter((l) => l.status === "success");
+  const failedLogs = logs.filter((l) => l.status === "failed");
+  const warningLogs = logs.filter((l) => l.status === "warning");
 
   // Action icon mapping
   const getActionIcon = (action: string) => {
-    if (action.includes('login')) return LogIn;
-    if (action.includes('logout')) return LogOut;
-    if (action.includes('create')) return Plus;
-    if (action.includes('update') || action.includes('edit')) return Edit;
-    if (action.includes('delete')) return Trash2;
-    if (action.includes('view')) return Eye;
-    if (action.includes('lock')) return Lock;
-    if (action.includes('unlock')) return Unlock;
-    if (action.includes('password')) return Key;
-    if (action.includes('permission')) return Shield;
-    if (action.includes('export')) return Download;
-    if (action.includes('import')) return Upload;
-    if (action.includes('settings')) return Settings;
+    if (action.includes("login")) return LogIn;
+    if (action.includes("logout")) return LogOut;
+    if (action.includes("create")) return Plus;
+    if (action.includes("update") || action.includes("edit")) return Edit;
+    if (action.includes("delete")) return Trash2;
+    if (action.includes("view")) return Eye;
+    if (action.includes("lock")) return Lock;
+    if (action.includes("unlock")) return Unlock;
+    if (action.includes("password")) return Key;
+    if (action.includes("permission")) return Shield;
+    if (action.includes("export")) return Download;
+    if (action.includes("import")) return Upload;
+    if (action.includes("settings")) return Settings;
     return Activity;
   };
 
   // Module icon mapping
   const getModuleIcon = (module: string) => {
-    if (module === 'User Management') return Users;
-    if (module === 'Authentication') return Shield;
-    if (module === 'Billing') return DollarSign;
-    if (module === 'Inventory') return Package;
-    if (module === 'Parties') return Users;
-    if (module === 'Settings') return Settings;
-    if (module === 'Security') return Lock;
-    if (module === 'Reports') return FileText;
+    if (module === "User Management") return Users;
+    if (module === "Authentication") return Shield;
+    if (module === "Billing") return DollarSign;
+    if (module === "Inventory") return Package;
+    if (module === "Parties") return Users;
+    if (module === "Settings") return Settings;
+    if (module === "Security") return Lock;
+    if (module === "Reports") return FileText;
     return Database;
   };
 
   // Export to CSV
   const exportToCSV = () => {
-    const headers = ['Timestamp', 'User', 'Role', 'Action', 'Module', 'Details', 'Status', 'IP Address'];
-    const rows = filteredLogs.map(log => [
+    const headers = [
+      "Timestamp",
+      "User",
+      "Role",
+      "Action",
+      "Module",
+      "Details",
+      "Status",
+      "IP Address",
+    ];
+    const rows = filteredLogs.map((log) => [
       new Date(log.timestamp).toLocaleString(),
       log.userName,
       log.userRole,
@@ -204,15 +440,17 @@ export const AuditLogDetailed: React.FC<{ users: any[] }> = ({ users }) => {
       log.module,
       log.details,
       log.status,
-      log.ipAddress || 'N/A'
+      log.ipAddress || "N/A",
     ]);
 
-    const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${cell}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `audit-log-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `audit-log-${new Date().toISOString().split("T")[0]}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -221,7 +459,7 @@ export const AuditLogDetailed: React.FC<{ users: any[] }> = ({ users }) => {
 
   // Print Audit Log
   const printAuditLog = () => {
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
     const html = `
@@ -252,26 +490,36 @@ export const AuditLogDetailed: React.FC<{ users: any[] }> = ({ users }) => {
         <body>
           <div class="header">
             <h1>🛡️ Audit Log Report</h1>
-            <p><strong>Generated:</strong> ${new Date().toLocaleString('en-NP')}</p>
+            <p><strong>Generated:</strong> ${new Date().toLocaleString(
+              "en-NP"
+            )}</p>
             <p><strong>Total Records:</strong> ${filteredLogs.length}</p>
           </div>
           
           <div class="stats">
             <div class="stat-card">
               <div style="color: #3b82f6;">Total Activities</div>
-              <div class="stat-value" style="color: #3b82f6;">${logs.length}</div>
+              <div class="stat-value" style="color: #3b82f6;">${
+                logs.length
+              }</div>
             </div>
             <div class="stat-card">
               <div style="color: #059669;">Successful</div>
-              <div class="stat-value" style="color: #059669;">${logs.filter(l => l.status === 'success').length}</div>
+              <div class="stat-value" style="color: #059669;">${
+                logs.filter((l) => l.status === "success").length
+              }</div>
             </div>
             <div class="stat-card">
               <div style="color: #dc2626;">Failed</div>
-              <div class="stat-value" style="color: #dc2626;">${logs.filter(l => l.status === 'failed').length}</div>
+              <div class="stat-value" style="color: #dc2626;">${
+                logs.filter((l) => l.status === "failed").length
+              }</div>
             </div>
             <div class="stat-card">
               <div style="color: #7c3aed;">Today</div>
-              <div class="stat-value" style="color: #7c3aed;">${todayLogs.length}</div>
+              <div class="stat-value" style="color: #7c3aed;">${
+                todayLogs.length
+              }</div>
             </div>
           </div>
 
@@ -288,22 +536,36 @@ export const AuditLogDetailed: React.FC<{ users: any[] }> = ({ users }) => {
               </tr>
             </thead>
             <tbody>
-              ${filteredLogs.map(log => `
+              ${filteredLogs
+                .map(
+                  (log) => `
                 <tr>
-                  <td>${new Date(log.timestamp).toLocaleString('en-NP')}</td>
+                  <td>${new Date(log.timestamp).toLocaleString("en-NP")}</td>
                   <td>
                     <strong>${log.userName}</strong><br>
-                    <small style="color: #6b7280;">${log.userRole.replace(/_/g, ' ').toUpperCase()}</small>
+                    <small style="color: #6b7280;">${log.userRole
+                      .replace(/_/g, " ")
+                      .toUpperCase()}</small>
                   </td>
-                  <td>${log.action.replace(/_/g, ' ').toUpperCase()}</td>
+                  <td>${log.action.replace(/_/g, " ").toUpperCase()}</td>
                   <td>${log.module}</td>
                   <td>${log.details}</td>
                   <td class="status-${log.status}">
-                    ${log.status === 'success' ? '✓ Success' : log.status === 'failed' ? '✗ Failed' : '⚠ Warning'}
+                    ${
+                      log.status === "success"
+                        ? "✓ Success"
+                        : log.status === "failed"
+                        ? "✗ Failed"
+                        : "⚠ Warning"
+                    }
                   </td>
-                  <td style="font-family: monospace; font-size: 12px;">${log.ipAddress || 'N/A'}</td>
+                  <td style="font-family: monospace; font-size: 12px;">${
+                    log.ipAddress || "N/A"
+                  }</td>
                 </tr>
-              `).join('')}
+              `
+                )
+                .join("")}
             </tbody>
           </table>
 
@@ -327,14 +589,18 @@ export const AuditLogDetailed: React.FC<{ users: any[] }> = ({ users }) => {
 
   // Clear old logs
   const clearOldLogs = () => {
-    if (window.confirm('⚠️ Clear logs older than 30 days? This cannot be undone.')) {
+    if (
+      window.confirm("⚠️ Clear logs older than 30 days? This cannot be undone.")
+    ) {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
-      const recentLogs = logs.filter(log => new Date(log.timestamp) > thirtyDaysAgo);
-      saveToStorage('auditLogs', recentLogs);
+
+      const recentLogs = logs.filter(
+        (log) => new Date(log.timestamp) > thirtyDaysAgo
+      );
+      saveToStorage("auditLogs", recentLogs);
       setLogs(recentLogs);
-      alert('✅ Old logs cleared successfully!');
+      alert("✅ Old logs cleared successfully!");
     }
   };
 
@@ -347,10 +613,17 @@ export const AuditLogDetailed: React.FC<{ users: any[] }> = ({ users }) => {
             <Shield className="w-7 h-7 mr-3 text-blue-600" />
             Audit Log
             <span className="ml-3 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">
-              {filteredLogs.length} Records
+              {totalCount} Records
             </span>
+            {isLoading && (
+              <span className="ml-3 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-bold animate-pulse">
+                Loading...
+              </span>
+            )}
           </h2>
-          <p className="text-gray-600 mt-1">Complete system activity tracking and monitoring</p>
+          <p className="text-gray-600 mt-1">
+            Complete system activity tracking and monitoring
+          </p>
         </div>
         <div className="flex space-x-3">
           <button
@@ -394,19 +667,25 @@ export const AuditLogDetailed: React.FC<{ users: any[] }> = ({ users }) => {
 
         <div className="bg-white border-2 border-green-200 rounded-xl p-6">
           <CheckCircle className="w-8 h-8 text-green-600 mb-2" />
-          <div className="text-green-900 font-bold text-3xl">{successLogs.length}</div>
+          <div className="text-green-900 font-bold text-3xl">
+            {successLogs.length}
+          </div>
           <div className="text-green-700 text-sm">Successful Actions</div>
         </div>
 
         <div className="bg-white border-2 border-red-200 rounded-xl p-6">
           <XCircle className="w-8 h-8 text-red-600 mb-2" />
-          <div className="text-red-900 font-bold text-3xl">{failedLogs.length}</div>
+          <div className="text-red-900 font-bold text-3xl">
+            {failedLogs.length}
+          </div>
           <div className="text-red-700 text-sm">Failed Actions</div>
         </div>
 
         <div className="bg-white border-2 border-purple-200 rounded-xl p-6">
           <Clock className="w-8 h-8 text-purple-600 mb-2" />
-          <div className="text-purple-900 font-bold text-3xl">{todayLogs.length}</div>
+          <div className="text-purple-900 font-bold text-3xl">
+            {todayLogs.length}
+          </div>
           <div className="text-purple-700 text-sm">Today's Activities</div>
         </div>
       </div>
@@ -449,8 +728,10 @@ export const AuditLogDetailed: React.FC<{ users: any[] }> = ({ users }) => {
             className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">All Actions</option>
-            {uniqueActions.map(action => (
-              <option key={action} value={action}>{action.replace(/_/g, ' ').toUpperCase()}</option>
+            {uniqueActions.map((action) => (
+              <option key={action} value={action}>
+                {action.replace(/_/g, " ").toUpperCase()}
+              </option>
             ))}
           </select>
 
@@ -461,8 +742,10 @@ export const AuditLogDetailed: React.FC<{ users: any[] }> = ({ users }) => {
             className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">All Modules</option>
-            {uniqueModules.map(module => (
-              <option key={module} value={module}>{module}</option>
+            {uniqueModules.map((module) => (
+              <option key={module} value={module}>
+                {module}
+              </option>
             ))}
           </select>
 
@@ -482,146 +765,205 @@ export const AuditLogDetailed: React.FC<{ users: any[] }> = ({ users }) => {
 
       {/* Audit Log Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b-2 border-gray-200">
-              <tr>
-                <th className="text-left py-4 px-6 text-gray-700 font-bold">Timestamp</th>
-                <th className="text-left py-4 px-6 text-gray-700 font-bold">User</th>
-                <th className="text-left py-4 px-6 text-gray-700 font-bold">Action</th>
-                <th className="text-left py-4 px-6 text-gray-700 font-bold">Module</th>
-                <th className="text-left py-4 px-6 text-gray-700 font-bold">Details</th>
-                <th className="text-left py-4 px-6 text-gray-700 font-bold">IP Address</th>
-                <th className="text-center py-4 px-6 text-gray-700 font-bold">Status</th>
-                <th className="text-center py-4 px-6 text-gray-700 font-bold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentLogs.map((log) => {
-                const ActionIcon = getActionIcon(log.action);
-                const ModuleIcon = getModuleIcon(log.module);
-                const logDate = new Date(log.timestamp);
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
+            <span className="ml-3 text-gray-600 font-semibold">
+              Loading audit logs...
+            </span>
+          </div>
+        )}
+        {!isLoading && currentLogs.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <AlertTriangle className="w-12 h-12 text-gray-400 mb-3" />
+            <p className="text-gray-600 font-semibold">No audit logs found</p>
+            <p className="text-gray-500 text-sm">Try adjusting your filters</p>
+          </div>
+        )}
+        {!isLoading && currentLogs.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b-2 border-gray-200">
+                <tr>
+                  <th className="text-left py-4 px-6 text-gray-700 font-bold">
+                    Timestamp
+                  </th>
+                  <th className="text-left py-4 px-6 text-gray-700 font-bold">
+                    User
+                  </th>
+                  <th className="text-left py-4 px-6 text-gray-700 font-bold">
+                    Action
+                  </th>
+                  <th className="text-left py-4 px-6 text-gray-700 font-bold">
+                    Module
+                  </th>
+                  <th className="text-left py-4 px-6 text-gray-700 font-bold">
+                    Details
+                  </th>
+                  <th className="text-left py-4 px-6 text-gray-700 font-bold">
+                    IP Address
+                  </th>
+                  <th className="text-center py-4 px-6 text-gray-700 font-bold">
+                    Status
+                  </th>
+                  <th className="text-center py-4 px-6 text-gray-700 font-bold">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentLogs.map((log) => {
+                  const ActionIcon = getActionIcon(log.action);
+                  const ModuleIcon = getModuleIcon(log.module);
+                  const logDate = new Date(log.timestamp);
 
-                return (
-                  <tr key={log.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td className="py-4 px-6">
-                      <div className="flex items-center space-x-2">
-                        <Clock className="w-4 h-4 text-gray-400" />
-                        <div>
-                          <div className="text-gray-900 font-semibold text-sm">
-                            {logDate.toLocaleDateString('en-NP')}
-                          </div>
-                          <div className="text-gray-500 text-xs">
-                            {logDate.toLocaleTimeString('en-NP')}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                          <User className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <div className="text-gray-900 font-semibold text-sm">{log.userName}</div>
-                          <div className="text-gray-500 text-xs">
-                            {log.userRole.replace(/_/g, ' ').toUpperCase()}
+                  return (
+                    <tr
+                      key={log.id}
+                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="py-4 px-6">
+                        <div className="flex items-center space-x-2">
+                          <Clock className="w-4 h-4 text-gray-400" />
+                          <div>
+                            <div className="text-gray-900 font-semibold text-sm">
+                              {logDate.toLocaleDateString("en-NP")}
+                            </div>
+                            <div className="text-gray-500 text-xs">
+                              {logDate.toLocaleTimeString("en-NP")}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center space-x-2">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                          log.status === 'success' ? 'bg-green-100' :
-                          log.status === 'failed' ? 'bg-red-100' :
-                          'bg-yellow-100'
-                        }`}>
-                          <ActionIcon className={`w-4 h-4 ${
-                            log.status === 'success' ? 'text-green-600' :
-                            log.status === 'failed' ? 'text-red-600' :
-                            'text-yellow-600'
-                          }`} />
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                            <User className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <div className="text-gray-900 font-semibold text-sm">
+                              {log.userName}
+                            </div>
+                            <div className="text-gray-500 text-xs">
+                              {log.userRole.replace(/_/g, " ").toUpperCase()}
+                            </div>
+                          </div>
                         </div>
-                        <span className="text-gray-700 font-semibold text-sm">
-                          {log.action.replace(/_/g, ' ').toUpperCase()}
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="flex items-center space-x-2">
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                              log.status === "success"
+                                ? "bg-green-100"
+                                : log.status === "failed"
+                                ? "bg-red-100"
+                                : "bg-yellow-100"
+                            }`}
+                          >
+                            <ActionIcon
+                              className={`w-4 h-4 ${
+                                log.status === "success"
+                                  ? "text-green-600"
+                                  : log.status === "failed"
+                                  ? "text-red-600"
+                                  : "text-yellow-600"
+                              }`}
+                            />
+                          </div>
+                          <span className="text-gray-700 font-semibold text-sm">
+                            {log.action.replace(/_/g, " ").toUpperCase()}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="flex items-center space-x-2">
+                          <ModuleIcon className="w-4 h-4 text-gray-500" />
+                          <span className="text-gray-700 text-sm">
+                            {log.module}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="text-gray-600 text-sm max-w-xs truncate">
+                          {log.details}
+                        </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="text-gray-600 text-sm font-mono">
+                          {log.ipAddress || "N/A"}
+                        </div>
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        <span
+                          className={`inline-flex px-3 py-1 rounded-full text-xs font-bold ${
+                            log.status === "success"
+                              ? "bg-green-100 text-green-700"
+                              : log.status === "failed"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-yellow-100 text-yellow-700"
+                          }`}
+                        >
+                          {log.status === "success"
+                            ? "✓ Success"
+                            : log.status === "failed"
+                            ? "✗ Failed"
+                            : "⚠ Warning"}
                         </span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center space-x-2">
-                        <ModuleIcon className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-700 text-sm">{log.module}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="text-gray-600 text-sm max-w-xs truncate">
-                        {log.details}
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="text-gray-600 text-sm font-mono">
-                        {log.ipAddress || 'N/A'}
-                      </div>
-                    </td>
-                    <td className="py-4 px-6 text-center">
-                      <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold ${
-                        log.status === 'success' ? 'bg-green-100 text-green-700' :
-                        log.status === 'failed' ? 'bg-red-100 text-red-700' :
-                        'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {log.status === 'success' ? '✓ Success' :
-                         log.status === 'failed' ? '✗ Failed' :
-                         '⚠ Warning'}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-center">
-                      <button
-                        onClick={() => setSelectedLog(log)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center space-x-1 mx-auto"
-                      >
-                        <Eye className="w-4 h-4" />
-                        <span>Details</span>
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        <button
+                          onClick={() => setSelectedLog(log)}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center space-x-1 mx-auto"
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span>Details</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {!isLoading && totalPages > 1 && (
           <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
             <div className="text-gray-600 text-sm">
-              Showing {startIndex + 1} to {Math.min(endIndex, filteredLogs.length)} of {filteredLogs.length} records
+              Showing {startIndex + 1} to {Math.min(endIndex, totalCount)} of{" "}
+              {totalCount} records
             </div>
             <div className="flex space-x-2">
               <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
               >
                 Previous
               </button>
               <div className="flex space-x-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`px-4 py-2 rounded-lg font-semibold ${
-                      currentPage === page
-                        ? 'bg-blue-600 text-white'
-                        : 'border border-gray-300 hover:bg-gray-100'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-4 py-2 rounded-lg font-semibold ${
+                        currentPage === page
+                          ? "bg-blue-600 text-white"
+                          : "border border-gray-300 hover:bg-gray-100"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                )}
               </div>
               <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
                 disabled={currentPage === totalPages}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
               >
@@ -652,65 +994,97 @@ export const AuditLogDetailed: React.FC<{ users: any[] }> = ({ users }) => {
             <div className="space-y-6">
               {/* Status Badge */}
               <div className="flex justify-center">
-                <span className={`inline-flex px-6 py-3 rounded-full text-lg font-bold ${
-                  selectedLog.status === 'success' ? 'bg-green-100 text-green-700' :
-                  selectedLog.status === 'failed' ? 'bg-red-100 text-red-700' :
-                  'bg-yellow-100 text-yellow-700'
-                }`}>
-                  {selectedLog.status === 'success' ? '✓ Successful Action' :
-                   selectedLog.status === 'failed' ? '✗ Failed Action' :
-                   '⚠ Warning Action'}
+                <span
+                  className={`inline-flex px-6 py-3 rounded-full text-lg font-bold ${
+                    selectedLog.status === "success"
+                      ? "bg-green-100 text-green-700"
+                      : selectedLog.status === "failed"
+                      ? "bg-red-100 text-red-700"
+                      : "bg-yellow-100 text-yellow-700"
+                  }`}
+                >
+                  {selectedLog.status === "success"
+                    ? "✓ Successful Action"
+                    : selectedLog.status === "failed"
+                    ? "✗ Failed Action"
+                    : "⚠ Warning Action"}
                 </span>
               </div>
 
               {/* Basic Info */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-gray-50 rounded-xl">
-                  <div className="text-gray-600 text-sm font-semibold mb-1">Timestamp</div>
+                  <div className="text-gray-600 text-sm font-semibold mb-1">
+                    Timestamp
+                  </div>
                   <div className="text-gray-900 font-bold">
-                    {new Date(selectedLog.timestamp).toLocaleString('en-NP')}
+                    {new Date(selectedLog.timestamp).toLocaleString("en-NP")}
                   </div>
                 </div>
 
                 <div className="p-4 bg-gray-50 rounded-xl">
-                  <div className="text-gray-600 text-sm font-semibold mb-1">Log ID</div>
-                  <div className="text-gray-900 font-mono text-sm">{selectedLog.id}</div>
+                  <div className="text-gray-600 text-sm font-semibold mb-1">
+                    Log ID
+                  </div>
+                  <div className="text-gray-900 font-mono text-sm">
+                    {selectedLog.id}
+                  </div>
                 </div>
 
                 <div className="p-4 bg-blue-50 rounded-xl">
-                  <div className="text-blue-600 text-sm font-semibold mb-1">User</div>
-                  <div className="text-blue-900 font-bold">{selectedLog.userName}</div>
+                  <div className="text-blue-600 text-sm font-semibold mb-1">
+                    User
+                  </div>
+                  <div className="text-blue-900 font-bold">
+                    {selectedLog.userName}
+                  </div>
                   <div className="text-blue-700 text-xs mt-1">
-                    {selectedLog.userRole.replace(/_/g, ' ').toUpperCase()}
+                    {selectedLog.userRole.replace(/_/g, " ").toUpperCase()}
                   </div>
                 </div>
 
                 <div className="p-4 bg-blue-50 rounded-xl">
-                  <div className="text-blue-600 text-sm font-semibold mb-1">User ID</div>
-                  <div className="text-blue-900 font-mono text-sm">{selectedLog.userId}</div>
-                </div>
-
-                <div className="p-4 bg-purple-50 rounded-xl">
-                  <div className="text-purple-600 text-sm font-semibold mb-1">Action</div>
-                  <div className="text-purple-900 font-bold">
-                    {selectedLog.action.replace(/_/g, ' ').toUpperCase()}
+                  <div className="text-blue-600 text-sm font-semibold mb-1">
+                    User ID
+                  </div>
+                  <div className="text-blue-900 font-mono text-sm">
+                    {selectedLog.userId}
                   </div>
                 </div>
 
                 <div className="p-4 bg-purple-50 rounded-xl">
-                  <div className="text-purple-600 text-sm font-semibold mb-1">Module</div>
-                  <div className="text-purple-900 font-bold">{selectedLog.module}</div>
+                  <div className="text-purple-600 text-sm font-semibold mb-1">
+                    Action
+                  </div>
+                  <div className="text-purple-900 font-bold">
+                    {selectedLog.action.replace(/_/g, " ").toUpperCase()}
+                  </div>
+                </div>
+
+                <div className="p-4 bg-purple-50 rounded-xl">
+                  <div className="text-purple-600 text-sm font-semibold mb-1">
+                    Module
+                  </div>
+                  <div className="text-purple-900 font-bold">
+                    {selectedLog.module}
+                  </div>
                 </div>
 
                 <div className="p-4 bg-orange-50 rounded-xl col-span-2">
-                  <div className="text-orange-600 text-sm font-semibold mb-1">IP Address</div>
-                  <div className="text-orange-900 font-mono">{selectedLog.ipAddress || 'N/A'}</div>
+                  <div className="text-orange-600 text-sm font-semibold mb-1">
+                    IP Address
+                  </div>
+                  <div className="text-orange-900 font-mono">
+                    {selectedLog.ipAddress || "N/A"}
+                  </div>
                 </div>
               </div>
 
               {/* Details */}
               <div className="p-4 bg-gray-50 rounded-xl">
-                <div className="text-gray-700 font-bold mb-2">Action Details</div>
+                <div className="text-gray-700 font-bold mb-2">
+                  Action Details
+                </div>
                 <div className="text-gray-600">{selectedLog.details}</div>
               </div>
 
@@ -723,17 +1097,26 @@ export const AuditLogDetailed: React.FC<{ users: any[] }> = ({ users }) => {
                   </div>
                   <div className="space-y-3">
                     {selectedLog.changes.map((change, idx) => (
-                      <div key={idx} className="p-3 bg-white rounded-lg border border-yellow-200">
-                        <div className="text-gray-700 font-bold mb-2">{change.field}</div>
+                      <div
+                        key={idx}
+                        className="p-3 bg-white rounded-lg border border-yellow-200"
+                      >
+                        <div className="text-gray-700 font-bold mb-2">
+                          {change.field}
+                        </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <div className="text-red-600 text-xs font-semibold mb-1">Old Value</div>
+                            <div className="text-red-600 text-xs font-semibold mb-1">
+                              Old Value
+                            </div>
                             <div className="text-red-700 font-mono text-sm line-through">
                               {change.oldValue}
                             </div>
                           </div>
                           <div>
-                            <div className="text-green-600 text-xs font-semibold mb-1">New Value</div>
+                            <div className="text-green-600 text-xs font-semibold mb-1">
+                              New Value
+                            </div>
                             <div className="text-green-700 font-mono text-sm font-bold">
                               {change.newValue}
                             </div>
@@ -756,7 +1139,7 @@ export const AuditLogDetailed: React.FC<{ users: any[] }> = ({ users }) => {
                 <button
                   onClick={() => {
                     copyToClipboard(JSON.stringify(selectedLog, null, 2));
-                    alert('✅ Log details copied to clipboard!');
+                    alert("✅ Log details copied to clipboard!");
                   }}
                   className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold flex items-center justify-center space-x-2"
                 >

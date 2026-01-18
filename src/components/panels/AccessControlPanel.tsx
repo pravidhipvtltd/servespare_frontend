@@ -8,17 +8,20 @@ import {
 } from 'lucide-react';
 import { getFromStorage, saveToStorage } from '../../utils/mockData';
 import { usePermissions } from '../../contexts/PermissionContext';
+import { SuccessPopup } from '../SuccessPopup';
+import { ErrorPopup } from '../ErrorPopup';
+import { ConfirmDialog } from '../ConfirmDialog';
 
 interface Permission {
   id: string;
   name: string;
   description: string;
-  category: 'inventory' | 'finance' | 'users' | 'reports' | 'system' | 'advanced';
+  category: 'inventory' | 'users' | 'reports' | 'system' | 'advanced' | 'billing';
   icon: any;
 }
 
 interface RolePermissions {
-  role: 'superadmin' | 'admin' | 'inventory_manager' | 'cashier' | 'finance';
+  role: 'superadmin' | 'admin' | 'inventory_manager' | 'cashier';
   permissions: string[];
   lastUpdated: string;
   updatedBy: string;
@@ -40,13 +43,6 @@ const AVAILABLE_PERMISSIONS: Permission[] = [
   { id: 'inventory.delete', name: 'Delete Inventory', description: 'Delete inventory items', category: 'inventory', icon: Package },
   { id: 'inventory.bulk_import', name: 'Bulk Import', description: 'Import inventory in bulk', category: 'inventory', icon: Upload },
   { id: 'inventory.stock_adjustment', name: 'Stock Adjustment', description: 'Adjust stock levels manually', category: 'inventory', icon: Package },
-  
-  // Finance Permissions
-  { id: 'finance.view', name: 'View Finance', description: 'View financial data and reports', category: 'finance', icon: DollarSign },
-  { id: 'finance.bills', name: 'Manage Bills', description: 'Create and manage bills', category: 'finance', icon: FileText },
-  { id: 'finance.expenses', name: 'Manage Expenses', description: 'Record and track expenses', category: 'finance', icon: DollarSign },
-  { id: 'finance.reports', name: 'Financial Reports', description: 'Access financial reports', category: 'finance', icon: BarChart3 },
-  { id: 'finance.bank_accounts', name: 'Bank Accounts', description: 'Manage bank accounts', category: 'finance', icon: Building2 },
   
   // User Management Permissions
   { id: 'users.view', name: 'View Users', description: 'View user list and details', category: 'users', icon: Users },
@@ -70,6 +66,13 @@ const AVAILABLE_PERMISSIONS: Permission[] = [
   { id: 'advanced.database', name: 'Database Access', description: 'Access database management', category: 'advanced', icon: Database },
   { id: 'advanced.api', name: 'API Access', description: 'Access API management', category: 'advanced', icon: Zap },
   { id: 'advanced.maintenance', name: 'Maintenance Mode', description: 'Enable maintenance mode', category: 'advanced', icon: Wrench },
+  
+  // Billing Permissions
+  { id: 'billing.view', name: 'View Billing', description: 'View billing data and reports', category: 'billing', icon: DollarSign },
+  { id: 'billing.bills', name: 'Manage Bills', description: 'Create and manage bills', category: 'billing', icon: FileText },
+  { id: 'billing.expenses', name: 'Manage Expenses', description: 'Record and track expenses', category: 'billing', icon: DollarSign },
+  { id: 'billing.reports', name: 'Financial Reports', description: 'Access financial reports', category: 'billing', icon: BarChart3 },
+  { id: 'billing.bank_accounts', name: 'Bank Accounts', description: 'Manage bank accounts', category: 'billing', icon: Building2 },
 ];
 
 const AVAILABLE_LANGUAGES = [
@@ -85,16 +88,49 @@ const AVAILABLE_LANGUAGES = [
 
 export const AccessControlPanel: React.FC = () => {
   const { permissions: userPermissions, refreshPermissions } = usePermissions();
-  const [selectedRole, setSelectedRole] = useState<'admin' | 'inventory_manager' | 'cashier' | 'finance'>('admin');
+  const [selectedRole, setSelectedRole] = useState<'admin' | 'inventory_manager' | 'cashier'>('admin');
   const [rolePermissions, setRolePermissions] = useState<Record<string, string[]>>({});
   const [superadminPermissions, setSuperadminPermissions] = useState<string[]>([]);
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['inventory', 'finance', 'users', 'reports', 'system', 'advanced']);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['inventory', 'users', 'reports', 'system', 'advanced', 'billing']);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [currentLanguage, setCurrentLanguage] = useState('en');
   const [hasChanges, setHasChanges] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [syncInProgress, setSyncInProgress] = useState(false);
+
+  // Custom Popup State
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [successTitle, setSuccessTitle] = useState('Success');
+  const [showErrorPopup, setShowErrorPopup] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [errorTitle, setErrorTitle] = useState('');
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    title: string;
+    message: string;
+    details: string[];
+    onConfirm: () => void;
+    type: 'warning' | 'danger' | 'info' | 'success';
+  } | null>(null);
+
+  const showSuccess = (message: string, title: string = 'Success') => {
+    setSuccessMessage(message);
+    setSuccessTitle(title);
+    setShowSuccessPopup(true);
+  };
+
+  const showError = (message: string, title: string = 'Warning') => {
+    setErrorMessage(message);
+    setErrorTitle(title);
+    setShowErrorPopup(true);
+  };
+
+  const showConfirm = (title: string, message: string, details: string[], onConfirm: () => void, type: 'warning' | 'danger' | 'info' | 'success' = 'warning') => {
+    setConfirmConfig({ title, message, details, onConfirm, type });
+    setShowConfirmDialog(true);
+  };
 
   useEffect(() => {
     loadPermissions();
@@ -110,13 +146,11 @@ export const AccessControlPanel: React.FC = () => {
     const adminPerms = getFromStorage('admin_permissions', []);
     const inventoryPerms = getFromStorage('inventory_manager_permissions', []);
     const cashierPerms = getFromStorage('cashier_permissions', []);
-    const financePerms = getFromStorage('finance_permissions', []);
 
     setRolePermissions({
       admin: adminPerms,
       inventory_manager: inventoryPerms,
       cashier: cashierPerms,
-      finance: financePerms,
     });
   };
 
@@ -157,7 +191,7 @@ export const AccessControlPanel: React.FC = () => {
   const handleRolePermissionToggle = (permissionId: string) => {
     // Check if SuperAdmin has this permission
     if (!superadminPermissions.includes(permissionId)) {
-      alert('⚠️ Access Denied: SuperAdmin has denied this permission. Contact SuperAdmin to enable it first.');
+      showError('SuperAdmin has denied this permission. Contact SuperAdmin to enable it first.', 'Access Denied');
       return;
     }
 
@@ -189,7 +223,6 @@ export const AccessControlPanel: React.FC = () => {
     saveToStorage('admin_permissions', rolePermissions.admin || []);
     saveToStorage('inventory_manager_permissions', rolePermissions.inventory_manager || []);
     saveToStorage('cashier_permissions', rolePermissions.cashier || []);
-    saveToStorage('finance_permissions', rolePermissions.finance || []);
 
     // Save language settings
     const languageSettings = {
@@ -224,107 +257,129 @@ export const AccessControlPanel: React.FC = () => {
 
     setSyncInProgress(false);
     setHasChanges(false);
-    setShowSuccess(true);
+    setShowSuccessMessage(true);
 
     // Trigger permission refresh for all connected clients
     refreshPermissions();
 
     // Hide success message after 3 seconds
-    setTimeout(() => setShowSuccess(false), 3000);
+    setTimeout(() => setShowSuccessMessage(false), 3000);
   };
 
   const handleActivateSuperAdmin = async () => {
-    if (!confirm('🔄 ROLLBACK & ACTIVATE SUPERADMIN\n\nThis will:\n✓ Grant SuperAdmin ALL 27 permissions\n✓ Activate both SuperAdmin accounts\n✓ Reset all role permissions to defaults\n✓ Save changes immediately\n✓ Sync across all users\n\nProceed?')) {
-      return;
-    }
+    showConfirm(
+      'Rollback & Activate SuperAdmin',
+      'This will reset all permissions to defaults and activate both SuperAdmin accounts.',
+      [
+        'Grant SuperAdmin ALL 27 permissions',
+        'Activate both SuperAdmin accounts',
+        'Reset all role permissions to defaults',
+        'Save changes immediately',
+        'Sync across all users'
+      ],
+      async () => {
+        setShowConfirmDialog(false);
+        setSyncInProgress(true);
 
-    setSyncInProgress(true);
+        // Grant all permissions to SuperAdmin
+        const defaultPermissions = AVAILABLE_PERMISSIONS.map(p => p.id);
+        setSuperadminPermissions(defaultPermissions);
 
-    // Grant all permissions to SuperAdmin
-    const defaultPermissions = AVAILABLE_PERMISSIONS.map(p => p.id);
-    setSuperadminPermissions(defaultPermissions);
+        // Reset all role permissions to defaults
+        const newRolePermissions = {
+          admin: AVAILABLE_PERMISSIONS.filter(p => p.category !== 'advanced').map(p => p.id),
+          inventory_manager: AVAILABLE_PERMISSIONS.filter(p => p.category === 'inventory').map(p => p.id),
+          cashier: AVAILABLE_PERMISSIONS.filter(p => ['inventory.view', 'billing.bills'].includes(p.id)).map(p => p.id),
+        };
+        setRolePermissions(newRolePermissions);
 
-    // Reset all role permissions to defaults
-    const newRolePermissions = {
-      admin: AVAILABLE_PERMISSIONS.filter(p => p.category !== 'advanced').map(p => p.id),
-      inventory_manager: AVAILABLE_PERMISSIONS.filter(p => p.category === 'inventory').map(p => p.id),
-      cashier: AVAILABLE_PERMISSIONS.filter(p => ['inventory.view', 'finance.bills'].includes(p.id)).map(p => p.id),
-      finance: AVAILABLE_PERMISSIONS.filter(p => p.category === 'finance').map(p => p.id),
-    };
-    setRolePermissions(newRolePermissions);
+        // Save SuperAdmin permissions
+        saveToStorage('superadmin_permissions', defaultPermissions);
 
-    // Save SuperAdmin permissions
-    saveToStorage('superadmin_permissions', defaultPermissions);
+        // Save role permissions
+        saveToStorage('admin_permissions', newRolePermissions.admin);
+        saveToStorage('inventory_manager_permissions', newRolePermissions.inventory_manager);
+        saveToStorage('cashier_permissions', newRolePermissions.cashier);
 
-    // Save role permissions
-    saveToStorage('admin_permissions', newRolePermissions.admin);
-    saveToStorage('inventory_manager_permissions', newRolePermissions.inventory_manager);
-    saveToStorage('cashier_permissions', newRolePermissions.cashier);
-    saveToStorage('finance_permissions', newRolePermissions.finance);
+        // Ensure SuperAdmin accounts are active
+        const users = getFromStorage('users', []);
+        const updatedUsers = users.map((user: any) => {
+          if (user.role === 'super_admin') {
+            return { ...user, isActive: true };
+          }
+          return user;
+        });
+        saveToStorage('users', updatedUsers);
 
-    // Ensure SuperAdmin accounts are active
-    const users = getFromStorage('users', []);
-    const updatedUsers = users.map((user: any) => {
-      if (user.role === 'super_admin') {
-        return { ...user, isActive: true };
-      }
-      return user;
-    });
-    saveToStorage('users', updatedUsers);
+        // Update sync timestamp
+        const syncTimestamp = Date.now();
+        saveToStorage('permission_sync_timestamp', syncTimestamp);
 
-    // Update sync timestamp
-    const syncTimestamp = Date.now();
-    saveToStorage('permission_sync_timestamp', syncTimestamp);
+        // Create audit log
+        const auditLog = getFromStorage('auditLog', []);
+        auditLog.unshift({
+          id: `AUDIT-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          userId: 'superadmin',
+          userName: 'Super Admin',
+          action: 'SuperAdmin Rollback & Activation',
+          details: 'Rolled back all permissions to defaults and activated SuperAdmin accounts',
+          ipAddress: '127.0.0.1',
+          category: 'security',
+        });
+        saveToStorage('auditLog', auditLog);
 
-    // Create audit log
-    const auditLog = getFromStorage('auditLog', []);
-    auditLog.unshift({
-      id: `AUDIT-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      userId: 'superadmin',
-      userName: 'Super Admin',
-      action: 'SuperAdmin Rollback & Activation',
-      details: 'Rolled back all permissions to defaults and activated SuperAdmin accounts',
-      ipAddress: '127.0.0.1',
-      category: 'security',
-    });
-    saveToStorage('auditLog', auditLog);
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+        setSyncInProgress(false);
+        setHasChanges(false);
+        setShowSuccessMessage(true);
 
-    setSyncInProgress(false);
-    setHasChanges(false);
-    setShowSuccess(true);
+        // Trigger permission refresh
+        refreshPermissions();
 
-    // Trigger permission refresh
-    refreshPermissions();
+        // Hide success message after 3 seconds
+        setTimeout(() => setShowSuccessMessage(false), 3000);
 
-    // Hide success message after 3 seconds
-    setTimeout(() => setShowSuccess(false), 3000);
-
-    // Show completion alert
-    setTimeout(() => {
-      alert('✅ SUPERADMIN ACTIVATED!\n\n✓ All 27 permissions granted to SuperAdmin\n✓ Both SuperAdmin accounts are now active\n✓ All role permissions reset to defaults\n✓ Changes synchronized across all users\n\nYou can now login with either SuperAdmin account!');
-    }, 1500);
+        // Show completion popup
+        setTimeout(() => {
+          showSuccess(
+            'All 27 permissions granted to SuperAdmin. Both SuperAdmin accounts are now active. All role permissions reset to defaults. Changes synchronized across all users. You can now login with either SuperAdmin account!',
+            'SuperAdmin Activated!'
+          );
+        }, 1500);
+      },
+      'success'
+    );
   };
 
   const handleResetToDefaults = () => {
-    if (!confirm('🔄 Reset all permissions to default values?\n\nThis will:\n✓ Grant SuperAdmin ALL permissions\n✓ Reset Admin to all permissions except advanced\n✓ Reset Inventory Manager to inventory-only permissions\n✓ Reset Cashier to view-only permissions\n✓ Reset Finance to finance-only permissions\n\nThis action cannot be undone!')) {
-      return;
-    }
+    showConfirm(
+      'Reset to Default Permissions',
+      'This will reset all permissions to their default values.',
+      [
+        'Grant SuperAdmin ALL permissions',
+        'Reset Admin to all permissions except advanced',
+        'Reset Inventory Manager to inventory-only permissions',
+        'Reset Cashier to view-only permissions'
+      ],
+      () => {
+        setShowConfirmDialog(false);
+        const defaultPermissions = AVAILABLE_PERMISSIONS.map(p => p.id);
+        setSuperadminPermissions(defaultPermissions);
 
-    const defaultPermissions = AVAILABLE_PERMISSIONS.map(p => p.id);
-    setSuperadminPermissions(defaultPermissions);
+        setRolePermissions({
+          admin: AVAILABLE_PERMISSIONS.filter(p => p.category !== 'advanced').map(p => p.id),
+          inventory_manager: AVAILABLE_PERMISSIONS.filter(p => p.category === 'inventory').map(p => p.id),
+          cashier: AVAILABLE_PERMISSIONS.filter(p => ['inventory.view', 'billing.bills'].includes(p.id)).map(p => p.id),
+        });
 
-    setRolePermissions({
-      admin: AVAILABLE_PERMISSIONS.filter(p => p.category !== 'advanced').map(p => p.id),
-      inventory_manager: AVAILABLE_PERMISSIONS.filter(p => p.category === 'inventory').map(p => p.id),
-      cashier: AVAILABLE_PERMISSIONS.filter(p => ['inventory.view', 'finance.bills'].includes(p.id)).map(p => p.id),
-      finance: AVAILABLE_PERMISSIONS.filter(p => p.category === 'finance').map(p => p.id),
-    });
-
-    setHasChanges(true);
+        setHasChanges(true);
+        showSuccess('Permissions have been reset to default values. Click "Save & Sync Changes" to apply.', 'Reset Complete');
+      },
+      'danger'
+    );
   };
 
   const toggleCategory = (category: string) => {
@@ -353,11 +408,11 @@ export const AccessControlPanel: React.FC = () => {
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case 'inventory': return Package;
-      case 'finance': return DollarSign;
       case 'users': return Users;
       case 'reports': return BarChart3;
       case 'system': return Settings;
       case 'advanced': return Zap;
+      case 'billing': return DollarSign;
       default: return Shield;
     }
   };
@@ -365,11 +420,11 @@ export const AccessControlPanel: React.FC = () => {
   const getCategoryColor = (category: string) => {
     switch (category) {
       case 'inventory': return 'text-orange-600 bg-orange-50 border-orange-200';
-      case 'finance': return 'text-green-600 bg-green-50 border-green-200';
       case 'users': return 'text-blue-600 bg-blue-50 border-blue-200';
       case 'reports': return 'text-purple-600 bg-purple-50 border-purple-200';
       case 'system': return 'text-gray-600 bg-gray-50 border-gray-200';
       case 'advanced': return 'text-red-600 bg-red-50 border-red-200';
+      case 'billing': return 'text-green-600 bg-green-50 border-green-200';
       default: return 'text-gray-600 bg-gray-50 border-gray-200';
     }
   };
@@ -437,7 +492,7 @@ export const AccessControlPanel: React.FC = () => {
       </div>
 
       {/* Success Message */}
-      {showSuccess && (
+      {showSuccessMessage && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center space-x-3 animate-pulse">
           <CheckCircle className="w-5 h-5 text-green-600" />
           <div>
@@ -489,13 +544,6 @@ export const AccessControlPanel: React.FC = () => {
                 <div>
                   <strong className="text-gray-900">Cashier:</strong>
                   <span className="text-gray-700"> Gets view inventory + billing only</span>
-                </div>
-              </div>
-              <div className="flex items-start space-x-2">
-                <CheckCircle className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
-                <div>
-                  <strong className="text-gray-900">Finance:</strong>
-                  <span className="text-gray-700"> Gets finance-only permissions</span>
                 </div>
               </div>
             </div>
@@ -592,7 +640,6 @@ export const AccessControlPanel: React.FC = () => {
             { role: 'admin', label: 'Admin', icon: Users, color: 'blue' },
             { role: 'inventory_manager', label: 'Inventory Manager', icon: Package, color: 'orange' },
             { role: 'cashier', label: 'Cashier/Reception', icon: DollarSign, color: 'green' },
-            { role: 'finance', label: 'Finance', icon: BarChart3, color: 'purple' },
           ].map(({ role, label, icon: Icon, color }) => (
             <button
               key={role}
@@ -635,11 +682,11 @@ export const AccessControlPanel: React.FC = () => {
           >
             <option value="all">All Categories</option>
             <option value="inventory">Inventory</option>
-            <option value="finance">Finance</option>
             <option value="users">Users</option>
             <option value="reports">Reports</option>
             <option value="system">System</option>
             <option value="advanced">Advanced</option>
+            <option value="billing">Billing</option>
           </select>
         </div>
       </div>
@@ -811,6 +858,38 @@ export const AccessControlPanel: React.FC = () => {
           </ul>
         </div>
       </div>
+
+      {/* Custom Popups */}
+      <SuccessPopup
+        isOpen={showSuccessPopup}
+        onClose={() => setShowSuccessPopup(false)}
+        title={successTitle}
+        message={successMessage}
+        autoClose={true}
+        autoCloseDelay={4000}
+      />
+
+      <ErrorPopup
+        isOpen={showErrorPopup}
+        onClose={() => setShowErrorPopup(false)}
+        title={errorTitle}
+        message={errorMessage}
+        type="warning"
+      />
+
+      {confirmConfig && (
+        <ConfirmDialog
+          isOpen={showConfirmDialog}
+          onConfirm={confirmConfig.onConfirm}
+          onCancel={() => setShowConfirmDialog(false)}
+          title={confirmConfig.title}
+          message={confirmConfig.message}
+          details={confirmConfig.details}
+          type={confirmConfig.type}
+          confirmText="Confirm"
+          cancelText="Cancel"
+        />
+      )}
     </div>
   );
 };

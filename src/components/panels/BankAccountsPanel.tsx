@@ -1,18 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Building2, Plus, Search, Edit2, Trash2, Save, X, 
-  Smartphone, CreditCard, DollarSign, TrendingUp, Eye,
-  Banknote, CheckCircle, Clock, AlertCircle, Filter,
-  Download, ArrowUpCircle, ArrowDownCircle, History
-} from 'lucide-react';
-import { getFromStorage, saveToStorage } from '../../utils/mockData';
-import { useAuth } from '../../contexts/AuthContext';
-import { Pagination } from '../common/Pagination';
-import { TransactionDetailsModal } from '../modals/TransactionDetailsModal';
+import React, { useState, useEffect } from "react";
+import {
+  Building2,
+  Plus,
+  Search,
+  Edit2,
+  Trash2,
+  Save,
+  X,
+  Smartphone,
+  CreditCard,
+  DollarSign,
+  TrendingUp,
+  Eye,
+  Banknote,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  Filter,
+  Download,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  History,
+} from "lucide-react";
+import { getFromStorage, saveToStorage } from "../../utils/mockData";
+import { useAuth } from "../../contexts/AuthContext";
+import { Pagination } from "../common/Pagination";
+import { TransactionDetailsModal } from "../modals/TransactionDetailsModal";
+import { PopupContainer } from "../PopupContainer";
+import { useCustomPopup } from "../../hooks/useCustomPopup";
 
 export interface BankAccount {
   id: string;
-  accountType: 'bank' | 'esewa' | 'fonepay' | 'cash';
+  accountType: "bank" | "esewa" | "fonepay" | "cash";
   accountName: string;
   bankName?: string; // For bank accounts
   accountNumber?: string; // For bank accounts
@@ -30,120 +49,234 @@ export interface BankAccount {
 
 export const BankAccountsPanel: React.FC = () => {
   const { currentUser } = useAuth();
+  const popup = useCustomPopup();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
+  const [editingAccount, setEditingAccount] = useState<BankAccount | null>(
+    null
+  );
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
   // Transaction view state
   const [showTransactionsModal, setShowTransactionsModal] = useState(false);
-  const [selectedAccountForTransactions, setSelectedAccountForTransactions] = useState<BankAccount | null>(null);
-  const [transactionSearchQuery, setTransactionSearchQuery] = useState('');
-  const [transactionFilter, setTransactionFilter] = useState<'all' | 'credit' | 'debit'>('all');
+  const [selectedAccountForTransactions, setSelectedAccountForTransactions] =
+    useState<BankAccount | null>(null);
+  const [transactionSearchQuery, setTransactionSearchQuery] = useState("");
+  const [transactionFilter, setTransactionFilter] = useState<
+    "all" | "credit" | "debit"
+  >("all");
 
   const [formData, setFormData] = useState({
-    accountType: 'bank' as 'bank' | 'esewa' | 'fonepay' | 'cash',
-    accountName: '',
-    bankName: '',
-    accountNumber: '',
-    accountHolder: '',
-    esewaId: '',
-    fonepayId: '',
+    accountType: "bank" as "bank" | "esewa" | "fonepay" | "cash",
+    accountName: "",
+    bankName: "",
+    accountNumber: "",
+    accountHolder: "",
+    esewaId: "",
+    fonepayId: "",
   });
 
   useEffect(() => {
+    if (!currentUser) return;
     loadAccounts();
-  }, []);
+  }, [currentUser]);
 
-  const loadAccounts = () => {
-    const storedAccounts = getFromStorage('bankAccounts', [])
-      .filter((a: BankAccount) => a.workspaceId === currentUser?.workspaceId);
+  const loadAccounts = async () => {
+    const storedAccounts = getFromStorage("bankAccounts", []).filter(
+      (a: BankAccount) => a.workspaceId === currentUser?.workspaceId
+    );
     setAccounts(storedAccounts);
+
+    try {
+      const token =
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("access_token") ||
+        localStorage.getItem("token");
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
+      };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/cash-and-bank/bank-accounts/`,
+        { headers }
+      );
+
+      if (!res.ok) throw new Error(`API responded with ${res.status}`);
+
+      const data = await res.json();
+      const results = data.results || data;
+
+      const mapped: BankAccount[] = (results || []).map((it: any) => {
+        const accountType =
+          it.account_type === "bank_account"
+            ? "bank"
+            : (it.account_type as "bank" | "esewa" | "fonepay" | "cash");
+
+        return {
+          id: String(it.id),
+          accountType,
+          accountName: it.account_name || "",
+          bankName: it.bank_name || undefined,
+          accountNumber: it.account_number || undefined,
+          accountHolder: it.account_holders_name || undefined,
+          esewaId: accountType === "esewa" ? it.account_number : undefined,
+          fonepayId: accountType === "fonepay" ? it.account_number : undefined,
+          currentBalance: parseFloat(it.current_balance || 0) || 0,
+          totalReceived: parseFloat(it.total_received || 0) || 0,
+          totalPaid: parseFloat(it.total_paid || 0) || 0,
+          isActive: it.is_active ?? true,
+          workspaceId:
+            it.workspaceId ||
+            it.workspace ||
+            it.workspace_id ||
+            currentUser?.workspaceId,
+          createdAt: it.created || it.createdAt || new Date().toISOString(),
+          createdBy: it.created_by || it.createdBy,
+        };
+      });
+
+      const filteredByWorkspace = mapped.filter(
+        (a) => String(a.workspaceId) === String(currentUser?.workspaceId)
+      );
+
+      if (mapped.length > 0) {
+        saveToStorage("bankAccounts", mapped);
+        setAccounts(mapped);
+      } else {
+        setAccounts(filteredByWorkspace);
+      }
+    } catch (err) {
+      // API failed, already showing local storage data
+    }
   };
 
   const resetForm = () => {
     setFormData({
-      accountType: 'bank',
-      accountName: '',
-      bankName: '',
-      accountNumber: '',
-      accountHolder: '',
-      esewaId: '',
-      fonepayId: '',
+      accountType: "bank",
+      accountName: "",
+      bankName: "",
+      accountNumber: "",
+      accountHolder: "",
+      esewaId: "",
+      fonepayId: "",
     });
     setEditingAccount(null);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.accountName.trim()) {
-      alert('Please enter account name');
+      popup.showError("Please enter account name", "Validation Error");
       return;
     }
 
-    if (formData.accountType === 'bank' && (!formData.bankName || !formData.accountNumber)) {
-      alert('Please enter bank name and account number');
-      return;
-    }
-
-    if (formData.accountType === 'esewa' && !formData.esewaId) {
-      alert('Please enter eSewa ID');
-      return;
-    }
-
-    if (formData.accountType === 'fonepay' && !formData.fonepayId) {
-      alert('Please enter FonePay ID');
-      return;
-    }
-
-    const allAccounts = getFromStorage('bankAccounts', []);
-
-    if (editingAccount) {
-      // Update existing account
-      const updatedAccounts = allAccounts.map((a: BankAccount) =>
-        a.id === editingAccount.id
-          ? {
-              ...a,
-              accountType: formData.accountType,
-              accountName: formData.accountName,
-              bankName: formData.bankName || undefined,
-              accountNumber: formData.accountNumber || undefined,
-              accountHolder: formData.accountHolder || undefined,
-              esewaId: formData.esewaId || undefined,
-              fonepayId: formData.fonepayId || undefined,
-            }
-          : a
+    if (
+      formData.accountType === "bank" &&
+      (!formData.bankName || !formData.accountNumber)
+    ) {
+      popup.showError(
+        "Please enter bank name and account number",
+        "Validation Error"
       );
-      saveToStorage('bankAccounts', updatedAccounts);
-    } else {
-      // Add new account
-      const newAccount: BankAccount = {
-        id: `BA${Date.now()}`,
-        accountType: formData.accountType,
-        accountName: formData.accountName,
-        bankName: formData.bankName || undefined,
-        accountNumber: formData.accountNumber || undefined,
-        accountHolder: formData.accountHolder || undefined,
-        esewaId: formData.esewaId || undefined,
-        fonepayId: formData.fonepayId || undefined,
-        currentBalance: 0,
-        totalReceived: 0,
-        totalPaid: 0,
-        isActive: true,
-        workspaceId: currentUser?.workspaceId,
-        createdAt: new Date().toISOString(),
-        createdBy: currentUser?.id,
-      };
-
-      allAccounts.push(newAccount);
-      saveToStorage('bankAccounts', allAccounts);
+      return;
     }
 
-    loadAccounts();
-    setShowAddModal(false);
-    resetForm();
+    if (formData.accountType === "esewa" && !formData.esewaId) {
+      popup.showError("Please enter eSewa ID", "Validation Error");
+      return;
+    }
+
+    if (formData.accountType === "fonepay" && !formData.fonepayId) {
+      popup.showError("Please enter FonePay ID", "Validation Error");
+      return;
+    }
+
+    try {
+      if (editingAccount) {
+        // Keep existing local storage logic for editing for now,
+        // or update if API endpoint for edit is known.
+        // Assuming local update since no API endpoint provided for update.
+        const allAccounts = getFromStorage("bankAccounts", []);
+        const updatedAccounts = allAccounts.map((a: BankAccount) =>
+          a.id === editingAccount.id
+            ? {
+                ...a,
+                accountType: formData.accountType,
+                accountName: formData.accountName,
+                bankName: formData.bankName || undefined,
+                accountNumber: formData.accountNumber || undefined,
+                accountHolder: formData.accountHolder || undefined,
+                esewaId: formData.esewaId || undefined,
+                fonepayId: formData.fonepayId || undefined,
+              }
+            : a
+        );
+        saveToStorage("bankAccounts", updatedAccounts);
+        popup.showSuccess("Account updated successfully!");
+      } else {
+        // Add new account via API
+        const token =
+          localStorage.getItem("accessToken") ||
+          localStorage.getItem("access_token") ||
+          localStorage.getItem("token");
+
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
+        };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        // Get branch from current user or local storage
+        const userBranch =
+          currentUser?.branch || localStorage.getItem("user_branch");
+        const branchId = userBranch ? Number(userBranch) : 1; // Default to 1 if not found
+
+        const payload = {
+          branch: branchId,
+          account_type:
+            formData.accountType === "bank"
+              ? "bank_account"
+              : formData.accountType,
+          account_name: formData.accountName,
+          bank_name: formData.bankName || "",
+          account_number:
+            formData.accountNumber ||
+            formData.esewaId ||
+            formData.fonepayId ||
+            "",
+          account_holders_name: formData.accountHolder || "",
+          is_active: true,
+        };
+
+        const res = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/cash-and-bank/bank-accounts/`,
+          {
+            method: "POST",
+            headers,
+            body: JSON.stringify(payload),
+          }
+        );
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.detail || "Failed to create account");
+        }
+
+        popup.showSuccess("Account added successfully!");
+      }
+
+      loadAccounts();
+      setShowAddModal(false);
+      resetForm();
+    } catch (error: any) {
+      console.error("Error saving account:", error);
+      popup.showError(error.message || "Failed to save account", "Error");
+    }
   };
 
   const handleEdit = (account: BankAccount) => {
@@ -151,60 +284,84 @@ export const BankAccountsPanel: React.FC = () => {
     setFormData({
       accountType: account.accountType,
       accountName: account.accountName,
-      bankName: account.bankName || '',
-      accountNumber: account.accountNumber || '',
-      accountHolder: account.accountHolder || '',
-      esewaId: account.esewaId || '',
-      fonepayId: account.fonepayId || '',
+      bankName: account.bankName || "",
+      accountNumber: account.accountNumber || "",
+      accountHolder: account.accountHolder || "",
+      esewaId: account.esewaId || "",
+      fonepayId: account.fonepayId || "",
     });
     setShowAddModal(true);
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm('Are you sure you want to delete this account?')) return;
-
-    const allAccounts = getFromStorage('bankAccounts', []);
-    const updatedAccounts = allAccounts.filter((a: BankAccount) => a.id !== id);
-    saveToStorage('bankAccounts', updatedAccounts);
-    setSelectedAccounts([]);
-    loadAccounts();
+    popup.showConfirm(
+      "Delete Account",
+      "Are you sure you want to delete this account?",
+      () => {
+        const allAccounts = getFromStorage("bankAccounts", []);
+        const updatedAccounts = allAccounts.filter(
+          (a: BankAccount) => a.id !== id
+        );
+        saveToStorage("bankAccounts", updatedAccounts);
+        setSelectedAccounts([]);
+        loadAccounts();
+        popup.showSuccess("Account deleted successfully!");
+      },
+      {
+        type: "danger",
+        details: ["This action cannot be undone"],
+      }
+    );
   };
 
   const handleBulkDelete = () => {
     if (selectedAccounts.length === 0) {
-      alert('Please select accounts to delete');
+      popup.showError("Please select accounts to delete", "No Selection");
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete ${selectedAccounts.length} account(s)?`)) return;
-
-    const allAccounts = getFromStorage('bankAccounts', []);
-    const updatedAccounts = allAccounts.filter((a: BankAccount) => !selectedAccounts.includes(a.id));
-    saveToStorage('bankAccounts', updatedAccounts);
-    setSelectedAccounts([]);
-    loadAccounts();
+    popup.showConfirm(
+      "Delete Multiple Accounts",
+      `Are you sure you want to delete ${selectedAccounts.length} account(s)?`,
+      () => {
+        const allAccounts = getFromStorage("bankAccounts", []);
+        const updatedAccounts = allAccounts.filter(
+          (a: BankAccount) => !selectedAccounts.includes(a.id)
+        );
+        saveToStorage("bankAccounts", updatedAccounts);
+        setSelectedAccounts([]);
+        loadAccounts();
+        popup.showSuccess(
+          `${selectedAccounts.length} account(s) deleted successfully!`
+        );
+      },
+      {
+        type: "danger",
+        details: ["This action cannot be undone"],
+      }
+    );
   };
 
   const toggleSelectAll = () => {
     if (selectedAccounts.length === paginatedAccounts.length) {
       setSelectedAccounts([]);
     } else {
-      setSelectedAccounts(paginatedAccounts.map(a => a.id));
+      setSelectedAccounts(paginatedAccounts.map((a) => a.id));
     }
   };
 
   const toggleSelectAccount = (id: string) => {
-    setSelectedAccounts(prev =>
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    setSelectedAccounts((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
   };
 
   const toggleStatus = (id: string) => {
-    const allAccounts = getFromStorage('bankAccounts', []);
+    const allAccounts = getFromStorage("bankAccounts", []);
     const updatedAccounts = allAccounts.map((a: BankAccount) =>
       a.id === id ? { ...a, isActive: !a.isActive } : a
     );
-    saveToStorage('bankAccounts', updatedAccounts);
+    saveToStorage("bankAccounts", updatedAccounts);
     loadAccounts();
   };
 
@@ -224,11 +381,11 @@ export const BankAccountsPanel: React.FC = () => {
 
   const getAccountIcon = (type: string) => {
     switch (type) {
-      case 'esewa':
+      case "esewa":
         return Smartphone;
-      case 'fonepay':
+      case "fonepay":
         return Smartphone;
-      case 'cash':
+      case "cash":
         return Banknote;
       default:
         return Building2;
@@ -237,18 +394,21 @@ export const BankAccountsPanel: React.FC = () => {
 
   const getAccountTypeColor = (type: string) => {
     switch (type) {
-      case 'esewa':
-        return 'bg-green-100 text-green-700';
-      case 'fonepay':
-        return 'bg-blue-100 text-blue-700';
-      case 'cash':
-        return 'bg-yellow-100 text-yellow-700';
+      case "esewa":
+        return "bg-green-100 text-green-700";
+      case "fonepay":
+        return "bg-blue-100 text-blue-700";
+      case "cash":
+        return "bg-yellow-100 text-yellow-700";
       default:
-        return 'bg-purple-100 text-purple-700';
+        return "bg-purple-100 text-purple-700";
     }
   };
 
-  const paginatedAccounts = filteredAccounts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const paginatedAccounts = filteredAccounts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <div className="space-y-6">
@@ -302,7 +462,9 @@ export const BankAccountsPanel: React.FC = () => {
             <DollarSign className="w-8 h-8 opacity-80" />
             <div className="text-right">
               <p className="text-purple-100 text-xs">Total Balance</p>
-              <p className="text-2xl font-bold">रू{totalStats.totalBalance.toLocaleString()}</p>
+              <p className="text-2xl font-bold">
+                Rs{totalStats.totalBalance.toLocaleString()}
+              </p>
             </div>
           </div>
         </div>
@@ -312,7 +474,9 @@ export const BankAccountsPanel: React.FC = () => {
             <TrendingUp className="w-8 h-8 opacity-80" />
             <div className="text-right">
               <p className="text-orange-100 text-xs">Total Received</p>
-              <p className="text-2xl font-bold">रू{totalStats.totalReceived.toLocaleString()}</p>
+              <p className="text-2xl font-bold">
+                Rs{totalStats.totalReceived.toLocaleString()}
+              </p>
             </div>
           </div>
         </div>
@@ -349,7 +513,9 @@ export const BankAccountsPanel: React.FC = () => {
           <div className="text-center py-16">
             <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-gray-900 text-xl mb-2">No Accounts Found</h3>
-            <p className="text-gray-500">Add your first payment account to get started</p>
+            <p className="text-gray-500">
+              Add your first payment account to get started
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -357,11 +523,19 @@ export const BankAccountsPanel: React.FC = () => {
               <thead className="bg-gray-50 border-b-2 border-gray-200">
                 <tr>
                   <th className="px-6 py-4 text-left text-gray-900">S.N</th>
-                  <th className="px-6 py-4 text-left text-gray-900">Account Type</th>
-                  <th className="px-6 py-4 text-left text-gray-900">Account Name</th>
+                  <th className="px-6 py-4 text-left text-gray-900">
+                    Account Type
+                  </th>
+                  <th className="px-6 py-4 text-left text-gray-900">
+                    Account Name
+                  </th>
                   <th className="px-6 py-4 text-left text-gray-900">Details</th>
-                  <th className="px-6 py-4 text-left text-gray-900">Total Received</th>
-                  <th className="px-6 py-4 text-left text-gray-900">Current Balance</th>
+                  <th className="px-6 py-4 text-left text-gray-900">
+                    Total Received
+                  </th>
+                  <th className="px-6 py-4 text-left text-gray-900">
+                    Current Balance
+                  </th>
                   <th className="px-6 py-4 text-left text-gray-900">Status</th>
                   <th className="px-6 py-4 text-left text-gray-900">Actions</th>
                 </tr>
@@ -370,47 +544,64 @@ export const BankAccountsPanel: React.FC = () => {
                 {paginatedAccounts.map((account, index) => {
                   const Icon = getAccountIcon(account.accountType);
                   return (
-                    <tr key={account.id} className="hover:bg-gray-50 transition-colors">
+                    <tr
+                      key={account.id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
                       <td className="px-6 py-4 text-gray-900">{index + 1}</td>
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-2">
                           <Icon className="w-5 h-5 text-gray-600" />
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getAccountTypeColor(account.accountType)}`}>
-                            {account.accountType?.toUpperCase() || 'N/A'}
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-semibold ${getAccountTypeColor(
+                              account.accountType
+                            )}`}
+                          >
+                            {account.accountType?.toUpperCase() || "N/A"}
                           </span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="font-semibold text-gray-900">{account.accountName}</p>
+                        <p className="font-semibold text-gray-900">
+                          {account.accountName}
+                        </p>
                       </td>
                       <td className="px-6 py-4">
-                        {account.accountType === 'bank' && (
+                        {account.accountType === "bank" && (
                           <div className="text-sm">
                             <p className="text-gray-900">{account.bankName}</p>
-                            <p className="text-gray-500 font-mono">{account.accountNumber}</p>
+                            <p className="text-gray-500 font-mono">
+                              {account.accountNumber}
+                            </p>
                             {account.accountHolder && (
-                              <p className="text-gray-500">{account.accountHolder}</p>
+                              <p className="text-gray-500">
+                                {account.accountHolder}
+                              </p>
                             )}
                           </div>
                         )}
-                        {account.accountType === 'esewa' && (
-                          <p className="text-sm text-gray-900 font-mono">{account.esewaId}</p>
+                        {account.accountType === "esewa" && (
+                          <p className="text-sm text-gray-900 font-mono">
+                            {account.esewaId}
+                          </p>
                         )}
-                        {account.accountType === 'fonepay' && (
-                          <p className="text-sm text-gray-900 font-mono">{account.fonepayId}</p>
+                        {account.accountType === "fonepay" && (
+                          <p className="text-sm text-gray-900 font-mono">
+                            {account.fonepayId}
+                          </p>
                         )}
-                        {account.accountType === 'cash' && (
+                        {account.accountType === "cash" && (
                           <p className="text-sm text-gray-500">Cash on Hand</p>
                         )}
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-green-600 font-semibold">
-                          रू{(account.totalReceived || 0).toLocaleString()}
+                          Rs{(account.totalReceived || 0).toLocaleString()}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-blue-600 font-bold text-lg">
-                          रू{(account.currentBalance || 0).toLocaleString()}
+                          Rs{(account.currentBalance || 0).toLocaleString()}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -418,11 +609,11 @@ export const BankAccountsPanel: React.FC = () => {
                           onClick={() => toggleStatus(account.id)}
                           className={`px-3 py-1 rounded-full text-xs font-semibold ${
                             account.isActive
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-red-100 text-red-700'
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
                           }`}
                         >
-                          {account.isActive ? 'Active' : 'Inactive'}
+                          {account.isActive ? "Active" : "Inactive"}
                         </button>
                       </td>
                       <td className="px-6 py-4">
@@ -478,7 +669,7 @@ export const BankAccountsPanel: React.FC = () => {
             <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-t-2xl">
               <div className="flex items-center justify-between">
                 <h3 className="text-2xl font-bold">
-                  {editingAccount ? 'Edit Account' : 'Add New Account'}
+                  {editingAccount ? "Edit Account" : "Add New Account"}
                 </h3>
                 <button
                   onClick={() => {
@@ -495,28 +686,47 @@ export const BankAccountsPanel: React.FC = () => {
             <div className="p-6 space-y-6">
               {/* Account Type */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3">Account Type *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  Account Type *
+                </label>
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { value: 'bank', label: 'Bank Account', icon: Building2 },
-                    { value: 'esewa', label: 'eSewa', icon: Smartphone },
-                    { value: 'fonepay', label: 'FonePay', icon: Smartphone },
-                    { value: 'cash', label: 'Cash', icon: Banknote },
+                    { value: "bank", label: "Bank Account", icon: Building2 },
+                    { value: "esewa", label: "eSewa", icon: Smartphone },
+                    { value: "fonepay", label: "FonePay", icon: Smartphone },
+                    { value: "cash", label: "Cash", icon: Banknote },
                   ].map((type) => {
                     const Icon = type.icon;
                     return (
                       <button
                         key={type.value}
                         type="button"
-                        onClick={() => setFormData({ ...formData, accountType: type.value as any })}
+                        onClick={() =>
+                          setFormData({
+                            ...formData,
+                            accountType: type.value as any,
+                          })
+                        }
                         className={`p-4 border-2 rounded-xl flex items-center space-x-3 transition-all ${
                           formData.accountType === type.value
-                            ? 'border-blue-600 bg-blue-50'
-                            : 'border-gray-300 hover:border-gray-400'
+                            ? "border-blue-600 bg-blue-50"
+                            : "border-gray-300 hover:border-gray-400"
                         }`}
                       >
-                        <Icon className={`w-6 h-6 ${formData.accountType === type.value ? 'text-blue-600' : 'text-gray-600'}`} />
-                        <span className={`font-semibold ${formData.accountType === type.value ? 'text-blue-600' : 'text-gray-900'}`}>
+                        <Icon
+                          className={`w-6 h-6 ${
+                            formData.accountType === type.value
+                              ? "text-blue-600"
+                              : "text-gray-600"
+                          }`}
+                        />
+                        <span
+                          className={`font-semibold ${
+                            formData.accountType === type.value
+                              ? "text-blue-600"
+                              : "text-gray-900"
+                          }`}
+                        >
                           {type.label}
                         </span>
                       </button>
@@ -527,45 +737,67 @@ export const BankAccountsPanel: React.FC = () => {
 
               {/* Account Name */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Account Name *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Account Name *
+                </label>
                 <input
                   type="text"
                   value={formData.accountName}
-                  onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, accountName: e.target.value })
+                  }
                   placeholder="e.g., Main Business Account"
                   className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               {/* Bank-specific fields */}
-              {formData.accountType === 'bank' && (
+              {formData.accountType === "bank" && (
                 <>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Bank Name *</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Bank Name *
+                    </label>
                     <input
                       type="text"
                       value={formData.bankName}
-                      onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, bankName: e.target.value })
+                      }
                       placeholder="e.g., Nepal Bank Limited"
                       className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Account Number *</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Account Number *
+                    </label>
                     <input
                       type="text"
                       value={formData.accountNumber}
-                      onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          accountNumber: e.target.value,
+                        })
+                      }
                       placeholder="e.g., 01234567890123"
                       className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Account Holder Name</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Account Holder Name
+                    </label>
                     <input
                       type="text"
                       value={formData.accountHolder}
-                      onChange={(e) => setFormData({ ...formData, accountHolder: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          accountHolder: e.target.value,
+                        })
+                      }
                       placeholder="e.g., Business Name Pvt. Ltd."
                       className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
@@ -574,13 +806,17 @@ export const BankAccountsPanel: React.FC = () => {
               )}
 
               {/* eSewa-specific fields */}
-              {formData.accountType === 'esewa' && (
+              {formData.accountType === "esewa" && (
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">eSewa ID *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    eSewa ID *
+                  </label>
                   <input
                     type="text"
                     value={formData.esewaId}
-                    onChange={(e) => setFormData({ ...formData, esewaId: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, esewaId: e.target.value })
+                    }
                     placeholder="e.g., 9841234567 or esewaid@example.com"
                     className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -588,13 +824,17 @@ export const BankAccountsPanel: React.FC = () => {
               )}
 
               {/* FonePay-specific fields */}
-              {formData.accountType === 'fonepay' && (
+              {formData.accountType === "fonepay" && (
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">FonePay ID *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    FonePay ID *
+                  </label>
                   <input
                     type="text"
                     value={formData.fonepayId}
-                    onChange={(e) => setFormData({ ...formData, fonepayId: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, fonepayId: e.target.value })
+                    }
                     placeholder="e.g., 9841234567"
                     className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -608,7 +848,9 @@ export const BankAccountsPanel: React.FC = () => {
                   className="flex-1 flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all"
                 >
                   <Save className="w-5 h-5" />
-                  <span>{editingAccount ? 'Update Account' : 'Add Account'}</span>
+                  <span>
+                    {editingAccount ? "Update Account" : "Add Account"}
+                  </span>
                 </button>
                 <button
                   onClick={() => {
@@ -632,8 +874,8 @@ export const BankAccountsPanel: React.FC = () => {
           onClose={() => {
             setShowTransactionsModal(false);
             setSelectedAccountForTransactions(null);
-            setTransactionSearchQuery('');
-            setTransactionFilter('all');
+            setTransactionSearchQuery("");
+            setTransactionFilter("all");
           }}
           searchQuery={transactionSearchQuery}
           onSearchChange={setTransactionSearchQuery}
@@ -641,6 +883,22 @@ export const BankAccountsPanel: React.FC = () => {
           onFilterChange={setTransactionFilter}
         />
       )}
+
+      {/* Popup Container */}
+      <PopupContainer
+        showSuccessPopup={popup.showSuccessPopup}
+        successTitle={popup.successTitle}
+        successMessage={popup.successMessage}
+        onSuccessClose={popup.hideSuccess}
+        showErrorPopup={popup.showErrorPopup}
+        errorTitle={popup.errorTitle}
+        errorMessage={popup.errorMessage}
+        errorType={popup.errorType}
+        onErrorClose={popup.hideError}
+        showConfirmDialog={popup.showConfirmDialog}
+        confirmConfig={popup.confirmConfig}
+        onConfirmCancel={popup.hideConfirm}
+      />
     </div>
   );
 };

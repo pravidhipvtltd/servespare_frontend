@@ -1140,7 +1140,7 @@ const ItemFormModal: React.FC<ItemFormModalProps> = ({ item, onSave, onClose }) 
                     />
                     <span className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-lg">units</span>
                   </div>
-                  <p className="text-gray-600 text-xs mt-2 italic">💡 You'll get low stock alerts at this level</p>
+                  <p className="text-gray-600 text-xs mt-2 italic">💡 You&apos;ll get low stock alerts at this level</p>
                 </div>
               </div>
 

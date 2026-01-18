@@ -3,9 +3,12 @@ import { DollarSign, ArrowUpCircle, ArrowDownCircle, Clock, CheckCircle, X, Plus
 import { getFromStorage, saveToStorage } from '../../utils/mockData';
 import { useAuth } from '../../contexts/AuthContext';
 import { CashDrawerShift, CashTransaction, Bill } from '../../types';
+import { PopupContainer } from '../PopupContainer';
+import { useCustomPopup } from '../../hooks/useCustomPopup';
 
 export const CashierCashDrawerPanel: React.FC = () => {
   const { currentUser } = useAuth();
+  const popup = useCustomPopup();
   const [currentShift, setCurrentShift] = useState<CashDrawerShift | null>(null);
   const [openingAmount, setOpeningAmount] = useState<number>(0);
   const [closingAmount, setClosingAmount] = useState<number>(0);
@@ -17,9 +20,14 @@ export const CashierCashDrawerPanel: React.FC = () => {
   const [showCashInModal, setShowCashInModal] = useState(false);
   const [showCashOutModal, setShowCashOutModal] = useState(false);
   const [closingNotes, setClosingNotes] = useState<string>('');
+  const [varianceReason, setVarianceReason] = useState<string>('');
+  const [previousShiftAmount, setPreviousShiftAmount] = useState<number | null>(null);
+  const [showVarianceModal, setShowVarianceModal] = useState(false);
+  const [pendingClosingAmount, setPendingClosingAmount] = useState<number>(0);
 
   useEffect(() => {
     loadCurrentShift();
+    loadPreviousShiftAmount();
   }, []);
 
   const loadCurrentShift = () => {
@@ -33,9 +41,26 @@ export const CashierCashDrawerPanel: React.FC = () => {
     setCurrentShift(myOpenShift || null);
   };
 
+  const loadPreviousShiftAmount = () => {
+    const allShifts = getFromStorage('cashDrawerShifts', []);
+    const myShifts = allShifts
+      .filter((s: CashDrawerShift) => 
+        s.cashierId === currentUser?.id && 
+        s.status === 'closed' &&
+        s.workspaceId === currentUser?.workspaceId
+      )
+      .sort((a: CashDrawerShift, b: CashDrawerShift) => 
+        new Date(b.closedAt || '').getTime() - new Date(a.closedAt || '').getTime()
+      );
+    
+    if (myShifts.length > 0) {
+      setPreviousShiftAmount(myShifts[0].closingAmount || 0);
+    }
+  };
+
   const handleOpenShift = () => {
     if (openingAmount <= 0) {
-      alert('Please enter a valid opening amount');
+      popup.showError('Please enter a valid opening amount greater than NPR 0.', 'Invalid Amount', 'warning');
       return;
     }
 
@@ -72,12 +97,21 @@ export const CashierCashDrawerPanel: React.FC = () => {
   const handleCloseShift = () => {
     if (!currentShift) return;
     if (closingAmount < 0) {
-      alert('Please enter a valid closing amount');
+      popup.showError('Please enter a valid closing amount (cannot be negative).', 'Invalid Amount', 'warning');
       return;
     }
 
     const difference = closingAmount - (currentShift.expectedAmount || 0);
 
+    // If there's a variance, show variance reason modal
+    if (Math.abs(difference) > 0.01) {
+      setPendingClosingAmount(closingAmount);
+      setShowCloseModal(false);
+      setShowVarianceModal(true);
+      return;
+    }
+
+    // No variance - close shift directly
     const closingTransaction: CashTransaction = {
       id: Date.now().toString(),
       type: 'closing',
@@ -95,6 +129,8 @@ export const CashierCashDrawerPanel: React.FC = () => {
       status: 'closed',
       transactions: [...currentShift.transactions, closingTransaction],
       notes: closingNotes,
+      varianceReason: undefined,
+      flagged: false,
     };
 
     const allShifts = getFromStorage('cashDrawerShifts', []);
@@ -107,14 +143,69 @@ export const CashierCashDrawerPanel: React.FC = () => {
     setShowCloseModal(false);
     setClosingAmount(0);
     setClosingNotes('');
+    setVarianceReason('');
+    setPreviousShiftAmount(updatedShift.closingAmount || 0);
     
-    alert(`Shift closed successfully! ${difference >= 0 ? 'Surplus' : 'Loss'}: NPR ${Math.abs(difference).toLocaleString()}`);
+    popup.showSuccess('Shift Closed Successfully!', 'Cash amount was balanced perfectly. Great job!');
+  };
+
+  const handleVarianceReasonSubmit = () => {
+    if (!currentShift) return;
+    
+    if (!varianceReason.trim()) {
+      popup.showError('Please provide a reason for the cash variance before closing the shift.', 'Reason Required', 'warning');
+      return;
+    }
+
+    const difference = pendingClosingAmount - (currentShift.expectedAmount || 0);
+
+    const closingTransaction: CashTransaction = {
+      id: Date.now().toString(),
+      type: 'closing',
+      amount: pendingClosingAmount,
+      description: 'Closing balance',
+      timestamp: new Date().toISOString(),
+    };
+
+    const updatedShift: CashDrawerShift = {
+      ...currentShift,
+      closedAt: new Date().toISOString(),
+      closingAmount: pendingClosingAmount,
+      actualAmount: pendingClosingAmount,
+      difference: difference,
+      status: 'closed',
+      transactions: [...currentShift.transactions, closingTransaction],
+      notes: closingNotes,
+      varianceReason: varianceReason,
+      flagged: Math.abs(difference) > 100, // Auto-flag if variance > NPR 100
+    };
+
+    const allShifts = getFromStorage('cashDrawerShifts', []);
+    const updatedShifts = allShifts.map((s: CashDrawerShift) => 
+      s.id === currentShift.id ? updatedShift : s
+    );
+    saveToStorage('cashDrawerShifts', updatedShifts);
+
+    setCurrentShift(null);
+    setShowVarianceModal(false);
+    setClosingAmount(0);
+    setClosingNotes('');
+    setVarianceReason('');
+    setPendingClosingAmount(0);
+    setPreviousShiftAmount(updatedShift.closingAmount || 0);
+    
+    const varianceType = difference >= 0 ? 'Surplus' : 'Shortage';
+    const flagWarning = Math.abs(difference) > 100 ? '\n⚠️ This shift has been flagged for admin review.' : '';
+    popup.showSuccess(
+      'Shift Closed Successfully!',
+      `${varianceType}: NPR ${Math.abs(difference).toLocaleString()}${flagWarning}`
+    );
   };
 
   const handleCashIn = () => {
     if (!currentShift) return;
     if (cashInAmount <= 0 || !description.trim()) {
-      alert('Please enter amount and description');
+      popup.showError('Please enter both amount and description for the cash-in transaction.', 'Missing Information', 'warning');
       return;
     }
 
@@ -148,7 +239,7 @@ export const CashierCashDrawerPanel: React.FC = () => {
   const handleCashOut = () => {
     if (!currentShift) return;
     if (cashOutAmount <= 0 || !description.trim()) {
-      alert('Please enter amount and description');
+      popup.showError('Please enter both amount and description for the cash-out transaction.', 'Missing Information', 'warning');
       return;
     }
 
@@ -293,6 +384,20 @@ export const CashierCashDrawerPanel: React.FC = () => {
                   <X className="w-5 h-5" />
                 </button>
               </div>
+
+              {/* Previous Shift Info */}
+              {previousShiftAmount !== null && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Previous Shift Closing Amount</p>
+                      <p className="text-blue-700">NPR {previousShiftAmount.toLocaleString()}</p>
+                    </div>
+                    <Clock className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">This was your last shift's closing amount</p>
+                </div>
+              )}
 
               <div className="mb-6">
                 <label className="block text-gray-700 mb-2">Opening Cash Amount (NPR) *</label>
@@ -648,8 +753,8 @@ export const CashierCashDrawerPanel: React.FC = () => {
           <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-2xl shadow-2xl z-50 p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-gray-900 text-xl flex items-center">
-                <CheckCircle className="w-6 h-6 mr-2 text-blue-600" />
-                Close Shift
+                <CheckCircle className="w-6 h-6 mr-2 text-red-600" />
+                End Shift
               </h3>
               <button
                 onClick={() => setShowCloseModal(false)}
@@ -669,24 +774,25 @@ export const CashierCashDrawerPanel: React.FC = () => {
 
             <div className="space-y-4 mb-6">
               <div>
-                <label className="block text-gray-700 mb-2">Actual Closing Amount (NPR) *</label>
+                <label className="block text-gray-700 mb-2">Actual Ending Cash *</label>
                 <input
                   type="number"
                   value={closingAmount || ''}
                   onChange={(e) => setClosingAmount(parseFloat(e.target.value) || 0)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-red-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                   placeholder="Enter actual closing amount"
                   min="0"
                   step="0.01"
                 />
               </div>
 
+              {/* Difference Display */}
               {closingAmount > 0 && (
                 <div className={`p-4 rounded-lg ${
                   closingAmount - (currentShift.expectedAmount || 0) < 0 
-                    ? 'bg-red-50 border border-red-200'
+                    ? 'bg-yellow-50 border border-yellow-200'
                     : closingAmount - (currentShift.expectedAmount || 0) > 0
-                    ? 'bg-green-50 border border-green-200'
+                    ? 'bg-yellow-50 border border-yellow-200'
                     : 'bg-gray-50 border border-gray-200'
                 }`}>
                   <div className="flex items-center justify-between">
@@ -698,25 +804,12 @@ export const CashierCashDrawerPanel: React.FC = () => {
                         ? 'text-green-700'
                         : 'text-gray-700'
                     }`}>
-                      {closingAmount - (currentShift.expectedAmount || 0) >= 0 ? '+' : ''}
-                      NPR {Math.abs(closingAmount - (currentShift.expectedAmount || 0)).toLocaleString()}
-                      {closingAmount - (currentShift.expectedAmount || 0) < 0 ? ' (Loss)' : 
-                       closingAmount - (currentShift.expectedAmount || 0) > 0 ? ' (Surplus)' : ' (Balanced)'}
+                      NPR {closingAmount - (currentShift.expectedAmount || 0) < 0 ? '-' : '+'}
+                      {Math.abs(closingAmount - (currentShift.expectedAmount || 0)).toLocaleString()}
                     </span>
                   </div>
                 </div>
               )}
-
-              <div>
-                <label className="block text-gray-700 mb-2">Notes (Optional)</label>
-                <textarea
-                  value={closingNotes}
-                  onChange={(e) => setClosingNotes(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={3}
-                  placeholder="Add any notes about the shift..."
-                />
-              </div>
             </div>
 
             <div className="flex space-x-3">
@@ -728,15 +821,90 @@ export const CashierCashDrawerPanel: React.FC = () => {
               </button>
               <button
                 onClick={handleCloseShift}
-                className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
+                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
-                <Save className="w-4 h-4" />
-                <span>Close Shift</span>
+                End Shift
               </button>
             </div>
           </div>
         </>
       )}
+
+      {/* Variance Reason Modal */}
+      {showVarianceModal && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            onClick={() => setShowVarianceModal(false)}
+          />
+          
+          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-2xl shadow-2xl z-50 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-gray-900 text-xl flex items-center">
+                <AlertCircle className="w-6 h-6 mr-2 text-red-600" />
+                Cash Variance Reason
+              </h3>
+              <button
+                onClick={() => setShowVarianceModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="bg-red-50 border-2 border-red-300 rounded-lg p-5 shadow-sm">
+              <label className="block text-red-900 mb-3 flex items-center">
+                <AlertCircle className="w-5 h-5 mr-2 text-red-600" />
+                <span className="font-semibold">Reason for Variance *</span>
+              </label>
+              <input
+                type="text"
+                value={varianceReason}
+                onChange={(e) => setVarianceReason(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-red-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 bg-white"
+                placeholder="Why is there a cash difference? (Required)"
+              />
+              <div className="mt-3 flex items-start bg-red-100 p-3 rounded border border-red-200">
+                <AlertCircle className="w-4 h-4 mr-2 mt-0.5 text-red-700" />
+                <p className="text-xs text-red-800">
+                  This reason will be sent to admin for review. You cannot close the shift without providing a reason.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowVarianceModal(false)}
+                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleVarianceReasonSubmit}
+                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Submit Reason
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Popup Container */}
+      <PopupContainer
+        showSuccessPopup={popup.showSuccessPopup}
+        successTitle={popup.successTitle}
+        successMessage={popup.successMessage}
+        onSuccessClose={popup.hideSuccess}
+        showErrorPopup={popup.showErrorPopup}
+        errorTitle={popup.errorTitle}
+        errorMessage={popup.errorMessage}
+        errorType={popup.errorType}
+        onErrorClose={popup.hideError}
+        showConfirmDialog={popup.showConfirmDialog}
+        confirmConfig={popup.confirmConfig}
+        onConfirmCancel={popup.hideConfirm}
+      />
     </div>
   );
 };

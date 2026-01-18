@@ -67,7 +67,7 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ userRole, on
       color: 'text-red-600',
       gradient: 'from-red-500 to-red-600',
       onClick: () => handleAction('add-expense'),
-      roles: ['super_admin', 'admin', 'finance']
+      roles: ['super_admin', 'admin']
     },
     {
       id: 'view-reports',
@@ -76,7 +76,7 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ userRole, on
       color: 'text-indigo-600',
       gradient: 'from-indigo-500 to-indigo-600',
       onClick: () => handleAction('view-reports'),
-      roles: ['super_admin', 'admin', 'inventory_manager', 'finance']
+      roles: ['super_admin', 'admin', 'inventory_manager']
     }
   ];
 

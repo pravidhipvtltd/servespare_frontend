@@ -80,7 +80,7 @@ export const DashboardCard: React.FC<DashboardCardProps> = ({
           <p className="text-gray-500 text-xs">{subtext}</p>
         )}
 
-        {/* Sparkle Effect */}
+     
         <motion.div
           className="absolute top-4 right-4 w-2 h-2 bg-white rounded-full"
           animate={{

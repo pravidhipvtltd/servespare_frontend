@@ -1,18 +1,50 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 import {
-  RotateCcw, Search, Package, AlertCircle, Calendar, Clock, User,
-  ShoppingCart, ArrowLeft, Check, X, FileText, Shield, Plus, Trash2,
-  Upload, Image as ImageIcon, RefreshCw, DollarSign, TrendingDown,
-  CheckCircle, XCircle, Loader, ArrowRight, Info, MessageSquare,
-  Truck, AlertTriangle, ChevronRight, Eye
-} from 'lucide-react';
-import { getFromStorage, saveToStorage } from '../../utils/mockData';
-import { useAuth } from '../../contexts/AuthContext';
-import { Bill, InventoryItem } from '../../types';
+  RotateCcw,
+  Search,
+  Package,
+  AlertCircle,
+  Calendar,
+  Clock,
+  User,
+  ShoppingCart,
+  ArrowLeft,
+  Check,
+  X,
+  FileText,
+  Shield,
+  Plus,
+  Trash2,
+  Upload,
+  Image as ImageIcon,
+  RefreshCw,
+  DollarSign,
+  TrendingDown,
+  CheckCircle,
+  XCircle,
+  Loader,
+  ArrowRight,
+  Info,
+  MessageSquare,
+  Truck,
+  AlertTriangle,
+  ChevronRight,
+  Eye,
+} from "lucide-react";
+import { getFromStorage, saveToStorage } from "../../utils/mockData";
+import { useAuth } from "../../contexts/AuthContext";
+import { Bill, InventoryItem } from "../../types";
+import { PopupContainer } from "../PopupContainer";
+import { useCustomPopup } from "../../hooks/useCustomPopup";
 
-type ReturnStatus = 'initiated' | 'approved' | 'supplier_notified' | 'resolved' | 'rejected';
-type ReturnType = 'return' | 'replace' | 'refund';
-type ItemCondition = 'new' | 'damaged' | 'wrong_item';
+type ReturnStatus =
+  | "initiated"
+  | "approved"
+  | "supplier_notified"
+  | "resolved"
+  | "rejected";
+type ReturnType = "return" | "replace" | "refund";
+type ItemCondition = "new" | "damaged" | "wrong_item";
 
 interface ReturnRequest {
   id: string;
@@ -47,49 +79,72 @@ interface TimelineEvent {
 }
 
 const RETURN_REASONS = [
-  'Defective Product',
-  'Wrong Item Received',
-  'Not as Described',
-  'Changed Mind',
-  'Better Price Elsewhere',
-  'Ordered by Mistake',
-  'Product Damaged',
-  'Missing Parts',
-  'Quality Issues',
-  'Other',
+  "Defective Product",
+  "Wrong Item Received",
+  "Not as Described",
+  "Changed Mind",
+  "Better Price Elsewhere",
+  "Ordered by Mistake",
+  "Product Damaged",
+  "Missing Parts",
+  "Quality Issues",
+  "Other",
 ];
 
-const CONDITION_OPTIONS: { value: ItemCondition; label: string; color: string }[] = [
-  { value: 'new', label: 'New / Unused', color: 'bg-green-50 border-green-200 text-green-700' },
-  { value: 'damaged', label: 'Damaged', color: 'bg-red-50 border-red-200 text-red-700' },
-  { value: 'wrong_item', label: 'Wrong Item', color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
+const CONDITION_OPTIONS: {
+  value: ItemCondition;
+  label: string;
+  color: string;
+}[] = [
+  {
+    value: "new",
+    label: "New / Unused",
+    color: "bg-green-50 border-green-200 text-green-700",
+  },
+  {
+    value: "damaged",
+    label: "Damaged",
+    color: "bg-red-50 border-red-200 text-red-700",
+  },
+  {
+    value: "wrong_item",
+    label: "Wrong Item",
+    color: "bg-yellow-50 border-yellow-200 text-yellow-700",
+  },
 ];
 
 const STATUS_STEPS: { id: ReturnStatus; label: string; icon: any }[] = [
-  { id: 'initiated', label: 'Initiated', icon: FileText },
-  { id: 'approved', label: 'Approved', icon: CheckCircle },
-  { id: 'supplier_notified', label: 'Supplier Notified', icon: Truck },
-  { id: 'resolved', label: 'Resolved', icon: Check },
+  { id: "initiated", label: "Initiated", icon: FileText },
+  { id: "approved", label: "Approved", icon: CheckCircle },
+  { id: "supplier_notified", label: "Supplier Notified", icon: Truck },
+  { id: "resolved", label: "Resolved", icon: Check },
 ];
 
 export const ReturnRefundPanel: React.FC = () => {
   const { currentUser } = useAuth();
-  const [viewMode, setViewMode] = useState<'list' | 'create' | 'details'>('list');
+  const popup = useCustomPopup();
+  const [viewMode, setViewMode] = useState<"list" | "create" | "details">(
+    "list"
+  );
   const [returnRequests, setReturnRequests] = useState<ReturnRequest[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(null);
-  const [selectedRequest, setSelectedRequest] = useState<ReturnRequest | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(
+    null
+  );
+  const [selectedRequest, setSelectedRequest] = useState<ReturnRequest | null>(
+    null
+  );
+  const [searchQuery, setSearchQuery] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form states
-  const [returnType, setReturnType] = useState<ReturnType>('return');
-  const [reason, setReason] = useState('');
-  const [condition, setCondition] = useState<ItemCondition>('new');
+  const [returnType, setReturnType] = useState<ReturnType>("return");
+  const [reason, setReason] = useState("");
+  const [condition, setCondition] = useState<ItemCondition>("new");
   const [quantity, setQuantity] = useState(1);
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState("");
   const [images, setImages] = useState<string[]>([]);
 
   useEffect(() => {
@@ -97,17 +152,18 @@ export const ReturnRefundPanel: React.FC = () => {
   }, []);
 
   const loadData = () => {
-    const allBills = getFromStorage('bills', []).filter(
-      (b: Bill) => b.workspaceId === currentUser?.workspaceId && b.paymentStatus === 'paid'
+    const allBills = getFromStorage("bills", []).filter(
+      (b: Bill) =>
+        b.workspaceId === currentUser?.workspaceId && b.paymentStatus === "paid"
     );
     setBills(allBills);
 
-    const allInventory = getFromStorage('inventory', []).filter(
+    const allInventory = getFromStorage("inventory", []).filter(
       (i: InventoryItem) => i.workspaceId === currentUser?.workspaceId
     );
     setInventory(allInventory);
 
-    const allReturns = getFromStorage('returnRequests', []).filter(
+    const allReturns = getFromStorage("returnRequests", []).filter(
       (r: ReturnRequest) => r.workspaceId === currentUser?.workspaceId
     );
     setReturnRequests(allReturns);
@@ -116,39 +172,39 @@ export const ReturnRefundPanel: React.FC = () => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      const fileNames = Array.from(files).map(f => f.name);
+      const fileNames = Array.from(files).map((f) => f.name);
       setImages([...images, ...fileNames]);
     }
   };
 
   const calculateRefund = () => {
     if (!selectedProduct) return 0;
-    
+
     let refundAmount = selectedProduct.mrp * quantity;
-    
+
     // Reduce refund if damaged
-    if (condition === 'damaged') {
+    if (condition === "damaged") {
       refundAmount *= 0.7; // 30% reduction for damaged items
-    } else if (condition === 'wrong_item') {
+    } else if (condition === "wrong_item") {
       refundAmount *= 1.0; // Full refund for wrong item
     }
-    
+
     return Math.round(refundAmount);
   };
 
   const createReturnRequest = () => {
     if (!selectedBill || !selectedProduct) {
-      alert('Please select a bill and product');
+      popup.showError("Please select a bill and product", "Validation Error");
       return;
     }
 
     if (!reason) {
-      alert('Please select a reason');
+      popup.showError("Please select a reason", "Validation Error");
       return;
     }
 
     const refundAmount = calculateRefund();
-    
+
     const newRequest: ReturnRequest = {
       id: Date.now().toString(),
       returnNumber: `RET-${Date.now().toString().slice(-6)}`,
@@ -164,15 +220,15 @@ export const ReturnRefundPanel: React.FC = () => {
       condition,
       refundAmount,
       images,
-      status: 'initiated',
+      status: "initiated",
       timeline: [
         {
           id: Date.now().toString(),
-          status: 'initiated',
-          label: 'Return request created',
+          status: "initiated",
+          label: "Return request created",
           timestamp: new Date().toISOString(),
           user: currentUser?.name,
-        }
+        },
       ],
       createdAt: new Date().toISOString(),
       workspaceId: currentUser?.workspaceId,
@@ -180,27 +236,31 @@ export const ReturnRefundPanel: React.FC = () => {
       notes,
     };
 
-    const allReturns = getFromStorage('returnRequests', []);
-    saveToStorage('returnRequests', [...allReturns, newRequest]);
-    
+    const allReturns = getFromStorage("returnRequests", []);
+    saveToStorage("returnRequests", [...allReturns, newRequest]);
+
     loadData();
     resetForm();
-    setViewMode('list');
+    setViewMode("list");
   };
 
   const resetForm = () => {
     setSelectedBill(null);
     setSelectedProduct(null);
-    setReturnType('return');
-    setReason('');
-    setCondition('new');
+    setReturnType("return");
+    setReason("");
+    setCondition("new");
     setQuantity(1);
-    setNotes('');
+    setNotes("");
     setImages([]);
   };
 
-  const updateReturnStatus = (request: ReturnRequest, newStatus: ReturnStatus, notes?: string) => {
-    const allReturns = getFromStorage('returnRequests', []);
+  const updateReturnStatus = (
+    request: ReturnRequest,
+    newStatus: ReturnStatus,
+    notes?: string
+  ) => {
+    const allReturns = getFromStorage("returnRequests", []);
     const updated = allReturns.map((r: ReturnRequest) => {
       if (r.id === request.id) {
         const newTimeline: TimelineEvent = {
@@ -219,64 +279,89 @@ export const ReturnRefundPanel: React.FC = () => {
       }
       return r;
     });
-    saveToStorage('returnRequests', updated);
+    saveToStorage("returnRequests", updated);
     loadData();
-    
+
     if (selectedRequest?.id === request.id) {
-      const updatedRequest = updated.find((r: ReturnRequest) => r.id === request.id);
+      const updatedRequest = updated.find(
+        (r: ReturnRequest) => r.id === request.id
+      );
       setSelectedRequest(updatedRequest || null);
     }
   };
 
   const getStatusLabel = (status: ReturnStatus): string => {
     switch (status) {
-      case 'initiated': return 'Return request initiated';
-      case 'approved': return 'Request approved by manager';
-      case 'supplier_notified': return 'Supplier has been notified';
-      case 'resolved': return 'Return completed successfully';
-      case 'rejected': return 'Request rejected';
-      default: return status;
+      case "initiated":
+        return "Return request initiated";
+      case "approved":
+        return "Request approved by manager";
+      case "supplier_notified":
+        return "Supplier has been notified";
+      case "resolved":
+        return "Return completed successfully";
+      case "rejected":
+        return "Request rejected";
+      default:
+        return status;
     }
   };
 
   const getStatusColor = (status: ReturnStatus): string => {
     switch (status) {
-      case 'resolved': return 'text-green-600 bg-green-50 border-green-200';
-      case 'approved': return 'text-blue-600 bg-blue-50 border-blue-200';
-      case 'supplier_notified': return 'text-purple-600 bg-purple-50 border-purple-200';
-      case 'initiated': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'rejected': return 'text-red-600 bg-red-50 border-red-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      case "resolved":
+        return "text-green-600 bg-green-50 border-green-200";
+      case "approved":
+        return "text-blue-600 bg-blue-50 border-blue-200";
+      case "supplier_notified":
+        return "text-purple-600 bg-purple-50 border-purple-200";
+      case "initiated":
+        return "text-yellow-600 bg-yellow-50 border-yellow-200";
+      case "rejected":
+        return "text-red-600 bg-red-50 border-red-200";
+      default:
+        return "text-gray-600 bg-gray-50 border-gray-200";
     }
   };
 
   const getTimelineColor = (status: ReturnStatus): string => {
     switch (status) {
-      case 'resolved': return 'from-green-400 to-green-600';
-      case 'approved': return 'from-blue-400 to-blue-600';
-      case 'supplier_notified': return 'from-purple-400 to-purple-600';
-      case 'initiated': return 'from-yellow-400 to-yellow-600';
-      case 'rejected': return 'from-red-400 to-red-600';
-      default: return 'from-gray-400 to-gray-600';
+      case "resolved":
+        return "from-green-400 to-green-600";
+      case "approved":
+        return "from-blue-400 to-blue-600";
+      case "supplier_notified":
+        return "from-purple-400 to-purple-600";
+      case "initiated":
+        return "from-yellow-400 to-yellow-600";
+      case "rejected":
+        return "from-red-400 to-red-600";
+      default:
+        return "from-gray-400 to-gray-600";
     }
   };
 
-  const filteredBills = bills.filter(bill =>
-    bill.billNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    bill.customerName.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredBills = bills.filter(
+    (bill) =>
+      bill.billNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      bill.customerName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredReturns = returnRequests.filter(r =>
-    r.returnNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.productName.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredReturns = returnRequests.filter(
+    (r) =>
+      r.returnNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.productName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getConditionIcon = (condition: ItemCondition) => {
     switch (condition) {
-      case 'new': return <CheckCircle className="w-4 h-4" />;
-      case 'damaged': return <XCircle className="w-4 h-4" />;
-      case 'wrong_item': return <AlertTriangle className="w-4 h-4" />;
+      case "new":
+        return <CheckCircle className="w-4 h-4" />;
+      case "damaged":
+        return <XCircle className="w-4 h-4" />;
+      case "wrong_item":
+        return <AlertTriangle className="w-4 h-4" />;
     }
   };
 
@@ -285,14 +370,18 @@ export const ReturnRefundPanel: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-gray-900 text-2xl mb-1">Return, Refund & Replacement</h3>
-          <p className="text-gray-500 text-sm">Manage product returns and refund requests</p>
+          <h3 className="text-gray-900 text-2xl mb-1">
+            Return, Refund & Replacement
+          </h3>
+          <p className="text-gray-500 text-sm">
+            Manage product returns and refund requests
+          </p>
         </div>
-        {viewMode === 'list' && (
+        {viewMode === "list" && (
           <button
             onClick={() => {
               resetForm();
-              setViewMode('create');
+              setViewMode("create");
             }}
             className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 shadow-lg hover:shadow-xl transition-all"
           >
@@ -300,11 +389,11 @@ export const ReturnRefundPanel: React.FC = () => {
             <span>New Return Request</span>
           </button>
         )}
-        {viewMode !== 'list' && (
+        {viewMode !== "list" && (
           <button
             onClick={() => {
               resetForm();
-              setViewMode('list');
+              setViewMode("list");
               setSelectedRequest(null);
             }}
             className="flex items-center space-x-2 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all"
@@ -316,7 +405,7 @@ export const ReturnRefundPanel: React.FC = () => {
       </div>
 
       {/* List View */}
-      {viewMode === 'list' && (
+      {viewMode === "list" && (
         <div className="space-y-6">
           {/* Search */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
@@ -343,7 +432,7 @@ export const ReturnRefundPanel: React.FC = () => {
               </div>
               <div className="text-gray-600 text-sm mb-1">Pending</div>
               <div className="text-gray-900 text-2xl font-semibold">
-                {returnRequests.filter(r => r.status === 'initiated').length}
+                {returnRequests.filter((r) => r.status === "initiated").length}
               </div>
             </div>
 
@@ -356,7 +445,13 @@ export const ReturnRefundPanel: React.FC = () => {
               </div>
               <div className="text-gray-600 text-sm mb-1">Approved</div>
               <div className="text-gray-900 text-2xl font-semibold">
-                {returnRequests.filter(r => r.status === 'approved' || r.status === 'supplier_notified').length}
+                {
+                  returnRequests.filter(
+                    (r) =>
+                      r.status === "approved" ||
+                      r.status === "supplier_notified"
+                  ).length
+                }
               </div>
             </div>
 
@@ -369,7 +464,7 @@ export const ReturnRefundPanel: React.FC = () => {
               </div>
               <div className="text-gray-600 text-sm mb-1">Resolved</div>
               <div className="text-gray-900 text-2xl font-semibold">
-                {returnRequests.filter(r => r.status === 'resolved').length}
+                {returnRequests.filter((r) => r.status === "resolved").length}
               </div>
             </div>
 
@@ -382,7 +477,7 @@ export const ReturnRefundPanel: React.FC = () => {
               </div>
               <div className="text-gray-600 text-sm mb-1">Rejected</div>
               <div className="text-gray-900 text-2xl font-semibold">
-                {returnRequests.filter(r => r.status === 'rejected').length}
+                {returnRequests.filter((r) => r.status === "rejected").length}
               </div>
             </div>
           </div>
@@ -395,14 +490,22 @@ export const ReturnRefundPanel: React.FC = () => {
                 className="bg-white rounded-xl border-2 border-gray-200 hover:border-orange-300 hover:shadow-lg transition-all duration-300 overflow-hidden cursor-pointer"
                 onClick={() => {
                   setSelectedRequest(request);
-                  setViewMode('details');
+                  setViewMode("details");
                 }}
               >
                 {/* Status Header */}
-                <div className={`px-4 py-3 border-b-2 ${getStatusColor(request.status)}`}>
+                <div
+                  className={`px-4 py-3 border-b-2 ${getStatusColor(
+                    request.status
+                  )}`}
+                >
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-sm">{request.returnNumber}</span>
-                    <span className="text-xs uppercase tracking-wide">{request.status.replace('_', ' ')}</span>
+                    <span className="font-semibold text-sm">
+                      {request.returnNumber}
+                    </span>
+                    <span className="text-xs uppercase tracking-wide">
+                      {request.status.replace("_", " ")}
+                    </span>
                   </div>
                 </div>
 
@@ -413,39 +516,63 @@ export const ReturnRefundPanel: React.FC = () => {
                       <Package className="w-6 h-6 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-gray-900 font-semibold truncate">{request.productName}</h4>
-                      <p className="text-gray-500 text-sm">{request.customerName}</p>
+                      <h4 className="text-gray-900 font-semibold truncate">
+                        {request.productName}
+                      </h4>
+                      <p className="text-gray-500 text-sm">
+                        {request.customerName}
+                      </p>
                     </div>
                   </div>
 
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Bill:</span>
-                      <span className="text-gray-900 font-medium">{request.billNumber}</span>
+                      <span className="text-gray-900 font-medium">
+                        {request.billNumber}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Type:</span>
-                      <span className="text-gray-900 font-medium capitalize">{request.type}</span>
+                      <span className="text-gray-900 font-medium capitalize">
+                        {request.type}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Quantity:</span>
-                      <span className="text-gray-900 font-medium">{request.quantity}</span>
+                      <span className="text-gray-900 font-medium">
+                        {request.quantity}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Refund:</span>
-                      <span className="text-orange-600 font-bold">₹{request.refundAmount.toLocaleString()}</span>
+                      <span className="text-orange-600 font-bold">
+                        Rs{request.refundAmount.toLocaleString()}
+                      </span>
                     </div>
                   </div>
 
-                  <div className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm ${
-                    CONDITION_OPTIONS.find(c => c.value === request.condition)?.color
-                  }`}>
+                  <div
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm ${
+                      CONDITION_OPTIONS.find(
+                        (c) => c.value === request.condition
+                      )?.color
+                    }`}
+                  >
                     {getConditionIcon(request.condition)}
-                    <span className="font-medium">{CONDITION_OPTIONS.find(c => c.value === request.condition)?.label}</span>
+                    <span className="font-medium">
+                      {
+                        CONDITION_OPTIONS.find(
+                          (c) => c.value === request.condition
+                        )?.label
+                      }
+                    </span>
                   </div>
 
                   <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-                    <span>{new Date(request.createdAt).toLocaleDateString()}</span>
+                    <span>
+                      {new Date(request.createdAt).toLocaleDateString()}
+                    </span>
                     <button className="text-orange-600 hover:text-orange-700 font-medium flex items-center space-x-1">
                       <span>View Details</span>
                       <ChevronRight className="w-4 h-4" />
@@ -466,7 +593,7 @@ export const ReturnRefundPanel: React.FC = () => {
       )}
 
       {/* Create Return View */}
-      {viewMode === 'create' && (
+      {viewMode === "create" && (
         <div className="space-y-6">
           {/* Step 1: Select Bill */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
@@ -474,7 +601,7 @@ export const ReturnRefundPanel: React.FC = () => {
               <FileText className="w-5 h-5 text-orange-600" />
               <span>Step 1: Select Bill</span>
             </h4>
-            
+
             <div className="relative mb-4">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
@@ -493,18 +620,24 @@ export const ReturnRefundPanel: React.FC = () => {
                   onClick={() => setSelectedBill(bill)}
                   className={`p-4 rounded-xl border-2 text-left transition-all ${
                     selectedBill?.id === bill.id
-                      ? 'border-orange-500 bg-orange-50'
-                      : 'border-gray-200 hover:border-gray-300 bg-white'
+                      ? "border-orange-500 bg-orange-50"
+                      : "border-gray-200 hover:border-gray-300 bg-white"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-900 font-medium">{bill.billNumber}</span>
+                    <span className="text-gray-900 font-medium">
+                      {bill.billNumber}
+                    </span>
                     {selectedBill?.id === bill.id && (
                       <CheckCircle className="w-5 h-5 text-orange-600" />
                     )}
                   </div>
-                  <div className="text-sm text-gray-600">{bill.customerName}</div>
-                  <div className="text-sm text-gray-500">₹{bill.total.toLocaleString()}</div>
+                  <div className="text-sm text-gray-600">
+                    {bill.customerName}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Rs{bill.total.toLocaleString()}
+                  </div>
                   <div className="text-xs text-gray-400 mt-1">
                     {new Date(bill.createdAt).toLocaleDateString()}
                   </div>
@@ -520,25 +653,28 @@ export const ReturnRefundPanel: React.FC = () => {
                 <Package className="w-5 h-5 text-orange-600" />
                 <span>Step 2: Select Product from Bill</span>
               </h4>
-              
+
               <div className="space-y-3">
                 {selectedBill.items.map((item) => {
-                  const product = inventory.find(p => p.id === item.id);
+                  const product = inventory.find((p) => p.id === item.id);
                   return (
                     <button
                       key={item.id}
                       onClick={() => product && setSelectedProduct(product)}
                       className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
                         selectedProduct?.id === item.id
-                          ? 'border-orange-500 bg-orange-50'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                          ? "border-orange-500 bg-orange-50"
+                          : "border-gray-200 hover:border-gray-300 bg-white"
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="text-gray-900 font-medium">{item.name}</div>
+                          <div className="text-gray-900 font-medium">
+                            {item.name}
+                          </div>
                           <div className="text-sm text-gray-600">
-                            Qty: {item.quantity} × ₹{item.price.toLocaleString()}
+                            Qty: {item.quantity} × Rs
+                            {item.price.toLocaleString()}
                           </div>
                         </div>
                         {selectedProduct?.id === item.id && (
@@ -564,36 +700,38 @@ export const ReturnRefundPanel: React.FC = () => {
                 <div className="space-y-6">
                   {/* Return Type */}
                   <div>
-                    <label className="block text-gray-700 font-medium mb-3">Return Type</label>
+                    <label className="block text-gray-700 font-medium mb-3">
+                      Return Type
+                    </label>
                     <div className="grid grid-cols-3 gap-3">
                       <button
-                        onClick={() => setReturnType('return')}
+                        onClick={() => setReturnType("return")}
                         className={`p-3 rounded-xl border-2 text-center transition-all ${
-                          returnType === 'return'
-                            ? 'border-orange-500 bg-orange-50 text-orange-700'
-                            : 'border-gray-200 hover:border-gray-300'
+                          returnType === "return"
+                            ? "border-orange-500 bg-orange-50 text-orange-700"
+                            : "border-gray-200 hover:border-gray-300"
                         }`}
                       >
                         <RotateCcw className="w-5 h-5 mx-auto mb-1" />
                         <div className="text-sm font-medium">Return</div>
                       </button>
                       <button
-                        onClick={() => setReturnType('replace')}
+                        onClick={() => setReturnType("replace")}
                         className={`p-3 rounded-xl border-2 text-center transition-all ${
-                          returnType === 'replace'
-                            ? 'border-orange-500 bg-orange-50 text-orange-700'
-                            : 'border-gray-200 hover:border-gray-300'
+                          returnType === "replace"
+                            ? "border-orange-500 bg-orange-50 text-orange-700"
+                            : "border-gray-200 hover:border-gray-300"
                         }`}
                       >
                         <RefreshCw className="w-5 h-5 mx-auto mb-1" />
                         <div className="text-sm font-medium">Replace</div>
                       </button>
                       <button
-                        onClick={() => setReturnType('refund')}
+                        onClick={() => setReturnType("refund")}
                         className={`p-3 rounded-xl border-2 text-center transition-all ${
-                          returnType === 'refund'
-                            ? 'border-orange-500 bg-orange-50 text-orange-700'
-                            : 'border-gray-200 hover:border-gray-300'
+                          returnType === "refund"
+                            ? "border-orange-500 bg-orange-50 text-orange-700"
+                            : "border-gray-200 hover:border-gray-300"
                         }`}
                       >
                         <DollarSign className="w-5 h-5 mx-auto mb-1" />
@@ -604,7 +742,9 @@ export const ReturnRefundPanel: React.FC = () => {
 
                   {/* Reason */}
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2">Reason</label>
+                    <label className="block text-gray-700 font-medium mb-2">
+                      Reason
+                    </label>
                     <select
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
@@ -612,14 +752,18 @@ export const ReturnRefundPanel: React.FC = () => {
                     >
                       <option value="">Select a reason</option>
                       {RETURN_REASONS.map((r) => (
-                        <option key={r} value={r}>{r}</option>
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
                       ))}
                     </select>
                   </div>
 
                   {/* Condition */}
                   <div>
-                    <label className="block text-gray-700 font-medium mb-3">Item Condition</label>
+                    <label className="block text-gray-700 font-medium mb-3">
+                      Item Condition
+                    </label>
                     <div className="space-y-2">
                       {CONDITION_OPTIONS.map((opt) => (
                         <button
@@ -628,7 +772,7 @@ export const ReturnRefundPanel: React.FC = () => {
                           className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
                             condition === opt.value
                               ? `${opt.color} border-current`
-                              : 'border-gray-200 hover:border-gray-300'
+                              : "border-gray-200 hover:border-gray-300"
                           }`}
                         >
                           <div className="flex items-center space-x-3">
@@ -645,11 +789,15 @@ export const ReturnRefundPanel: React.FC = () => {
 
                   {/* Quantity */}
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2">Quantity to Return</label>
+                    <label className="block text-gray-700 font-medium mb-2">
+                      Quantity to Return
+                    </label>
                     <input
                       type="number"
                       value={quantity}
-                      onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
+                      onChange={(e) =>
+                        setQuantity(Math.max(1, Number(e.target.value)))
+                      }
                       min="1"
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
                     />
@@ -659,7 +807,9 @@ export const ReturnRefundPanel: React.FC = () => {
                 <div className="space-y-6">
                   {/* Image Upload */}
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2">Upload Images</label>
+                    <label className="block text-gray-700 font-medium mb-2">
+                      Upload Images
+                    </label>
                     <input
                       type="file"
                       ref={fileInputRef}
@@ -674,19 +824,28 @@ export const ReturnRefundPanel: React.FC = () => {
                     >
                       <Upload className="w-8 h-8 mx-auto mb-2" />
                       <div className="font-medium">Upload product images</div>
-                      <div className="text-sm">Photos of the item condition</div>
+                      <div className="text-sm">
+                        Photos of the item condition
+                      </div>
                     </button>
 
                     {images.length > 0 && (
                       <div className="mt-4 space-y-2">
                         {images.map((img, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                          >
                             <div className="flex items-center space-x-2">
                               <ImageIcon className="w-4 h-4 text-gray-500" />
-                              <span className="text-sm text-gray-700">{img}</span>
+                              <span className="text-sm text-gray-700">
+                                {img}
+                              </span>
                             </div>
                             <button
-                              onClick={() => setImages(images.filter((_, i) => i !== index))}
+                              onClick={() =>
+                                setImages(images.filter((_, i) => i !== index))
+                              }
                               className="text-red-600 hover:text-red-700"
                             >
                               <X className="w-4 h-4" />
@@ -699,7 +858,9 @@ export const ReturnRefundPanel: React.FC = () => {
 
                   {/* Notes */}
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2">Additional Notes</label>
+                    <label className="block text-gray-700 font-medium mb-2">
+                      Additional Notes
+                    </label>
                     <textarea
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
@@ -711,25 +872,42 @@ export const ReturnRefundPanel: React.FC = () => {
 
                   {/* Refund Calculation */}
                   <div className="bg-gradient-to-br from-orange-50 to-red-50 border-2 border-orange-200 rounded-xl p-6">
-                    <h5 className="text-gray-900 font-semibold mb-4">Refund Calculation</h5>
+                    <h5 className="text-gray-900 font-semibold mb-4">
+                      Refund Calculation
+                    </h5>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-700">Original Price:</span>
-                        <span className="text-gray-900 font-medium">₹{selectedProduct.mrp.toLocaleString()}</span>
+                        <span className="text-gray-900 font-medium">
+                          Rs{selectedProduct.mrp.toLocaleString()}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-700">Quantity:</span>
-                        <span className="text-gray-900 font-medium">{quantity}</span>
+                        <span className="text-gray-900 font-medium">
+                          {quantity}
+                        </span>
                       </div>
-                      {condition === 'damaged' && (
+                      {condition === "damaged" && (
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-700">Damage Deduction (30%):</span>
-                          <span className="text-red-600 font-medium">-₹{Math.round(selectedProduct.mrp * quantity * 0.3).toLocaleString()}</span>
+                          <span className="text-gray-700">
+                            Damage Deduction (30%):
+                          </span>
+                          <span className="text-red-600 font-medium">
+                            -Rs
+                            {Math.round(
+                              selectedProduct.mrp * quantity * 0.3
+                            ).toLocaleString()}
+                          </span>
                         </div>
                       )}
                       <div className="pt-3 border-t-2 border-orange-300 flex items-center justify-between">
-                        <span className="text-gray-900 font-semibold">Refund Amount:</span>
-                        <span className="text-orange-600 font-bold text-xl">₹{calculateRefund().toLocaleString()}</span>
+                        <span className="text-gray-900 font-semibold">
+                          Refund Amount:
+                        </span>
+                        <span className="text-orange-600 font-bold text-xl">
+                          Rs{calculateRefund().toLocaleString()}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -751,35 +929,49 @@ export const ReturnRefundPanel: React.FC = () => {
       )}
 
       {/* Details View */}
-      {viewMode === 'details' && selectedRequest && (
+      {viewMode === "details" && selectedRequest && (
         <div className="space-y-6">
           {/* Header Card */}
           <div className="bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl p-8 shadow-lg">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-3xl font-bold mb-2">{selectedRequest.returnNumber}</h3>
-                <p className="text-orange-100">Return request details and timeline</p>
+                <h3 className="text-3xl font-bold mb-2">
+                  {selectedRequest.returnNumber}
+                </h3>
+                <p className="text-orange-100">
+                  Return request details and timeline
+                </p>
               </div>
-              <div className={`px-4 py-2 rounded-xl font-semibold ${
-                selectedRequest.status === 'resolved' ? 'bg-green-500' :
-                selectedRequest.status === 'rejected' ? 'bg-red-500' :
-                'bg-yellow-500'
-              }`}>
-                {selectedRequest.status.replace('_', ' ').toUpperCase()}
+              <div
+                className={`px-4 py-2 rounded-xl font-semibold ${
+                  selectedRequest.status === "resolved"
+                    ? "bg-green-500"
+                    : selectedRequest.status === "rejected"
+                    ? "bg-red-500"
+                    : "bg-yellow-500"
+                }`}
+              >
+                {selectedRequest.status.replace("_", " ").toUpperCase()}
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4 text-orange-100">
               <div>
                 <div className="text-sm mb-1">Customer</div>
-                <div className="text-white font-semibold">{selectedRequest.customerName}</div>
+                <div className="text-white font-semibold">
+                  {selectedRequest.customerName}
+                </div>
               </div>
               <div>
                 <div className="text-sm mb-1">Product</div>
-                <div className="text-white font-semibold">{selectedRequest.productName}</div>
+                <div className="text-white font-semibold">
+                  {selectedRequest.productName}
+                </div>
               </div>
               <div>
                 <div className="text-sm mb-1">Refund Amount</div>
-                <div className="text-white font-semibold text-xl">₹{selectedRequest.refundAmount.toLocaleString()}</div>
+                <div className="text-white font-semibold text-xl">
+                  Rs{selectedRequest.refundAmount.toLocaleString()}
+                </div>
               </div>
             </div>
           </div>
@@ -802,9 +994,18 @@ export const ReturnRefundPanel: React.FC = () => {
                     {selectedRequest.timeline.map((event, index) => (
                       <div key={event.id} className="relative pl-16">
                         {/* Timeline Dot */}
-                        <div className={`absolute left-0 w-12 h-12 rounded-full bg-gradient-to-br ${getTimelineColor(event.status)} flex items-center justify-center text-white shadow-lg`}>
-                          {STATUS_STEPS.find(s => s.id === event.status)?.icon ? (
-                            React.createElement(STATUS_STEPS.find(s => s.id === event.status)!.icon, { className: 'w-6 h-6' })
+                        <div
+                          className={`absolute left-0 w-12 h-12 rounded-full bg-gradient-to-br ${getTimelineColor(
+                            event.status
+                          )} flex items-center justify-center text-white shadow-lg`}
+                        >
+                          {STATUS_STEPS.find((s) => s.id === event.status)
+                            ?.icon ? (
+                            React.createElement(
+                              STATUS_STEPS.find((s) => s.id === event.status)!
+                                .icon,
+                              { className: "w-6 h-6" }
+                            )
                           ) : (
                             <Check className="w-6 h-6" />
                           )}
@@ -813,7 +1014,9 @@ export const ReturnRefundPanel: React.FC = () => {
                         {/* Event Content */}
                         <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                           <div className="flex items-center justify-between mb-2">
-                            <h5 className="text-gray-900 font-semibold">{event.label}</h5>
+                            <h5 className="text-gray-900 font-semibold">
+                              {event.label}
+                            </h5>
                             <span className="text-xs text-gray-500">
                               {new Date(event.timestamp).toLocaleString()}
                             </span>
@@ -840,32 +1043,54 @@ export const ReturnRefundPanel: React.FC = () => {
             <div className="space-y-6">
               {/* Request Details */}
               <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-                <h4 className="text-gray-900 font-semibold mb-4">Request Details</h4>
+                <h4 className="text-gray-900 font-semibold mb-4">
+                  Request Details
+                </h4>
                 <div className="space-y-3">
                   <div>
-                    <div className="text-sm text-gray-600 mb-1">Bill Number</div>
-                    <div className="text-gray-900 font-medium">{selectedRequest.billNumber}</div>
+                    <div className="text-sm text-gray-600 mb-1">
+                      Bill Number
+                    </div>
+                    <div className="text-gray-900 font-medium">
+                      {selectedRequest.billNumber}
+                    </div>
                   </div>
                   <div>
-                    <div className="text-sm text-gray-600 mb-1">Return Type</div>
-                    <div className="text-gray-900 font-medium capitalize">{selectedRequest.type}</div>
+                    <div className="text-sm text-gray-600 mb-1">
+                      Return Type
+                    </div>
+                    <div className="text-gray-900 font-medium capitalize">
+                      {selectedRequest.type}
+                    </div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-600 mb-1">Reason</div>
-                    <div className="text-gray-900 font-medium">{selectedRequest.reason}</div>
+                    <div className="text-gray-900 font-medium">
+                      {selectedRequest.reason}
+                    </div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-600 mb-1">Quantity</div>
-                    <div className="text-gray-900 font-medium">{selectedRequest.quantity}</div>
+                    <div className="text-gray-900 font-medium">
+                      {selectedRequest.quantity}
+                    </div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-600 mb-1">Condition</div>
-                    <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-lg text-sm ${
-                      CONDITION_OPTIONS.find(c => c.value === selectedRequest.condition)?.color
-                    }`}>
+                    <div
+                      className={`inline-flex items-center space-x-2 px-3 py-1 rounded-lg text-sm ${
+                        CONDITION_OPTIONS.find(
+                          (c) => c.value === selectedRequest.condition
+                        )?.color
+                      }`}
+                    >
                       {getConditionIcon(selectedRequest.condition)}
                       <span className="font-medium">
-                        {CONDITION_OPTIONS.find(c => c.value === selectedRequest.condition)?.label}
+                        {
+                          CONDITION_OPTIONS.find(
+                            (c) => c.value === selectedRequest.condition
+                          )?.label
+                        }
                       </span>
                     </div>
                   </div>
@@ -881,55 +1106,89 @@ export const ReturnRefundPanel: React.FC = () => {
               </div>
 
               {/* Actions */}
-              {selectedRequest.status !== 'resolved' && selectedRequest.status !== 'rejected' && (
-                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-                  <h4 className="text-gray-900 font-semibold mb-4">Actions</h4>
-                  <div className="space-y-3">
-                    {selectedRequest.status === 'initiated' && (
-                      <>
+              {selectedRequest.status !== "resolved" &&
+                selectedRequest.status !== "rejected" && (
+                  <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                    <h4 className="text-gray-900 font-semibold mb-4">
+                      Actions
+                    </h4>
+                    <div className="space-y-3">
+                      {selectedRequest.status === "initiated" && (
+                        <>
+                          <button
+                            onClick={() =>
+                              updateReturnStatus(
+                                selectedRequest,
+                                "approved",
+                                "Return request approved by manager"
+                              )
+                            }
+                            className="w-full px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 font-medium shadow-lg hover:shadow-xl transition-all"
+                          >
+                            Approve Request
+                          </button>
+                          <button
+                            onClick={() =>
+                              updateReturnStatus(
+                                selectedRequest,
+                                "rejected",
+                                "Return request rejected"
+                              )
+                            }
+                            className="w-full px-4 py-3 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl hover:from-red-600 hover:to-pink-700 font-medium shadow-lg hover:shadow-xl transition-all"
+                          >
+                            Reject Request
+                          </button>
+                        </>
+                      )}
+                      {selectedRequest.status === "approved" && (
                         <button
-                          onClick={() => updateReturnStatus(selectedRequest, 'approved', 'Return request approved by manager')}
+                          onClick={() =>
+                            updateReturnStatus(
+                              selectedRequest,
+                              "supplier_notified",
+                              "Supplier has been notified about the return"
+                            )
+                          }
+                          className="w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl hover:from-purple-600 hover:to-indigo-700 font-medium shadow-lg hover:shadow-xl transition-all"
+                        >
+                          Notify Supplier
+                        </button>
+                      )}
+                      {selectedRequest.status === "supplier_notified" && (
+                        <button
+                          onClick={() =>
+                            updateReturnStatus(
+                              selectedRequest,
+                              "resolved",
+                              "Return completed successfully"
+                            )
+                          }
                           className="w-full px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 font-medium shadow-lg hover:shadow-xl transition-all"
                         >
-                          Approve Request
+                          Mark as Resolved
                         </button>
-                        <button
-                          onClick={() => updateReturnStatus(selectedRequest, 'rejected', 'Return request rejected')}
-                          className="w-full px-4 py-3 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl hover:from-red-600 hover:to-pink-700 font-medium shadow-lg hover:shadow-xl transition-all"
-                        >
-                          Reject Request
-                        </button>
-                      </>
-                    )}
-                    {selectedRequest.status === 'approved' && (
-                      <button
-                        onClick={() => updateReturnStatus(selectedRequest, 'supplier_notified', 'Supplier has been notified about the return')}
-                        className="w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl hover:from-purple-600 hover:to-indigo-700 font-medium shadow-lg hover:shadow-xl transition-all"
-                      >
-                        Notify Supplier
-                      </button>
-                    )}
-                    {selectedRequest.status === 'supplier_notified' && (
-                      <button
-                        onClick={() => updateReturnStatus(selectedRequest, 'resolved', 'Return completed successfully')}
-                        className="w-full px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 font-medium shadow-lg hover:shadow-xl transition-all"
-                      >
-                        Mark as Resolved
-                      </button>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Images */}
               {selectedRequest.images.length > 0 && (
                 <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-                  <h4 className="text-gray-900 font-semibold mb-4">Uploaded Images</h4>
+                  <h4 className="text-gray-900 font-semibold mb-4">
+                    Uploaded Images
+                  </h4>
                   <div className="space-y-2">
                     {selectedRequest.images.map((img, index) => (
-                      <div key={index} className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                      <div
+                        key={index}
+                        className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg"
+                      >
                         <ImageIcon className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm text-gray-700 flex-1">{img}</span>
+                        <span className="text-sm text-gray-700 flex-1">
+                          {img}
+                        </span>
                         <Eye className="w-4 h-4 text-blue-600 cursor-pointer" />
                       </div>
                     ))}
@@ -940,6 +1199,22 @@ export const ReturnRefundPanel: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Popup Container */}
+      <PopupContainer
+        showSuccessPopup={popup.showSuccessPopup}
+        successTitle={popup.successTitle}
+        successMessage={popup.successMessage}
+        onSuccessClose={popup.hideSuccess}
+        showErrorPopup={popup.showErrorPopup}
+        errorTitle={popup.errorTitle}
+        errorMessage={popup.errorMessage}
+        errorType={popup.errorType}
+        onErrorClose={popup.hideError}
+        showConfirmDialog={popup.showConfirmDialog}
+        confirmConfig={popup.confirmConfig}
+        onConfirmCancel={popup.hideConfirm}
+      />
     </div>
   );
 };

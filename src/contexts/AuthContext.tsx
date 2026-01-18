@@ -1,117 +1,341 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '../types';
-import { getFromStorage, saveToStorage, initializeStorage } from '../utils/mockData';
-import { initializeExtendedStorage } from '../utils/extendedMockData';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { User } from "../types";
 
 interface AuthContextType {
   currentUser: User | null;
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  login: (
+    email: string,
+    password: string
+  ) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   refreshUser: () => void;
   isLoading: boolean;
+  tenantInfo: {
+    businessName: string;
+    package: string;
+    status: string;
+  } | null;
+  updateTenantInfo: (
+    updates: Partial<{ businessName: string; package: string; status: string }>
+  ) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [tenantInfo, setTenantInfo] = useState<any>(null);
 
   useEffect(() => {
-    // Initialize storage with mock data
-    initializeStorage();
-    initializeExtendedStorage();
-    
-    // CRITICAL: Ensure SuperAdmin accounts are always active
-    const ensureSuperAdminActive = () => {
-      const users: User[] = getFromStorage('users', []);
-      let hasChanges = false;
-      
-      const updatedUsers = users.map(user => {
-        if (user.role === 'super_admin' && user.isActive !== true) {
-          console.log('🔒 SYSTEM: Activating SuperAdmin account:', user.email);
-          hasChanges = true;
-          return { ...user, isActive: true };
+    // Check for existing session - prioritize backend tokens
+    const accessToken =
+      localStorage.getItem("accessToken") || localStorage.getItem("auth_token");
+    const userId = localStorage.getItem("user_id");
+    const userEmail = localStorage.getItem("user_email");
+    const userName = localStorage.getItem("user_name");
+    const userRole = localStorage.getItem("user_role") as any;
+    const storedUser = localStorage.getItem("user");
+    const tenantId = localStorage.getItem("tenant_id");
+    const businessName = localStorage.getItem("business_name");
+    const tenantPackage = localStorage.getItem("tenant_package");
+    const tenantStatus = localStorage.getItem("tenant_status");
+    const sessionActive = localStorage.getItem("session_active");
+
+    // Only restore session if explicitly marked as active
+    if (accessToken && (userId || storedUser) && sessionActive === "true") {
+      // Try to parse stored user from backend
+      let parsedUser: any = null;
+      if (storedUser) {
+        try {
+          parsedUser = JSON.parse(storedUser);
+        } catch (e) {
+          console.warn("Failed to parse stored user:", e);
         }
-        return user;
-      });
-      
-      if (hasChanges) {
-        saveToStorage('users', updatedUsers);
-        console.log('✅ SYSTEM: SuperAdmin accounts activated');
       }
-    };
-    
-    ensureSuperAdminActive();
-    
-    // Check for existing session
-    const sessionUser = getFromStorage('currentUser');
-    if (sessionUser) {
-      // Refresh user data from users array to get latest permissions
-      const users: User[] = getFromStorage('users', []);
-      const updatedUser = users.find(u => u.id === sessionUser.id);
-      if (updatedUser) {
-        setCurrentUser(updatedUser);
-        saveToStorage('currentUser', updatedUser);
+
+      // Reconstruct user object from localStorage
+      const user: User = {
+        id: userId || parsedUser?.id || parsedUser?.username || "",
+        email: userEmail || parsedUser?.email || "",
+        password: "",
+        name: userName || parsedUser?.name || parsedUser?.username || "",
+        role: userRole || parsedUser?.role || "admin",
+        isActive: true,
+        workspaceId:
+          parsedUser?.workspaceId ||
+          parsedUser?.workspace_id ||
+          localStorage.getItem("tenant_id") ||
+          localStorage.getItem("workspace_id") ||
+          undefined,
+        createdAt: parsedUser?.created_at || "",
+        branch: parsedUser?.branch ?? "",
+      };
+
+      setCurrentUser(user);
+
+      if (businessName && tenantPackage && tenantStatus) {
+        setTenantInfo({
+          businessName,
+          package: tenantPackage,
+          status: tenantStatus,
+        });
+      }
+
+      console.log("✅ Session restored from localStorage");
+
+      // Store branch in localStorage for refreshUser
+      if (parsedUser?.branch !== undefined) {
+        localStorage.setItem("user_branch", String(parsedUser.branch));
       } else {
-        // If user not found in users array but exists in currentUser, use it anyway
-        // This can happen with newly created users from Email OTP
-        setCurrentUser(sessionUser);
+        localStorage.removeItem("user_branch");
+      }
+    } else {
+      // Clear any stale session data if not active
+      if (accessToken && sessionActive !== "true") {
+        console.log("🧹 Clearing stale session data");
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("user");
+        localStorage.removeItem("user_id");
+        localStorage.removeItem("user_email");
+        localStorage.removeItem("user_name");
+        const userBranch = localStorage.getItem("user_branch");
+        localStorage.removeItem("user_role");
       }
     }
+
     setIsLoading(false);
   }, []);
 
-  // Refresh user data from the users array
-  const refreshUserData = (userId: string) => {
-    const users: User[] = getFromStorage('users', []);
-    const updatedUser = users.find(u => u.id === userId);
-    if (updatedUser) {
-      setCurrentUser(updatedUser);
-      saveToStorage('currentUser', updatedUser);
-    }
-  };
-
-  // Public refresh function that can be called from anywhere
+  // Refresh user data from localStorage
   const refreshUser = () => {
-    if (currentUser?.id) {
-      refreshUserData(currentUser.id);
+    const userId = localStorage.getItem("user_id");
+    const userEmail = localStorage.getItem("user_email");
+    const userBranch = localStorage.getItem("user_branch");
+    const userRole = localStorage.getItem("user_role") as any;
+    const workspaceId =
+      localStorage.getItem("tenant_id") || localStorage.getItem("workspace_id");
+    const businessName = localStorage.getItem("business_name");
+    const tenantPackage = localStorage.getItem("tenant_package");
+    const tenantStatus = localStorage.getItem("tenant_status");
+
+    if (userId && userEmail) {
+      const user: User = {
+        id: userId,
+        email: userEmail,
+        password: "",
+        name: userName || "",
+        role: userRole,
+        isActive: true,
+        workspaceId: workspaceId || undefined,
+        createdAt: "",
+        branch: userBranch ?? "",
+      };
+      setCurrentUser(user);
+
+      if (businessName && tenantPackage && tenantStatus) {
+        setTenantInfo({
+          businessName,
+          package: tenantPackage,
+          status: tenantStatus,
+        });
+      }
     }
   };
 
-  const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
-    const users: User[] = getFromStorage('users', []);
-    console.log('🔍 Login attempt:', { email, totalUsers: users.length });
-    console.log('📋 Available users:', users.map(u => ({ email: u.email, role: u.role, isActive: u.isActive })));
-    
-    const user = users.find(u => u.email === email && u.password === password);
+  const login = async (
+    username: string,
+    password: string
+  ): Promise<{ success: boolean; message?: string }> => {
+    console.log("🔐 Attempting login:", username);
 
-    if (user) {
-      console.log('✅ User found:', { email: user.email, role: user.role, isActive: user.isActive });
-      
-      // Check if user is active
-      if (user.isActive === false) {
-        console.log('❌ User is inactive');
-        return { success: false, message: 'Your account has been deactivated. Please contact admin.' };
-      }
-      
-      console.log('✅ Login successful');
-      setCurrentUser(user);
-      saveToStorage('currentUser', user);
-      return { success: true };
+    // Get tokens and user data from localStorage (set by AdminLoginForm)
+    const accessToken = localStorage.getItem("accessToken");
+    const refreshToken = localStorage.getItem("refreshToken");
+    const storedUser = localStorage.getItem("user");
+
+    if (!accessToken || !storedUser) {
+      return {
+        success: false,
+        message: "Login failed. Please try again.",
+      };
     }
 
-    console.log('❌ User not found with provided credentials');
-    return { success: false, message: 'Invalid email or password' };
+    try {
+      // Parse user data from backend response
+      const parsedUser = JSON.parse(storedUser);
+
+      // Extract user role from backend response
+      const userRole = parsedUser?.role || parsedUser?.user_type || "admin";
+
+      console.log("🔍 [AuthContext] User role from storage:", userRole);
+
+      // Check if user is a customer and deny access
+      if (userRole === "customer") {
+        console.log("❌ [AuthContext] Customer role detected, denying access");
+        // Clear all stored data
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("user");
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("user_id");
+        localStorage.removeItem("user_email");
+        localStorage.removeItem("user_name");
+        localStorage.removeItem("user_role");
+
+        return {
+          success: false,
+          message: "Username or password do not match.",
+        };
+      }
+
+      // Map backend role to our UserRole type
+      let mappedRole:
+        | "super_admin"
+        | "admin"
+        | "inventory_manager"
+        | "cashier" = "admin";
+      if (
+        userRole === "super_admin" ||
+        userRole === "superadmin" ||
+        userRole === "super-admin"
+      ) {
+        mappedRole = "super_admin";
+      } else if (
+        userRole === "inventory_manager" ||
+        userRole === "inventory-manager"
+      ) {
+        mappedRole = "inventory_manager";
+      } else if (userRole === "cashier") {
+        mappedRole = "cashier";
+      } else {
+        mappedRole = "admin";
+      }
+
+      // Create User object
+      const user: User = {
+        id: parsedUser?.id || parsedUser?.username || "",
+        email: parsedUser?.email || username,
+        password: "",
+        name: parsedUser?.name || parsedUser?.username || "",
+        role: mappedRole,
+        isActive: true,
+        workspaceId:
+          parsedUser?.workspaceId ||
+          parsedUser?.workspace_id ||
+          parsedUser?.tenant_id ||
+          localStorage.getItem("tenant_id") ||
+          undefined,
+        createdAt: parsedUser?.created_at || new Date().toISOString(),
+        branch: parsedUser?.branch ?? "",
+      };
+
+      // Set current user
+      setCurrentUser(user);
+
+      // Store session data
+      localStorage.setItem("auth_token", accessToken);
+      localStorage.setItem("user_id", user.id);
+      localStorage.setItem("user_email", user.email);
+      localStorage.setItem("user_name", user.name);
+      localStorage.setItem("user_role", user.role);
+      localStorage.setItem("session_active", "true");
+
+      // Save branch id for shift usage and consistency
+      if (
+        user.branch !== undefined &&
+        user.branch !== null &&
+        user.branch !== ""
+      ) {
+        localStorage.setItem("branch_id", String(user.branch));
+        localStorage.setItem("user_branch", String(user.branch));
+      } else {
+        localStorage.removeItem("branch_id");
+        localStorage.removeItem("user_branch");
+      }
+
+      if (refreshToken) {
+        localStorage.setItem("refreshToken", refreshToken);
+      }
+
+      // Set tenant info (if available from backend)
+      if (parsedUser?.business_name || parsedUser?.organization) {
+        const tenantInfo = {
+          businessName:
+            parsedUser.business_name ||
+            parsedUser.organization ||
+            "My Business",
+          package: "professional",
+          status: "active",
+        };
+        setTenantInfo(tenantInfo);
+        localStorage.setItem("business_name", tenantInfo.businessName);
+        localStorage.setItem("tenant_package", tenantInfo.package);
+        localStorage.setItem("tenant_status", tenantInfo.status);
+      }
+
+      console.log("✅ Backend login successful!");
+      console.log("   User:", user.name);
+      console.log("   Role:", user.role);
+      console.log("   Access Token:", accessToken ? "Received" : "Missing");
+      console.log("   Refresh Token:", refreshToken ? "Received" : "Missing");
+
+      return { success: true };
+    } catch (error: any) {
+      console.error("❌ Failed to process login:", error);
+      return {
+        success: false,
+        message: "Failed to process login. Please try again.",
+      };
+    }
   };
 
   const logout = () => {
+    console.log("👋 Logging out...");
     setCurrentUser(null);
-    localStorage.removeItem('currentUser');
+    setTenantInfo(null);
+    // Clear all auth-related localStorage (including backend tokens)
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("user");
+    localStorage.removeItem("user_id");
+    localStorage.removeItem("user_email");
+    localStorage.removeItem("user_name");
+    localStorage.removeItem("user_role");
+    localStorage.removeItem("tenant_id");
+    localStorage.removeItem("business_name");
+    localStorage.removeItem("tenant_package");
+    localStorage.removeItem("tenant_status");
+    localStorage.removeItem("session_active");
+    console.log("✅ Logged out successfully");
+  };
+
+  const updateTenantInfo = (
+    updates: Partial<{ businessName: string; package: string; status: string }>
+  ) => {
+    setTenantInfo((prev: any) => ({
+      ...prev,
+      ...updates,
+    }));
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, login, logout, refreshUser, isLoading }}>
+    <AuthContext.Provider
+      value={{
+        currentUser,
+        login,
+        logout,
+        refreshUser,
+        isLoading,
+        tenantInfo,
+        updateTenantInfo,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -119,8 +343,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };

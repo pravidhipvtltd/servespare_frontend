@@ -4,9 +4,11 @@
  * Safely format a number as locale string
  * Returns "0" if value is undefined, null, or NaN
  */
-export const safeToLocaleString = (value: number | undefined | null): string => {
+export const safeToLocaleString = (
+  value: number | undefined | null
+): string => {
   if (value === undefined || value === null || isNaN(value)) {
-    return '0';
+    return "0";
   }
   return value.toLocaleString();
 };
@@ -14,7 +16,10 @@ export const safeToLocaleString = (value: number | undefined | null): string => 
 /**
  * Safely get a number value with fallback
  */
-export const safeNumber = (value: number | undefined | null, fallback: number = 0): number => {
+export const safeNumber = (
+  value: number | undefined | null,
+  fallback: number = 0
+): number => {
   if (value === undefined || value === null || isNaN(value)) {
     return fallback;
   }
@@ -24,7 +29,10 @@ export const safeNumber = (value: number | undefined | null, fallback: number = 
 /**
  * Safely calculate product of two numbers
  */
-export const safeMultiply = (a: number | undefined | null, b: number | undefined | null): number => {
+export const safeMultiply = (
+  a: number | undefined | null,
+  b: number | undefined | null
+): number => {
   const numA = safeNumber(a);
   const numB = safeNumber(b);
   return numA * numB;
@@ -38,8 +46,8 @@ export const formatNPR = (value: number | undefined | null): string => {
 };
 
 /**
- * Safely format currency with ₹ symbol
+ * Safely format currency with Rs symbol
  */
 export const formatINR = (value: number | undefined | null): string => {
-  return `₹${safeToLocaleString(value)}`;
+  return `Rs${safeToLocaleString(value)}`;
 };
