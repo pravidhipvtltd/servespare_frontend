@@ -104,7 +104,7 @@ export const PartiesPanel: React.FC = () => {
   const { currentUser } = useAuth();
   const [parties, setParties] = useState<BackendParty[]>([]);
   const [activeTab, setActiveTab] = useState<"suppliers" | "customers">(
-    "suppliers"
+    "suppliers",
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCustomerType, setSelectedCustomerType] = useState<
@@ -293,7 +293,7 @@ export const PartiesPanel: React.FC = () => {
   const loadPartyTransactions = async (partyId: string) => {
     try {
       const transactions = JSON.parse(
-        localStorage.getItem(`party_transactions_${partyId}`) || "[]"
+        localStorage.getItem(`party_transactions_${partyId}`) || "[]",
       );
       setTransactions(transactions as PartyTransaction[]);
     } catch (err: any) {
@@ -357,7 +357,7 @@ export const PartiesPanel: React.FC = () => {
     try {
       if (currentBranchId === 0) {
         throw new Error(
-          "No valid branch found. Please ensure a branch is created."
+          "No valid branch found. Please ensure a branch is created.",
         );
       }
 
@@ -395,7 +395,7 @@ export const PartiesPanel: React.FC = () => {
               Authorization: `Bearer ${accessToken}`,
             },
             body: JSON.stringify(apiData),
-          }
+          },
         );
 
         if (!response.ok) {
@@ -473,10 +473,10 @@ export const PartiesPanel: React.FC = () => {
 
       // Immediately update the state to remove the deleted party
       setParties((prevParties) =>
-        prevParties.filter((p) => p.id.toString() !== partyId.toString())
+        prevParties.filter((p) => p.id.toString() !== partyId.toString()),
       );
       setSelectedParties(
-        selectedParties.filter((id) => id.toString() !== partyId.toString())
+        selectedParties.filter((id) => id.toString() !== partyId.toString()),
       );
     } catch (err: any) {
       console.error("Error deleting party:", err);
@@ -523,7 +523,7 @@ export const PartiesPanel: React.FC = () => {
             "ngrok-skip-browser-warning": "true",
             Authorization: `Bearer ${accessToken}`,
           },
-        })
+        }),
       );
 
       await Promise.all(deletePromises);
@@ -534,8 +534,8 @@ export const PartiesPanel: React.FC = () => {
           (p) =>
             !selectedParties
               .map((id) => id.toString())
-              .includes(p.id.toString())
-        )
+              .includes(p.id.toString()),
+        ),
       );
       setSelectedParties([]);
     } catch (err: any) {
@@ -567,7 +567,7 @@ export const PartiesPanel: React.FC = () => {
 
   const paginatedParties = filteredParties.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
   const totalPages = Math.ceil(filteredParties.length / itemsPerPage);
@@ -754,7 +754,7 @@ export const PartiesPanel: React.FC = () => {
                         setSelectedParties([...selectedParties, party.id]);
                       } else {
                         setSelectedParties(
-                          selectedParties.filter((id) => id !== party.id)
+                          selectedParties.filter((id) => id !== party.id),
                         );
                       }
                     }}
@@ -1181,8 +1181,8 @@ export const PartiesPanel: React.FC = () => {
                   {isLoading
                     ? "Saving..."
                     : editingParty
-                    ? "Update Party"
-                    : "Create Party"}
+                      ? "Update Party"
+                      : "Create Party"}
                 </button>
               </div>
             </form>
