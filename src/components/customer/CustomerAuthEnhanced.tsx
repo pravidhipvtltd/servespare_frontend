@@ -24,12 +24,93 @@ interface CustomerAuthProps {
 
 type AuthMode = "login" | "register";
 
+const nepalLocations = [
+  "Achham",
+  "Arghakhanchi",
+  "Baglung",
+  "Baitadi",
+  "Bajhang",
+  "Bajura",
+  "Banke",
+  "Bara",
+  "Bardiya",
+  "Bhaktapur",
+  "Bhojpur",
+  "Chitwan",
+  "Dadeldhura",
+  "Dailekh",
+  "Dang",
+  "Darchula",
+  "Dhading",
+  "Dhankuta",
+  "Dhanusha",
+  "Dolakha",
+  "Dolpa",
+  "Doti",
+  "Gorkha",
+  "Gulmi",
+  "Humla",
+  "Ilam",
+  "Jajarkot",
+  "Jhapa",
+  "Jumla",
+  "Kailali",
+  "Kalikot",
+  "Kanchanpur",
+  "Kapilvastu",
+  "Kaski",
+  "Kathmandu",
+  "Kavrepalanchok",
+  "Khotang",
+  "Lalitpur",
+  "Lamjung",
+  "Mahottari",
+  "Makwanpur",
+  "Manang",
+  "Morang",
+  "Mugu",
+  "Mustang",
+  "Myagdi",
+  "Nawalpur",
+  "Nuwakot",
+  "Okhaldhunga",
+  "Palpa",
+  "Panchthar",
+  "Parasi",
+  "Parbat",
+  "Parsa",
+  "Pyuthan",
+  "Ramechhap",
+  "Rasuwa",
+  "Rautahat",
+  "Rolpa",
+  "Rukum East",
+  "Rukum West",
+  "Rupandehi",
+  "Salyan",
+  "Sankhuwasabha",
+  "Saptari",
+  "Sarlahi",
+  "Sindhuli",
+  "Sindhupalchok",
+  "Siraha",
+  "Solukhumbu",
+  "Sunsari",
+  "Surkhet",
+  "Syangja",
+  "Tanahu",
+  "Taplejung",
+  "Terhathum",
+  "Udayapur",
+];
+
 export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
   onLogin,
   onBackToEntry,
 }) => {
   const [mode, setMode] = useState<AuthMode>("login");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Login form
@@ -121,7 +202,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
             "Content-Type": "application/json",
           },
           body: JSON.stringify(loginPayload),
-        }
+        },
       );
 
       const data = await response.json();
@@ -134,7 +215,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
         if (data.user.role !== "customer") {
           setLoginError(
             ` Username or Password donot match
-            }`
+            }`,
           );
           setIsLoading(false);
           return;
@@ -166,7 +247,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
 
     console.log(
       "🚀 [Customer Register] Form submitted! Starting registration process...",
-      registerData
+      registerData,
     );
 
     // Reset errors
@@ -208,7 +289,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
     } else if (!registerData.phone.match(/^\+\d{10,15}$/)) {
       console.log(
         "❌ Validation failed: Invalid phone format",
-        registerData.phone
+        registerData.phone,
       );
       newErrors.phone =
         "Phone must start with + and contain 10-15 digits (e.g., +1234567890)";
@@ -236,7 +317,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
     }
 
     console.log(
-      "✅ [Customer Register] All validation passed! Making API call..."
+      "✅ [Customer Register] All validation passed! Making API call...",
     );
 
     setIsLoading(true);
@@ -262,7 +343,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
             "Content-Type": "application/json",
           },
           body: JSON.stringify(payload),
-        }
+        },
       );
 
       console.log("📥 [Customer Register] Response status:", response.status);
@@ -316,7 +397,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
           toast.error(
             data.message ||
               data.error ||
-              "Registration failed. Please try again."
+              "Registration failed. Please try again.",
           );
         }
       }
@@ -696,12 +777,11 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
                 {/* Address */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Address
+                    Address (District)
                   </label>
                   <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                    <select
                       required
                       value={registerData.address}
                       onChange={(e) =>
@@ -710,9 +790,31 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
                           address: e.target.value,
                         })
                       }
-                      className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all"
-                      placeholder="Pokhara, Nepal"
-                    />
+                      className="w-full pl-11 pr-10 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all appearance-none bg-white text-gray-700"
+                    >
+                      <option value="" disabled>
+                        Select your district
+                      </option>
+                      {nepalLocations.map((district) => (
+                        <option key={district} value={district}>
+                          {district}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        className="w-5 h-5"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
                   </div>
                 </div>
 
@@ -768,7 +870,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
-                      type={showPassword ? "text" : "password"}
+                      type={showConfirmPassword ? "text" : "password"}
                       required
                       value={registerData.confirmPassword}
                       onChange={(e) =>
@@ -780,13 +882,26 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
                       onBlur={(e) =>
                         validateField("confirmPassword", e.target.value)
                       }
-                      className={`w-full pl-11 pr-4 py-3 border-2 rounded-xl focus:ring-4 transition-all ${
+                      className={`w-full pl-11 pr-12 py-3 border-2 rounded-xl focus:ring-4 transition-all ${
                         registerErrors.confirmPassword
                           ? "border-red-300 focus:border-red-500 focus:ring-red-100"
                           : "border-gray-200 focus:border-purple-500 focus:ring-purple-100"
                       }`}
                       placeholder="••••••••"
                     />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
+                    </button>
                   </div>
                   {registerErrors.confirmPassword && (
                     <p className="mt-1 text-sm text-red-600">
