@@ -422,7 +422,7 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
                   </div>
                 </div>
 
-                <div className="hidden md:block border-l border-gray-200 pl-3">
+                <div className="flex md:block border-l border-gray-200 pl-3">
                   <h1 className="text-xl text-transparent bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text leading-tight">
                     Serve Spares
                   </h1>
