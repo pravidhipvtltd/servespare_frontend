@@ -238,16 +238,16 @@ export const SuperAdminDashboardRefined: React.FC = () => {
   const loadData = async () => {
     // Load pending verifications count
     const pendingUsers = JSON.parse(
-      localStorage.getItem("pending_user_verifications") || "[]"
+      localStorage.getItem("pending_user_verifications") || "[]",
     );
     setPendingVerificationsCount(pendingUsers.length);
 
     // Load pending approvals count (business registrations)
     const pendingRegistrations = JSON.parse(
-      localStorage.getItem("pending_registrations") || "[]"
+      localStorage.getItem("pending_registrations") || "[]",
     );
     const pendingOnly = pendingRegistrations.filter(
-      (r: any) => r.status === "pending"
+      (r: any) => r.status === "pending",
     );
     setPendingApprovalsCount(pendingOnly.length);
 
@@ -265,8 +265,8 @@ export const SuperAdminDashboardRefined: React.FC = () => {
             planName === "professional"
               ? "professional"
               : planName === "enterprise"
-              ? "enterprise"
-              : "basic";
+                ? "enterprise"
+                : "basic";
 
           return {
             id: item.id.toString(),
@@ -276,7 +276,7 @@ export const SuperAdminDashboardRefined: React.FC = () => {
             businessName: item.tenant_detail?.business_name || "N/A",
             package: packageType,
             packagePrice: parseFloat(
-              item.subscription_plan_detail?.plan_price || "0"
+              item.subscription_plan_detail?.plan_price || "0",
             ),
             subscriptionStartDate: item.subscription_date || item.created,
             subscriptionEndDate: item.finish_date || "",
@@ -292,11 +292,11 @@ export const SuperAdminDashboardRefined: React.FC = () => {
             totalSales: 0,
             createdAt: item.created,
             branches: parseInt(
-              item.subscription_plan_detail?.no_of_branch || "1"
+              item.subscription_plan_detail?.no_of_branch || "1",
             ),
             users: parseInt(item.subscription_plan_detail?.no_of_user || "0"),
             products: parseInt(
-              item.subscription_plan_detail?.no_of_product || "0"
+              item.subscription_plan_detail?.no_of_product || "0",
             ),
           };
         });
@@ -476,7 +476,7 @@ export const SuperAdminDashboardRefined: React.FC = () => {
           <div className="flex items-center space-x-4">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
               {sidebarOpen ? (
                 <X className="w-6 h-6" />
@@ -556,7 +556,7 @@ const DashboardView: React.FC<{
           `${import.meta.env.VITE_API_BASE_URL}/users/stats/`,
           {
             headers,
-          }
+          },
         );
 
         if (response.ok) {
@@ -573,31 +573,31 @@ const DashboardView: React.FC<{
   // Calculate Super Admin relevant metrics
   const totalAdmins = adminAccounts.length;
   const activeAdmins = adminAccounts.filter(
-    (a) => a.status === "active"
+    (a) => a.status === "active",
   ).length;
   const suspendedAdmins = adminAccounts.filter(
-    (a) => a.status === "suspended"
+    (a) => a.status === "suspended",
   ).length;
   const expiredAdmins = adminAccounts.filter(
-    (a) => a.status === "expired"
+    (a) => a.status === "expired",
   ).length;
 
   // Total customers across all admin accounts
   const totalCustomers = adminAccounts.reduce(
     (sum, admin) => sum + (admin.totalCustomers || 0),
-    0
+    0,
   );
 
   // Total due amount from all admins
   const totalDueAmount = adminAccounts.reduce(
     (sum, admin) => sum + (admin.dueAmount || 0),
-    0
+    0,
   );
 
   // Total sales revenue (combined from all admins)
   const totalSalesRevenue = adminAccounts.reduce(
     (sum, admin) => sum + (admin.totalRevenue || 0),
-    0
+    0,
   );
 
   // Monthly recurring revenue from subscriptions
@@ -608,10 +608,10 @@ const DashboardView: React.FC<{
   // Package distribution
   const basicCount = adminAccounts.filter((a) => a.package === "basic").length;
   const professionalCount = adminAccounts.filter(
-    (a) => a.package === "professional"
+    (a) => a.package === "professional",
   ).length;
   const enterpriseCount = adminAccounts.filter(
-    (a) => a.package === "enterprise"
+    (a) => a.package === "enterprise",
   ).length;
 
   const stats = [
@@ -689,7 +689,7 @@ const DashboardView: React.FC<{
       label: "Avg Revenue per Admin",
       value: `NPR ${Math.round(
         totalSalesRevenue /
-          (apiStats ? apiStats.by_role.admin || 1 : totalAdmins || 1)
+          (apiStats ? apiStats.by_role.admin || 1 : totalAdmins || 1),
       ).toLocaleString()}`,
       icon: BarChart3,
       bgColor: "bg-indigo-50",
@@ -895,8 +895,8 @@ const DashboardView: React.FC<{
                     admin.status === "active"
                       ? "bg-green-100 text-green-600"
                       : admin.status === "suspended"
-                      ? "bg-orange-100 text-orange-600"
-                      : "bg-gray-100 text-gray-600"
+                        ? "bg-orange-100 text-orange-600"
+                        : "bg-gray-100 text-gray-600"
                   }`}
                 >
                   <Building2 className="w-5 h-5" />
@@ -971,9 +971,8 @@ const AdminAccountsView: React.FC<{
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10); // Show 10 admins per page
+  const [itemsPerPage] = useState(10);
 
-  // Fetch admins from API
   const fetchAdmins = async () => {
     setIsLoading(true);
     setApiError(null);
@@ -986,7 +985,7 @@ const AdminAccountsView: React.FC<{
             Authorization: `Bearer ${token}`,
             "ngrok-skip-browser-warning": "true",
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -1010,8 +1009,8 @@ const AdminAccountsView: React.FC<{
           planName === "professional"
             ? "professional"
             : planName === "enterprise"
-            ? "enterprise"
-            : "basic";
+              ? "enterprise"
+              : "basic";
 
         return {
           id: item.id.toString(),
@@ -1076,7 +1075,7 @@ const AdminAccountsView: React.FC<{
     // Sort by creation date - newest first
     .sort(
       (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
 
   // Pagination calculation
@@ -1139,7 +1138,7 @@ const AdminAccountsView: React.FC<{
           PACKAGES[formData.package as SubscriptionPackage]?.price || 0,
         subscriptionStartDate: new Date().toISOString(),
         subscriptionEndDate: new Date(
-          new Date().setFullYear(new Date().getFullYear() + 1)
+          new Date().setFullYear(new Date().getFullYear() + 1),
         ).toISOString(),
         status: "active",
         demoMode: formData.demoMode || false,
@@ -1174,7 +1173,7 @@ const AdminAccountsView: React.FC<{
       setShowAddModal(false);
       setShowSubscriptionPackageModal(true);
       toast.success(
-        "Tenant created successfully. Please select subscription package."
+        "Tenant created successfully. Please select subscription package.",
       );
 
       onUpdate();
@@ -1214,7 +1213,7 @@ const AdminAccountsView: React.FC<{
             subscription_date: subscriptionData.subscription_date,
             finish_date: subscriptionData.finish_date,
           }),
-        }
+        },
       );
 
       if (!res.ok) {
@@ -1347,7 +1346,7 @@ const AdminAccountsView: React.FC<{
             "ngrok-skip-browser-warning": "true",
           },
           body: JSON.stringify(payload),
-        }
+        },
       );
 
       if (response.ok) {
@@ -1360,7 +1359,7 @@ const AdminAccountsView: React.FC<{
                 packagePrice:
                   PACKAGES[formData.package as SubscriptionPackage]?.price || 0,
               }
-            : a
+            : a,
         );
         setApiAdmins(updatedAdmins);
         setShowEditModal(false);
@@ -1416,7 +1415,7 @@ const AdminAccountsView: React.FC<{
   const toggleDemoMode = (admin: AdminAccount) => {
     // TODO: Implement API toggle
     const updatedAdmins = apiAdmins.map((a) =>
-      a.id === admin.id ? { ...a, demoMode: !a.demoMode } : a
+      a.id === admin.id ? { ...a, demoMode: !a.demoMode } : a,
     );
     setApiAdmins(updatedAdmins);
     onUpdate();
@@ -1578,10 +1577,10 @@ const AdminAccountsView: React.FC<{
                         admin.package === "basic"
                           ? "bg-blue-100 text-blue-700"
                           : admin.package === "professional"
-                          ? "bg-purple-100 text-purple-700"
-                          : admin.package === "enterprise"
-                          ? "bg-orange-100 text-orange-700"
-                          : "bg-gray-100 text-gray-700"
+                            ? "bg-purple-100 text-purple-700"
+                            : admin.package === "enterprise"
+                              ? "bg-orange-100 text-orange-700"
+                              : "bg-gray-100 text-gray-700"
                       }`}
                     >
                       {admin.package === "basic" && (
@@ -1607,8 +1606,8 @@ const AdminAccountsView: React.FC<{
                         admin.status === "active"
                           ? "bg-green-100 text-green-700"
                           : admin.status === "suspended"
-                          ? "bg-orange-100 text-orange-700"
-                          : "bg-gray-100 text-gray-700"
+                            ? "bg-orange-100 text-orange-700"
+                            : "bg-gray-100 text-gray-700"
                       }`}
                     >
                       {admin.status === "active" && (
@@ -1771,7 +1770,7 @@ const AdminAccountsView: React.FC<{
                         {pageNum}
                       </button>
                     );
-                  }
+                  },
                 )}
               </div>
 
@@ -1864,15 +1863,14 @@ const AdminAccountsView: React.FC<{
           emailSent={emailSent}
           onSendEmail={async () => {
             setEmailSending(true);
-            const { sendCredentialsEmail } = await import(
-              "../utils/passwordUtils"
-            );
+            const { sendCredentialsEmail } =
+              await import("../utils/passwordUtils");
             const result = await sendCredentialsEmail(
               newAdminCredentials.name,
               newAdminCredentials.email,
               newAdminCredentials.businessName,
               newAdminCredentials.password,
-              newAdminCredentials.package
+              newAdminCredentials.package,
             );
             setEmailSending(false);
             if (result.success) {
@@ -1930,8 +1928,8 @@ const SubscriptionsView: React.FC<{
             planName === "professional"
               ? "professional"
               : planName === "enterprise"
-              ? "enterprise"
-              : "basic";
+                ? "enterprise"
+                : "basic";
 
           return {
             id: item.id.toString(),
@@ -1941,7 +1939,7 @@ const SubscriptionsView: React.FC<{
             businessName: item.tenant_detail?.business_name || "N/A",
             package: packageType,
             packagePrice: parseFloat(
-              item.subscription_plan_detail?.plan_price || "0"
+              item.subscription_plan_detail?.plan_price || "0",
             ),
             subscriptionStartDate: item.subscription_date || item.created,
             subscriptionEndDate: item.finish_date || "",
@@ -1980,12 +1978,12 @@ const SubscriptionsView: React.FC<{
     apiSubscriptions.length > 0 ? apiSubscriptions : adminAccounts;
 
   const activeSubscriptions = displaySubscriptions.filter(
-    (a) => a.status === "active"
+    (a) => a.status === "active",
   );
   const expiringSoon = displaySubscriptions.filter((a) => {
     const daysUntilExpiry = Math.ceil(
       (new Date(a.subscriptionEndDate).getTime() - new Date().getTime()) /
-        (1000 * 60 * 60 * 24)
+        (1000 * 60 * 60 * 24),
     );
     return (
       daysUntilExpiry <= 30 && daysUntilExpiry > 0 && a.status === "active"
@@ -1999,7 +1997,7 @@ const SubscriptionsView: React.FC<{
 
   const totalMRR = activeSubscriptions.reduce(
     (sum, admin) => sum + (admin.packagePrice || 0),
-    0
+    0,
   );
   const basicMRR = activeSubscriptions
     .filter((a) => a.package === "basic")
@@ -2034,7 +2032,7 @@ const SubscriptionsView: React.FC<{
               status: "active" as const,
               lastPaymentDate: new Date().toISOString(),
             }
-          : a
+          : a,
       );
       saveToStorage("admin_accounts", updatedAdmins);
       setApiSubscriptions(updatedAdmins);
@@ -2055,7 +2053,7 @@ const SubscriptionsView: React.FC<{
               packagePrice:
                 PACKAGES[newPackage as keyof typeof PACKAGES]?.price || 0,
             }
-          : a
+          : a,
       );
       saveToStorage("admin_accounts", updatedAdmins);
       setApiSubscriptions(updatedAdmins);
@@ -2209,7 +2207,7 @@ const SubscriptionsView: React.FC<{
                   : new Date();
                 const daysUntilExpiry = Math.ceil(
                   (endDate.getTime() - new Date().getTime()) /
-                    (1000 * 60 * 60 * 24)
+                    (1000 * 60 * 60 * 24),
                 );
                 const isExpiringSoon =
                   daysUntilExpiry <= 30 && daysUntilExpiry > 0;
@@ -2236,8 +2234,8 @@ const SubscriptionsView: React.FC<{
                           packageKey === "basic"
                             ? "bg-blue-100 text-blue-700"
                             : packageKey === "professional"
-                            ? "bg-purple-100 text-purple-700"
-                            : "bg-orange-100 text-orange-700"
+                              ? "bg-purple-100 text-purple-700"
+                              : "bg-orange-100 text-orange-700"
                         }`}
                       >
                         {packageKey === "basic" && (
@@ -2261,7 +2259,7 @@ const SubscriptionsView: React.FC<{
                       <p className="text-sm text-gray-600">
                         {admin.subscriptionStartDate
                           ? new Date(
-                              admin.subscriptionStartDate
+                              admin.subscriptionStartDate,
                             ).toLocaleDateString()
                           : "N/A"}
                       </p>
@@ -2275,7 +2273,7 @@ const SubscriptionsView: React.FC<{
                         >
                           {admin.subscriptionEndDate
                             ? new Date(
-                                admin.subscriptionEndDate
+                                admin.subscriptionEndDate,
                               ).toLocaleDateString()
                             : "N/A"}
                         </p>
@@ -2293,8 +2291,8 @@ const SubscriptionsView: React.FC<{
                           admin.status === "active"
                             ? "bg-green-100 text-green-700"
                             : admin.status === "suspended"
-                            ? "bg-orange-100 text-orange-700"
-                            : "bg-gray-100 text-gray-700"
+                              ? "bg-orange-100 text-orange-700"
+                              : "bg-gray-100 text-gray-700"
                         }`}
                       >
                         {admin.status === "active" && (
@@ -2381,7 +2379,7 @@ const PaymentsDuesView: React.FC<{
               dueAmount: 0,
               lastPaymentDate: new Date().toISOString(),
             }
-          : a
+          : a,
       );
       saveToStorage("admin_accounts", updatedAdmins);
       setShowPaymentModal(false);
@@ -2748,10 +2746,10 @@ const BranchesOverviewView: React.FC<{ adminAccounts: AdminAccount[] }> = ({
                         index === 0
                           ? "bg-yellow-100 text-yellow-700"
                           : index === 1
-                          ? "bg-gray-100 text-gray-700"
-                          : index === 2
-                          ? "bg-orange-100 text-orange-700"
-                          : "bg-blue-50 text-blue-600"
+                            ? "bg-gray-100 text-gray-700"
+                            : index === 2
+                              ? "bg-orange-100 text-orange-700"
+                              : "bg-blue-50 text-blue-600"
                       }`}
                     >
                       {index + 1}
@@ -2771,8 +2769,8 @@ const BranchesOverviewView: React.FC<{ adminAccounts: AdminAccount[] }> = ({
                         admin.package === "basic"
                           ? "bg-blue-100 text-blue-700"
                           : admin.package === "professional"
-                          ? "bg-purple-100 text-purple-700"
-                          : "bg-orange-100 text-orange-700"
+                            ? "bg-purple-100 text-purple-700"
+                            : "bg-orange-100 text-orange-700"
                       }`}
                     >
                       {PACKAGES[admin.package as keyof typeof PACKAGES]?.name ||
@@ -2800,8 +2798,8 @@ const BranchesOverviewView: React.FC<{ adminAccounts: AdminAccount[] }> = ({
                         admin.status === "active"
                           ? "bg-green-100 text-green-700"
                           : admin.status === "suspended"
-                          ? "bg-orange-100 text-orange-700"
-                          : "bg-gray-100 text-gray-700"
+                            ? "bg-orange-100 text-orange-700"
+                            : "bg-gray-100 text-gray-700"
                       }`}
                     >
                       {admin.status.charAt(0).toUpperCase() +
@@ -2825,14 +2823,14 @@ const RevenueReportsView: React.FC<{ adminAccounts: AdminAccount[] }> = ({
   // Total revenue calculations
   const totalBusinessRevenue = adminAccounts.reduce(
     (sum, admin) => sum + (admin.totalRevenue || 0),
-    0
+    0,
   );
   const totalSubscriptionRevenue = adminAccounts
     .filter((a) => a.status === "active")
     .reduce((sum, admin) => sum + (admin.packagePrice || 0), 0);
   const totalDues = adminAccounts.reduce(
     (sum, admin) => sum + (admin.dueAmount || 0),
-    0
+    0,
   );
   const netRevenue =
     totalBusinessRevenue + totalSubscriptionRevenue * 12 - totalDues;
@@ -2945,7 +2943,7 @@ const RevenueReportsView: React.FC<{ adminAccounts: AdminAccount[] }> = ({
             <p className="text-xs text-blue-600">
               {
                 adminAccounts.filter(
-                  (a) => a.package === "basic" && a.status === "active"
+                  (a) => a.package === "basic" && a.status === "active",
                 ).length
               }{" "}
               active accounts
@@ -2973,7 +2971,7 @@ const RevenueReportsView: React.FC<{ adminAccounts: AdminAccount[] }> = ({
             <p className="text-xs text-purple-600">
               {
                 adminAccounts.filter(
-                  (a) => a.package === "professional" && a.status === "active"
+                  (a) => a.package === "professional" && a.status === "active",
                 ).length
               }{" "}
               active accounts
@@ -3003,7 +3001,7 @@ const RevenueReportsView: React.FC<{ adminAccounts: AdminAccount[] }> = ({
             <p className="text-xs text-orange-600">
               {
                 adminAccounts.filter(
-                  (a) => a.package === "enterprise" && a.status === "active"
+                  (a) => a.package === "enterprise" && a.status === "active",
                 ).length
               }{" "}
               active accounts
@@ -3123,10 +3121,10 @@ const RevenueReportsView: React.FC<{ adminAccounts: AdminAccount[] }> = ({
                         index === 0
                           ? "bg-yellow-100 text-yellow-700"
                           : index === 1
-                          ? "bg-gray-100 text-gray-700"
-                          : index === 2
-                          ? "bg-orange-100 text-orange-700"
-                          : "bg-blue-50 text-blue-600"
+                            ? "bg-gray-100 text-gray-700"
+                            : index === 2
+                              ? "bg-orange-100 text-orange-700"
+                              : "bg-blue-50 text-blue-600"
                       }`}
                     >
                       {index === 0 && <Crown className="w-4 h-4" />}
@@ -3147,8 +3145,8 @@ const RevenueReportsView: React.FC<{ adminAccounts: AdminAccount[] }> = ({
                         admin.package === "basic"
                           ? "bg-blue-100 text-blue-700"
                           : admin.package === "professional"
-                          ? "bg-purple-100 text-purple-700"
-                          : "bg-orange-100 text-orange-700"
+                            ? "bg-purple-100 text-purple-700"
+                            : "bg-orange-100 text-orange-700"
                       }`}
                     >
                       {PACKAGES[admin.package as keyof typeof PACKAGES]?.name ||
@@ -3176,8 +3174,8 @@ const RevenueReportsView: React.FC<{ adminAccounts: AdminAccount[] }> = ({
                         admin.status === "active"
                           ? "bg-green-100 text-green-700"
                           : admin.status === "suspended"
-                          ? "bg-orange-100 text-orange-700"
-                          : "bg-gray-100 text-gray-700"
+                            ? "bg-orange-100 text-orange-700"
+                            : "bg-gray-100 text-gray-700"
                       }`}
                     >
                       {admin.status.charAt(0).toUpperCase() +
@@ -3201,7 +3199,7 @@ const RevenueReportsView: React.FC<{ adminAccounts: AdminAccount[] }> = ({
           <p className="text-3xl font-bold">
             Rs
             {Math.round(
-              totalBusinessRevenue / adminAccounts.length
+              totalBusinessRevenue / adminAccounts.length,
             ).toLocaleString()}
           </p>
         </div>
@@ -3215,8 +3213,8 @@ const RevenueReportsView: React.FC<{ adminAccounts: AdminAccount[] }> = ({
               totalBusinessRevenue /
                 (adminAccounts.reduce(
                   (sum, admin) => sum + (admin.totalCustomers || 0),
-                  0
-                ) || 1)
+                  0,
+                ) || 1),
             ).toLocaleString()}
           </p>
         </div>

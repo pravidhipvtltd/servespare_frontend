@@ -195,7 +195,7 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
           `${import.meta.env.VITE_API_BASE_URL}/stock-management/inventory/`,
           {
             headers,
-          }
+          },
         );
 
         if (!response.ok) {
@@ -218,8 +218,8 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
               item.vehicle_type === "two_wheeler"
                 ? "two-wheeler"
                 : item.vehicle_type === "four_wheeler"
-                ? "four-wheeler"
-                : "both",
+                  ? "four-wheeler"
+                  : "both",
             price: parseFloat(item.price) || 0,
             originalPrice: parseFloat(item.mrp) || 0,
             rating: 4.5,
@@ -232,7 +232,6 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
 
         setProducts(mappedProducts);
       } catch (error) {
-        console.error("Error fetching products:", error);
         toast.error("Failed to load products");
       } finally {
         setLoading(false);
@@ -245,7 +244,7 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
   const handleAddToCart = async (
     product: any,
     quantity: number,
-    isBuyNow: boolean = false
+    isBuyNow: boolean = false,
   ) => {
     setAddingToCart(product.id);
 
@@ -288,7 +287,7 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
             "ngrok-skip-browser-warning": "true",
           },
           body: JSON.stringify({ email: subscriptionEmail }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -333,7 +332,7 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
     setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
   const prevSlide = () =>
     setCurrentSlide(
-      (prev) => (prev - 1 + heroSlides.length) % heroSlides.length
+      (prev) => (prev - 1 + heroSlides.length) % heroSlides.length,
     );
 
   return (
@@ -846,7 +845,7 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
                   products.filter(
                     (p) =>
                       p.vehicleType === "two-wheeler" ||
-                      p.vehicleType === "both"
+                      p.vehicleType === "both",
                   ).length
                 }
               </span>
@@ -875,7 +874,7 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
                   products.filter(
                     (p) =>
                       p.vehicleType === "four-wheeler" ||
-                      p.vehicleType === "both"
+                      p.vehicleType === "both",
                   ).length
                 }
               </span>
@@ -915,8 +914,8 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
                           product.badge === "Hot"
                             ? "bg-red-500"
                             : product.badge === "New"
-                            ? "bg-green-500"
-                            : "bg-blue-500"
+                              ? "bg-green-500"
+                              : "bg-blue-500"
                         }`}
                       >
                         {product.badge}
@@ -931,7 +930,7 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
                         {Math.round(
                           ((product.originalPrice - product.price) /
                             product.originalPrice) *
-                            100
+                            100,
                         )}
                         %
                       </div>

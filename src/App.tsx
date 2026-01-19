@@ -21,69 +21,6 @@ import { ForcePasswordChangeModal } from "./components/modals/ForcePasswordChang
 import { OfflineStatusBar } from "./components/OfflineStatusBar";
 import { KYCFormModal } from "./components/modals/KYCFormModal";
 import "./utils/debugHelpers";
-import { initializeDemoUsers } from "./utils/simpleUserInit";
-
-// =========================================
-// SIMPLE INITIALIZATION
-// =========================================
-console.log("");
-console.log(
-  "%c🚀 SERVE SPARES - AUTO PARTS INVENTORY SYSTEM",
-  "color: #f59e0b; font-size: 20px; font-weight: bold;"
-);
-console.log("");
-
-// Initialize demo users IMMEDIATELY before anything else
-try {
-  initializeDemoUsers();
-} catch (error) {
-  console.error("❌ Failed to initialize demo users:", error);
-  // Try one more time with direct approach
-  const emergencyUsers = [
-    {
-      id: "superadmin-1",
-      email: "superadmin@autoparts.com",
-      password: "super123",
-      name: "Super Admin",
-      role: "super_admin",
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      branch: "",
-      workspaceId: "superadmin-workspace",
-    },
-    {
-      id: "admin-1",
-      email: "admin@autoparts.com",
-      password: "admin123",
-      name: "Admin User",
-      role: "admin",
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      branch: "",
-      workspaceId: "workspace-1",
-      panVatNumber: "1234567890",
-      businessName: "Demo Auto Parts Store",
-    },
-  ];
-  localStorage.setItem("users", JSON.stringify(emergencyUsers));
-  console.log("✅ Emergency users created");
-}
-
-// Ensure demo customer exists
-const customers = JSON.parse(localStorage.getItem("customers") || "[]");
-if (!customers.find((c: any) => c.email === "customer@demo.com")) {
-  customers.push({
-    id: "customer_demo_001",
-    name: "Demo Customer",
-    email: "customer@demo.com",
-    phone: "+977988862838",
-    address: "Pokhara, Nepal",
-    password: "demo123",
-    createdAt: new Date().toISOString(),
-  });
-  localStorage.setItem("customers", JSON.stringify(customers));
-  console.log("✅ Demo customer created");
-}
 
 export default function App() {
   return (
@@ -140,12 +77,8 @@ const AppContent: React.FC = () => {
           price: payment.amount,
           currency: payment.currency,
         });
-        console.log(
-          "📦 Restored package from localStorage:",
-          payment.packageName
-        );
       } catch (error) {
-        console.error("Failed to restore package:", error);
+        // Silent error
       }
     }
   }, [selectedPackage]);
@@ -167,20 +100,19 @@ const AppContent: React.FC = () => {
       const requirePasswordChange =
         localStorage.getItem("requirePasswordChange") === "true";
       const passwordChangeAdminId = localStorage.getItem(
-        "passwordChangeAdminId"
+        "passwordChangeAdminId",
       );
 
       if (requirePasswordChange && passwordChangeAdminId) {
         // Get admin account details
         const adminAccounts = JSON.parse(
-          localStorage.getItem("admin_accounts") || "[]"
+          localStorage.getItem("admin_accounts") || "[]",
         );
         const adminAccount = adminAccounts.find(
-          (a: any) => a.id === passwordChangeAdminId
+          (a: any) => a.id === passwordChangeAdminId,
         );
 
         if (adminAccount) {
-          console.log("🔐 Password change required - showing modal");
           setAdminAccountForPasswordChange(adminAccount);
           setShowPasswordChangeModal(true);
         }
@@ -188,11 +120,9 @@ const AppContent: React.FC = () => {
     }
   }, [currentUser]);
 
-  // NEW: Check for backend-driven first login flow (password change + KYC)
+  
   React.useEffect(() => {
     if (!currentUser) return;
-
-    console.log("🔍 [First Login Check] Checking login flags...");
 
     const mustChangePassword =
       localStorage.getItem("must_change_password") === "true";
@@ -201,15 +131,9 @@ const AppContent: React.FC = () => {
     const userId = localStorage.getItem("user_id");
     const tenantId = localStorage.getItem("tenant_id");
 
-    console.log("   Must Change Password:", mustChangePassword);
-    console.log("   Is First Login:", isFirstLogin);
-    console.log("   KYC Completed:", kycCompleted);
-
     // Priority 1: Force password change if needed
     if (mustChangePassword && currentUser.role === "admin") {
-      console.log("🔐 [First Login] Password change required - showing modal");
-
-      // Create a temporary admin account object for the modal
+      
       const tempAdminAccount = {
         id: userId,
         email: currentUser.email,
@@ -229,12 +153,9 @@ const AppContent: React.FC = () => {
       !kycCompleted &&
       currentUser.role === "admin"
     ) {
-      console.log("📝 [First Login] KYC required - showing modal");
       setShowKYCModal(true);
       return;
     }
-
-    console.log("✅ [First Login] No onboarding steps required");
   }, [currentUser]);
 
   // Check if profile completion is needed
@@ -242,93 +163,55 @@ const AppContent: React.FC = () => {
     if (currentUser) {
       const needsCompletion =
         localStorage.getItem("needsProfileCompletion") === "true";
-      console.log(" Profile completion check:", {
-        user: currentUser.email,
-        needsCompletion,
-        role: currentUser.role,
-      });
       setNeedsProfileCompletion(needsCompletion);
-    } else {
-      console.log("⚠️ No current user found");
     }
   }, [currentUser]);
 
-  // Check if admin needs business verification and package selection
   React.useEffect(() => {
     if (currentUser && currentUser.role === "admin") {
       const isVerified = localStorage.getItem("business_verified") === "true";
       const hasPackage = localStorage.getItem("package_active") === "true";
       const selectedPkg = localStorage.getItem("selected_package");
 
-      console.log("🔍 Admin onboarding check:", {
-        isVerified,
-        hasPackage,
-        selectedPkg,
-        allFlags: {
-          business_verified: localStorage.getItem("business_verified"),
-          package_active: localStorage.getItem("package_active"),
-          selected_package: localStorage.getItem("selected_package"),
-        },
-      });
-
       // First check: Business verification
       if (!isVerified) {
-        console.log("🏢 Admin needs business verification");
         setOnboardingStep("verification");
         return;
       }
 
       // Second check: Package selection
       if (!hasPackage && !selectedPkg) {
-        console.log("📦 Admin needs to select package");
         setOnboardingStep("package");
         return;
       }
 
       // All requirements met
-      console.log("✅ All requirements met - setting onboardingStep to none");
       setOnboardingStep("none");
     }
   }, [currentUser]);
 
   const handleBusinessVerificationComplete = (data: any) => {
-    console.log("✅ Business verification completed:", data);
     // Proceed to package selection
     setOnboardingStep("package");
   };
 
   const handlePackageSelected = (pkg: any) => {
-    console.log("📦 Package selected:", pkg);
     setSelectedPackage(pkg);
     setOnboardingStep("confirmation");
   };
 
   const handlePackageConfirmed = () => {
-    console.log("✅ Package confirmed, proceeding to payment");
     setOnboardingStep("payment");
   };
 
   const handlePaymentComplete = () => {
-    console.log("💳 Payment completed successfully");
-    // Note: Don't set state before reload - it will be lost anyway
-    // The useEffect will detect package_active and business_verified flags and set onboardingStep appropriately
     window.location.reload();
   };
 
   const handleOnboardingCancel = () => {
-    console.log("❌ Onboarding cancelled");
     logout();
   };
 
-  console.log("📱 App render state:", {
-    isLoading,
-    hasUser: !!currentUser,
-    userEmail: currentUser?.email,
-    needsProfileCompletion,
-    role: currentUser?.role,
-  });
-
-  // Show loading while waiting for initialization
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 flex items-center justify-center">
@@ -419,12 +302,6 @@ const AppContent: React.FC = () => {
   }
 
   // Role-based dashboard routing
-  console.log(
-    "🎯 Rendering dashboard for role:",
-    currentUser.role,
-    "onboardingStep:",
-    onboardingStep
-  );
 
   let dashboardComponent;
 
@@ -440,6 +317,9 @@ const AppContent: React.FC = () => {
       break;
     case "cashier":
       dashboardComponent = <CashierDashboardNew />;
+      break;
+    case "customer":
+      dashboardComponent = <CustomerPanel onBackToEntry={logout} />;
       break;
     default:
       dashboardComponent = <LandingPage />;
@@ -466,7 +346,6 @@ const AppContent: React.FC = () => {
           userName={currentUser.name}
           tenantId={localStorage.getItem("tenant_id") || ""}
           onComplete={() => {
-            console.log("✅ KYC completed successfully!");
             setShowKYCModal(false);
             // Reload to refresh the app state
             window.location.reload();

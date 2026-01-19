@@ -161,7 +161,7 @@ export const PartiesPanel: React.FC = () => {
             setCurrentBranchId(response.results[0].id);
           }
         } catch (err) {
-          console.error("Error fetching branches:", err);
+          // Silent error
         }
       }
     };
@@ -238,7 +238,6 @@ export const PartiesPanel: React.FC = () => {
 
       setParties(mappedParties);
     } catch (err: any) {
-      console.error("Error loading parties:", err);
       setError(err.message || "Failed to load parties");
     } finally {
       setIsLoading(false);
@@ -297,7 +296,6 @@ export const PartiesPanel: React.FC = () => {
       );
       setTransactions(transactions as PartyTransaction[]);
     } catch (err: any) {
-      console.error("Error loading party transactions:", err);
       setTransactions([]);
     }
   };
@@ -427,7 +425,6 @@ export const PartiesPanel: React.FC = () => {
         loadParties();
       }
     } catch (err: any) {
-      console.error("Error saving party:", err);
       setError(err.message || "Failed to save party");
     } finally {
       setIsLoading(false);
@@ -479,7 +476,6 @@ export const PartiesPanel: React.FC = () => {
         selectedParties.filter((id) => id.toString() !== partyId.toString()),
       );
     } catch (err: any) {
-      console.error("Error deleting party:", err);
       setError(err.message || "Failed to delete party");
     } finally {
       setIsLoading(false);
@@ -539,7 +535,6 @@ export const PartiesPanel: React.FC = () => {
       );
       setSelectedParties([]);
     } catch (err: any) {
-      console.error("Error bulk deleting parties:", err);
       setError(err.message || "Failed to delete parties");
     } finally {
       setIsLoading(false);

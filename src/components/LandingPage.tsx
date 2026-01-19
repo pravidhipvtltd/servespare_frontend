@@ -1210,8 +1210,7 @@ const Footer: React.FC<{
             <div className="flex space-x-2">
               <span className="px-3 py-1 bg-white/10 rounded text-xs">NP</span>
               <span className="px-3 py-1 bg-white/10 rounded text-xs">IN</span>
-              <span className="px-3 py-1 bg-white/10 rounded text-xs">LK</span>
-              <span className="px-3 py-1 bg-white/10 rounded text-xs">BD</span>
+             
             </div>
           </div>
 

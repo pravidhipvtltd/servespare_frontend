@@ -3,11 +3,11 @@
  * Manages offline changes and syncs them when online
  */
 
-import { setItem, getAllItems, deleteItem, STORES } from '../db/indexedDB';
+import { setItem, getAllItems, deleteItem, STORES } from "../db/indexedDB";
 
 export interface SyncQueueItem {
   id?: number;
-  operation: 'create' | 'update' | 'delete';
+  operation: "create" | "update" | "delete";
   storeName: string;
   data: any;
   timestamp: string;
@@ -20,9 +20,9 @@ export interface SyncQueueItem {
  * Add operation to sync queue
  */
 export const addToSyncQueue = async (
-  operation: 'create' | 'update' | 'delete',
+  operation: "create" | "update" | "delete",
   storeName: string,
-  data: any
+  data: any,
 ): Promise<void> => {
   const queueItem: SyncQueueItem = {
     operation,
@@ -34,7 +34,6 @@ export const addToSyncQueue = async (
   };
 
   await setItem(STORES.SYNC_QUEUE, queueItem);
-  console.log(`📝 [SyncQueue] Added ${operation} operation for ${storeName}`);
 };
 
 /**
@@ -50,13 +49,15 @@ export const getPendingSyncItems = async (): Promise<SyncQueueItem[]> => {
  */
 export const markSyncItemComplete = async (id: number): Promise<void> => {
   await deleteItem(STORES.SYNC_QUEUE, id);
-  console.log(`✅ [SyncQueue] Marked item ${id} as synced`);
 };
 
 /**
  * Mark sync item as failed
  */
-export const markSyncItemFailed = async (id: number, error: string): Promise<void> => {
+export const markSyncItemFailed = async (
+  id: number,
+  error: string,
+): Promise<void> => {
   const allItems = await getAllItems<SyncQueueItem>(STORES.SYNC_QUEUE);
   const item = allItems.find((i) => i.id === id);
 
@@ -64,7 +65,6 @@ export const markSyncItemFailed = async (id: number, error: string): Promise<voi
     item.retryCount += 1;
     item.lastError = error;
     await setItem(STORES.SYNC_QUEUE, item);
-    console.log(`⚠️ [SyncQueue] Marked item ${id} as failed (retry ${item.retryCount})`);
   }
 };
 
@@ -80,8 +80,6 @@ export const clearSyncedItems = async (): Promise<void> => {
       await deleteItem(STORES.SYNC_QUEUE, item.id);
     }
   }
-
-  console.log(`🧹 [SyncQueue] Cleared ${syncedItems.length} synced items`);
 };
 
 /**
@@ -102,5 +100,3 @@ export const getSyncQueueStats = async (): Promise<{
     failed: allItems.filter((i) => !i.synced && i.retryCount > 0).length,
   };
 };
-
-console.log('🔄 [SyncQueue] Module loaded');

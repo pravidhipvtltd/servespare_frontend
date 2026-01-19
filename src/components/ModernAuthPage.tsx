@@ -54,6 +54,11 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
   const [resetToken, setResetToken] = useState("");
   const [isFirstTimeLogin, setIsFirstTimeLogin] = useState(false);
 
+  // Reset Password Visibility State
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [showResetConfirmPassword, setShowResetConfirmPassword] =
+    useState(false);
+
   const { login } = useAuth();
 
   // Translation helper
@@ -105,7 +110,7 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
           result.message ||
             result.detail ||
             result.error ||
-            "Failed to send OTP. Please check your email and try again."
+            "Failed to send OTP. Please check your email and try again.",
         );
         setIsLoading(false);
         return;
@@ -117,7 +122,7 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
     } catch (err: any) {
       console.error("❌ [OTP] Network error:", err);
       setError(
-        "Cannot connect to server. Please check your internet connection."
+        "Cannot connect to server. Please check your internet connection.",
       );
     } finally {
       setIsLoading(false);
@@ -164,7 +169,7 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
           result.message ||
             result.detail ||
             result.error ||
-            "Invalid or expired OTP. Please try again."
+            "Invalid or expired OTP. Please try again.",
         );
         setIsLoading(false);
         return;
@@ -183,13 +188,13 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
       } else {
         console.error("❌ [Verify OTP] No token found in response:", result);
         setError(
-          "Verification successful but no token received. Please contact support."
+          "Verification successful but no token received. Please contact support.",
         );
       }
     } catch (err: any) {
       console.error("❌ [OTP Verify] Network error:", err);
       setError(
-        "Cannot connect to server. Please check your internet connection."
+        "Cannot connect to server. Please check your internet connection.",
       );
     } finally {
       setIsLoading(false);
@@ -256,7 +261,7 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
           result.message ||
             result.detail ||
             result.error ||
-            "Failed to reset password. Please try again."
+            "Failed to reset password. Please try again.",
         );
         setIsLoading(false);
         return;
@@ -279,7 +284,7 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
     } catch (err: any) {
       console.error("❌ [Reset Password] Network error:", err);
       setError(
-        "Cannot connect to server. Please check your internet connection."
+        "Cannot connect to server. Please check your internet connection.",
       );
     } finally {
       setIsLoading(false);
@@ -316,14 +321,10 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
     setError(null);
     setIsLoading(true);
 
-    // Use proxy in development to avoid CORS issues
-    const API_URL = import.meta.env.DEV
-      ? "/api/auth/login/"
-      : `${import.meta.env.VITE_API_BASE_URL}/auth/login/`;
+    const API_URL = `${import.meta.env.VITE_API_BASE_URL}/auth/login/`;
 
     try {
-      console.log("🔐 [Login] Calling backend API:", API_URL);
-      console.log("🔐 [Login] Username:", loginData.identifier);
+      
 
       // Call backend API directly
       const response = await fetch(`${API_URL}`, {
@@ -338,17 +339,16 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
         }),
       });
 
-      console.log("📡 [Login] Response status:", response.status);
-      console.log("📡 [Login] Response ok:", response.ok);
+     
 
       // Handle non-JSON responses
       let result;
       try {
         const text = await response.text();
-        console.log("📡 [Login] Response text:", text);
+       
         result = text ? JSON.parse(text) : {};
       } catch (jsonError) {
-        console.error("❌ [Login] Failed to parse JSON:", jsonError);
+       
         setError(`Unable to login, Please try again,`);
         return;
       }
@@ -358,22 +358,22 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
           setError(
             result.message ||
               result.detail ||
-              "Username or password do not match."
+              "Username or password do not match.",
           );
         } else if (response.status === 403) {
           setError(
             result.message ||
               result.detail ||
-              "Access forbidden. Please check your Django CORS settings or contact administrator."
+              "Access forbidden. Please check your Django CORS settings or contact administrator.",
           );
           console.error(
-            "❌ [Login] 403 Forbidden - Check Django CORS configuration"
+            "❌ [Login] 403 Forbidden - Check Django CORS configuration",
           );
         } else {
           setError(
             result.message ||
               result.detail ||
-              `Login failed (${response.status}). Please try again.`
+              `Login failed (${response.status}). Please try again.`,
           );
         }
         return;
@@ -381,9 +381,7 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
 
       // Check if user must change password (first time login)
       if (result.user?.must_change_password === true) {
-        console.log(
-          "🔒 [Login] First time login detected - user must change password"
-        );
+        
         setIsFirstTimeLogin(true);
 
         // Store user email for OTP flow
@@ -404,11 +402,11 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
                 body: JSON.stringify({
                   identifier: userEmail,
                 }),
-              }
+              },
             );
 
             if (otpResponse.ok) {
-              console.log("✅ [Login] OTP sent for password change");
+              
               setForgotPasswordStep("code");
               setShowForgotPassword(true);
             } else {
@@ -424,16 +422,14 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
           }
         } else {
           setError(
-            "First time login detected. Please use Forgot Password to set your new password."
+            "First time login detected. Please use Forgot Password to set your new password.",
           );
         }
         return;
       }
 
       if (result.must_reset) {
-        console.log(
-          "🔒 [Login] First time login detected - redirecting to password change"
-        );
+       
         const accessToken =
           result.tokens?.access || result.access || result.access_token;
         if (accessToken) {
@@ -442,7 +438,7 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
           setShowForgotPassword(true);
         } else {
           setError(
-            "First time login detected, but unable to start password change flow."
+            "First time login detected, but unable to start password change flow.",
           );
         }
         return;
@@ -452,7 +448,7 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
       if (!result.tokens || !result.tokens.access) {
         console.error("❌ [Login] Invalid response structure:", result);
         setError(
-          "Invalid response from server. Missing authentication tokens."
+          "Invalid response from server. Missing authentication tokens.",
         );
         return;
       }
@@ -462,7 +458,7 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
         typeof result.user === "string" ? JSON.parse(result.user) : result.user;
       const userRole = userFromResponse?.role || userFromResponse?.user_role;
 
-      console.log("🔍 [Login] User role from API:", userRole);
+     
 
       if (userRole === "customer") {
         setError("Username or password do not match.");
@@ -477,7 +473,7 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
         "user",
         typeof result.user === "string"
           ? result.user
-          : JSON.stringify(result.user)
+          : JSON.stringify(result.user),
       );
 
       console.log("✅ [Login] Tokens stored successfully");
@@ -499,7 +495,7 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
         err.message?.includes("CORS")
       ) {
         setError(
-          "Cannot connect to server. Please check your internet connection and ensure the backend is running."
+          "Cannot connect to server. Please check your internet connection and ensure the backend is running.",
         );
       } else {
         setError("Something went wrong. Please try again.");
@@ -726,13 +722,26 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
                               <Lock className="text-gray-400" size={20} />
                             </div>
                             <input
-                              type="password"
+                              type={showResetPassword ? "text" : "password"}
                               value={newPassword}
                               onChange={(e) => setNewPassword(e.target.value)}
-                              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
+                              className="w-full pl-12 pr-12 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
                               placeholder="Enter new password"
                               required
                             />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setShowResetPassword(!showResetPassword)
+                              }
+                              className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
+                            >
+                              {showResetPassword ? (
+                                <EyeOff size={20} />
+                              ) : (
+                                <Eye size={20} />
+                              )}
+                            </button>
                           </div>
                         </div>
 
@@ -745,15 +754,32 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
                               <Lock className="text-gray-400" size={20} />
                             </div>
                             <input
-                              type="password"
+                              type={
+                                showResetConfirmPassword ? "text" : "password"
+                              }
                               value={confirmPassword}
                               onChange={(e) =>
                                 setConfirmPassword(e.target.value)
                               }
-                              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
+                              className="w-full pl-12 pr-12 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
                               placeholder="Confirm new password"
                               required
                             />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setShowResetConfirmPassword(
+                                  !showResetConfirmPassword,
+                                )
+                              }
+                              className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
+                            >
+                              {showResetConfirmPassword ? (
+                                <EyeOff size={20} />
+                              ) : (
+                                <Eye size={20} />
+                              )}
+                            </button>
                           </div>
                         </div>
 
@@ -769,8 +795,8 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
                               ? "Changing..."
                               : "Resetting..."
                             : isFirstTimeLogin
-                            ? "Change Password"
-                            : "Reset Password"}
+                              ? "Change Password"
+                              : "Reset Password"}
                         </button>
                       </div>
                     )}
@@ -1042,20 +1068,6 @@ const LoginForm: React.FC<any> = ({
             </>
           )}
         </motion.button>
-
-        {/* Sign Up Link */}
-        <div className="text-center pt-4">
-          <p className="text-gray-600">
-            {t("auth.signup.prompt")}{" "}
-            <button
-              type="button"
-              onClick={switchToRegister}
-              className="text-indigo-600 hover:text-indigo-700 font-semibold"
-            >
-              {t("auth.signup.link")}
-            </button>
-          </p>
-        </div>
       </form>
     </motion.div>
   );

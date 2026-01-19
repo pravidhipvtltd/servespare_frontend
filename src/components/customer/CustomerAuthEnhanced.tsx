@@ -113,6 +113,27 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Forgot Password State
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [forgotPasswordStep, setForgotPasswordStep] = useState<
+    "email" | "code" | "newPassword"
+  >("email");
+  const [resetCode, setResetCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetSuccess, setResetSuccess] = useState(false);
+  const [resetToken, setResetToken] = useState("");
+  const [forgotPasswordError, setForgotPasswordError] = useState<string | null>(
+    null,
+  );
+  const [isForgotPasswordLoading, setIsForgotPasswordLoading] = useState(false);
+
+  // Reset Password Visibility State
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [showResetConfirmPassword, setShowResetConfirmPassword] =
+    useState(false);
+
   // Login form
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -179,12 +200,212 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
     setRegisterErrors((prev) => ({ ...prev, [field]: error }));
   };
 
+  // Forgot Password Handlers
+  const handleSendResetCode = async () => {
+    setForgotPasswordError(null);
+    setIsForgotPasswordLoading(true);
+
+    const API_URL = `${import.meta.env.VITE_API_BASE_URL}/otp/request/`;
+
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
+        },
+        body: JSON.stringify({
+          identifier: forgotPasswordEmail,
+        }),
+      });
+
+      let result;
+      try {
+        const text = await response.text();
+        result = text ? JSON.parse(text) : {};
+      } catch (jsonError) {
+        setForgotPasswordError("Please try again.");
+        setIsForgotPasswordLoading(false);
+        return;
+      }
+
+      if (!response.ok) {
+        setForgotPasswordError(
+          result.message ||
+            result.detail ||
+            result.error ||
+            "Failed to send OTP. Please check your email and try again.",
+        );
+        setIsForgotPasswordLoading(false);
+        return;
+      }
+
+      setForgotPasswordStep("code");
+      setForgotPasswordError(null);
+    } catch (err: any) {
+      setForgotPasswordError(
+        "Cannot connect to server. Please check your internet connection.",
+      );
+    } finally {
+      setIsForgotPasswordLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    setForgotPasswordError(null);
+    setIsForgotPasswordLoading(true);
+
+    const API_URL = `${import.meta.env.VITE_API_BASE_URL}/otp/verify/`;
+
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
+        },
+        body: JSON.stringify({
+          identifier: forgotPasswordEmail,
+          otp: resetCode,
+        }),
+      });
+
+      let result;
+      try {
+        const text = await response.text();
+        result = text ? JSON.parse(text) : {};
+      } catch (jsonError) {
+        setForgotPasswordError("Server error. Please try again.");
+        setIsForgotPasswordLoading(false);
+        return;
+      }
+
+      if (!response.ok) {
+        setForgotPasswordError(
+          result.message ||
+            result.detail ||
+            result.error ||
+            "Invalid or expired OTP. Please try again.",
+        );
+        setIsForgotPasswordLoading(false);
+        return;
+      }
+
+      // Extract token
+      const token =
+        result.token || result.access_token || result.access || result.key;
+      if (token) {
+        setResetToken(token);
+        setForgotPasswordStep("newPassword");
+        setForgotPasswordError(null);
+      } else {
+        setForgotPasswordError(
+          "Verification successful but no token received. Please contact support.",
+        );
+      }
+    } catch (err: any) {
+      setForgotPasswordError(
+        "Cannot connect to server. Please check your internet connection.",
+      );
+    } finally {
+      setIsForgotPasswordLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    setForgotPasswordError(null);
+
+    if (newPassword !== confirmPassword) {
+      setForgotPasswordError("Passwords do not match");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setForgotPasswordError("Password must be at least 6 characters");
+      return;
+    }
+
+    setIsForgotPasswordLoading(true);
+
+    const API_URL = `${
+      import.meta.env.VITE_API_BASE_URL
+    }/users/first_time_password_change/`;
+
+    try {
+      if (!resetToken) {
+        setForgotPasswordError(
+          "Missing reset token. Please try verifying OTP again.",
+        );
+        setIsForgotPasswordLoading(false);
+        return;
+      }
+
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${resetToken}`,
+          "ngrok-skip-browser-warning": "true",
+        },
+        body: JSON.stringify({
+          new_password: newPassword,
+          new_password_confirm: confirmPassword,
+        }),
+      });
+
+      let result;
+      try {
+        const text = await response.text();
+        result = text ? JSON.parse(text) : {};
+      } catch (jsonError) {
+        setForgotPasswordError("Please try again.");
+        setIsForgotPasswordLoading(false);
+        return;
+      }
+
+      if (!response.ok) {
+        setForgotPasswordError(
+          result.message ||
+            result.detail ||
+            result.error ||
+            "Failed to reset password. Please try again.",
+        );
+        setIsForgotPasswordLoading(false);
+        return;
+      }
+
+      // Success
+      setResetSuccess(true);
+      toast.success("Password reset successful! Please login.");
+
+      setTimeout(() => {
+        closeForgotPasswordModal();
+      }, 2000);
+    } catch (err: any) {
+      setForgotPasswordError(
+        "Cannot connect to server. Please check your internet connection.",
+      );
+    } finally {
+      setIsForgotPasswordLoading(false);
+    }
+  };
+
+  const closeForgotPasswordModal = () => {
+    setShowForgotPassword(false);
+    setForgotPasswordStep("email");
+    setForgotPasswordEmail("");
+    setResetCode("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setResetToken("");
+    setForgotPasswordError(null);
+    setResetSuccess(false);
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setLoginError("");
-
-    console.log("🔐 [Customer Login] Attempting login with:", loginUsername);
 
     try {
       const loginPayload = {
@@ -192,26 +413,21 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
         password: loginPassword,
       };
 
-      console.log("📤 [Customer Login] Sending payload:", loginPayload);
-
       const response = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/auth/login/`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
           },
           body: JSON.stringify(loginPayload),
         },
       );
 
       const data = await response.json();
-      console.log("📥 [Customer Login] Response:", data);
 
       if (response.ok) {
-        console.log("✅ [Customer Login] API login successful", data);
-
-        // Check if user role is customer
         if (data.user.role !== "customer") {
           setLoginError(
             ` Username or Password donot match
@@ -224,18 +440,20 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
         // Store tokens in localStorage
         localStorage.setItem("accessToken", data.tokens.access);
         localStorage.setItem("refreshToken", data.tokens.refresh);
+        localStorage.setItem("session_active", "true");
 
         // Store user info
         localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem("customer_user", JSON.stringify(data.user));
 
         toast.success(data.message || "Login successful!");
-        onLogin(data.user);
+
+        // Refresh page immediately
+        window.location.reload();
       } else {
-        console.error("❌ [Customer Login] Login failed:", data);
         setLoginError(data.message || data.error || "Invalid credentials");
       }
     } catch (error) {
-      console.error("❌ [Customer Login] Network error:", error);
       setLoginError("Network error. Please check your connection.");
     } finally {
       setIsLoading(false);
@@ -244,11 +462,6 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    console.log(
-      "🚀 [Customer Register] Form submitted! Starting registration process...",
-      registerData,
-    );
 
     // Reset errors
     setRegisterErrors({
@@ -265,32 +478,24 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
 
     // Validation
     if (!registerData.name.trim()) {
-      console.log("❌ Validation failed: Name is required");
       newErrors.name = "Full name is required";
       hasError = true;
     }
 
     if (!registerData.username.trim()) {
-      console.log("❌ Validation failed: Username is required");
       newErrors.username = "Username is required";
       hasError = true;
     }
 
     if (!registerData.email.trim()) {
-      console.log("❌ Validation failed: Email is required");
       newErrors.email = "Email is required";
       hasError = true;
     }
 
     if (!registerData.phone.trim()) {
-      console.log("❌ Validation failed: Phone is required");
       newErrors.phone = "Phone number is required";
       hasError = true;
     } else if (!registerData.phone.match(/^\+\d{10,15}$/)) {
-      console.log(
-        "❌ Validation failed: Invalid phone format",
-        registerData.phone,
-      );
       newErrors.phone =
         "Phone must start with + and contain 10-15 digits (e.g., +1234567890)";
       hasError = true;
@@ -300,13 +505,11 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
       newErrors.password = "Password is required";
       hasError = true;
     } else if (registerData.password.length < 6) {
-      console.log("❌ Validation failed: Password too short");
       newErrors.password = "Password must be at least 6 characters";
       hasError = true;
     }
 
     if (registerData.password !== registerData.confirmPassword) {
-      console.log("❌ Validation failed: Passwords do not match");
       newErrors.confirmPassword = "Passwords do not match";
       hasError = true;
     }
@@ -315,10 +518,6 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
       setRegisterErrors(newErrors);
       return;
     }
-
-    console.log(
-      "✅ [Customer Register] All validation passed! Making API call...",
-    );
 
     setIsLoading(true);
 
@@ -333,26 +532,21 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
         role: "customer",
       };
 
-      console.log("📤 [Customer Register] Sending payload to API:", payload);
-
       const response = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/auth/register/`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
           },
           body: JSON.stringify(payload),
         },
       );
 
-      console.log("📥 [Customer Register] Response status:", response.status);
-
       const data = await response.json();
-      console.log("📥 [Customer Register] Response data:", data);
 
       if (response.ok) {
-        console.log("✅ [Customer Register] Registration successful", data);
         toast.success("Registration successful! Please login.");
         setMode("login");
         setLoginUsername(registerData.username);
@@ -367,7 +561,6 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
           confirmPassword: "",
         });
       } else {
-        console.error("❌ [Customer Register] Registration failed:", data);
         // Handle various error formats from API
         const apiErrors: any = {};
         if (data.username) {
@@ -402,7 +595,6 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
         }
       }
     } catch (error) {
-      console.error("❌ [Customer Register] Network error:", error);
       toast.error("Network error. Please check your connection.");
     } finally {
       setIsLoading(false);
@@ -438,7 +630,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated Background Elements */}
+    
       <div className="absolute inset-0 overflow-hidden">
         <motion.div
           animate={{
@@ -600,6 +792,15 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
                       )}
                     </button>
                   </div>
+                  <div className="text-right mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotPassword(true)}
+                      className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
                 </div>
 
                 {/* Login Error Message */}
@@ -637,7 +838,6 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 onSubmit={(e) => {
-                  console.log("🔥 FORM SUBMIT EVENT FIRED!");
                   handleRegister(e);
                 }}
                 className="space-y-4"
@@ -949,6 +1149,237 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
 
         {/* Demo Credentials */}
       </div>
+
+      {/* Forgot Password Modal */}
+      <AnimatePresence>
+        {showForgotPassword && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={closeForgotPasswordModal}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close Button */}
+              <button
+                onClick={closeForgotPasswordModal}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <div className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M18 6 6 18" />
+                    <path d="m6 6 12 12" />
+                  </svg>
+                </div>
+              </button>
+
+              <div className="p-8">
+                <div className="text-center mb-6">
+                  <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Lock className="w-8 h-8 text-purple-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">
+                    {resetSuccess
+                      ? "Password Reset Successful"
+                      : forgotPasswordStep === "email"
+                        ? "Forgot Password?"
+                        : forgotPasswordStep === "code"
+                          ? "Enter Verification Code"
+                          : "Set New Password"}
+                  </h3>
+                  <p className="text-gray-600 mt-2 text-sm">
+                    {resetSuccess
+                      ? "Your password has been successfully updated. You can now login with your new password."
+                      : forgotPasswordStep === "email"
+                        ? "Enter your email address to receive a verification code."
+                        : forgotPasswordStep === "code"
+                          ? `We sent a code to ${forgotPasswordEmail}. Enter it below.`
+                          : "Create a strong password for your account."}
+                  </p>
+                </div>
+
+                {resetSuccess ? (
+                  <div className="flex justify-center">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                      <Check className="w-8 h-8 text-green-600" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {forgotPasswordError && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start">
+                        <AlertCircle className="w-5 h-5 text-red-600 mr-2 flex-shrink-0 mt-0.5" />
+                        <p className="text-sm text-red-600">
+                          {forgotPasswordError}
+                        </p>
+                      </div>
+                    )}
+
+                    {forgotPasswordStep === "email" && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Email Address
+                        </label>
+                        <input
+                          type="email"
+                          value={forgotPasswordEmail}
+                          onChange={(e) =>
+                            setForgotPasswordEmail(e.target.value)
+                          }
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                          placeholder="Enter your email"
+                        />
+                        <button
+                          onClick={handleSendResetCode}
+                          disabled={
+                            isForgotPasswordLoading || !forgotPasswordEmail
+                          }
+                          className="w-full mt-4 bg-purple-600 text-white py-3 rounded-xl font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                        >
+                          {isForgotPasswordLoading ? (
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            "Send Reset Code"
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                    {forgotPasswordStep === "code" && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Verification Code
+                        </label>
+                        <input
+                          type="text"
+                          value={resetCode}
+                          onChange={(e) => setResetCode(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all text-center tracking-widest text-lg"
+                          placeholder="Enter 6-digit code"
+                          maxLength={6}
+                        />
+                        <button
+                          onClick={handleVerifyCode}
+                          disabled={isForgotPasswordLoading || !resetCode}
+                          className="w-full mt-4 bg-purple-600 text-white py-3 rounded-xl font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                        >
+                          {isForgotPasswordLoading ? (
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            "Verify Code"
+                          )}
+                        </button>
+                        <button
+                          onClick={() => setForgotPasswordStep("email")}
+                          className="w-full mt-2 text-gray-500 text-sm hover:text-gray-700 py-2"
+                        >
+                          Change Email
+                        </button>
+                      </div>
+                    )}
+
+                    {forgotPasswordStep === "newPassword" && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            New Password
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showResetPassword ? "text" : "password"}
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all pr-12"
+                              placeholder="At least 6 characters"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setShowResetPassword(!showResetPassword)
+                              }
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                              {showResetPassword ? (
+                                <EyeOff className="w-5 h-5" />
+                              ) : (
+                                <Eye className="w-5 h-5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Confirm New Password
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={
+                                showResetConfirmPassword ? "text" : "password"
+                              }
+                              value={confirmPassword}
+                              onChange={(e) =>
+                                setConfirmPassword(e.target.value)
+                              }
+                              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all pr-12"
+                              placeholder="Confirm new password"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setShowResetConfirmPassword(
+                                  !showResetConfirmPassword,
+                                )
+                              }
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                              {showResetConfirmPassword ? (
+                                <EyeOff className="w-5 h-5" />
+                              ) : (
+                                <Eye className="w-5 h-5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleResetPassword}
+                          disabled={
+                            isForgotPasswordLoading ||
+                            !newPassword ||
+                            !confirmPassword
+                          }
+                          className="w-full mt-2 bg-purple-600 text-white py-3 rounded-xl font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                        >
+                          {isForgotPasswordLoading ? (
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            "Reset Password"
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

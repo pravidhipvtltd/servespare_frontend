@@ -2,7 +2,8 @@ export type UserRole =
   | "super_admin"
   | "admin"
   | "inventory_manager"
-  | "cashier";
+  | "cashier"
+  | "customer";
 
 export interface User {
   id: string;

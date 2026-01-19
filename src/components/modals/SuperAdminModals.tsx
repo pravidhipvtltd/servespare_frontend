@@ -562,8 +562,8 @@ export const ViewAdminModal: React.FC<{
                     admin.status === "active"
                       ? "bg-green-100 text-green-700"
                       : admin.status === "suspended"
-                      ? "bg-orange-100 text-orange-700"
-                      : "bg-gray-100 text-gray-700"
+                        ? "bg-orange-100 text-orange-700"
+                        : "bg-gray-100 text-gray-700"
                   }`}
                 >
                   {admin.status.toUpperCase()}
@@ -712,7 +712,7 @@ export const ViewAdminModal: React.FC<{
   );
 };
 
-// Edit Admin Modal
+
 export const EditAdminModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
