@@ -198,7 +198,7 @@ export const CashierDashboardNew: React.FC = () => {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerType, setCustomerType] = useState<"retail" | "workshop">(
-    "retail"
+    "retail",
   );
   const [paymentMethod, setPaymentMethod] = useState<
     "cash" | "esewa" | "fonepay" | "bank"
@@ -206,7 +206,7 @@ export const CashierDashboardNew: React.FC = () => {
   const [selectedBankAccount, setSelectedBankAccount] = useState("");
   const [discount, setDiscount] = useState(0);
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">(
-    "percentage"
+    "percentage",
   );
 
   // Bills and Stats
@@ -235,7 +235,7 @@ export const CashierDashboardNew: React.FC = () => {
   const [ledgerFilterShift, setLedgerFilterShift] = useState("all");
   const [ledgerFilterType, setLedgerFilterType] = useState("all");
   const [ledgerTab, setLedgerTab] = useState<"general" | "sales" | "purchase">(
-    "general"
+    "general",
   );
   const [ledgerData, setLedgerData] = useState<LedgerEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -280,13 +280,13 @@ export const CashierDashboardNew: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [errorTitle, setErrorTitle] = useState("");
   const [errorType, setErrorType] = useState<"error" | "warning" | "info">(
-    "warning"
+    "warning",
   );
 
   const showError = (
     message: string,
     title?: string,
-    type: "error" | "warning" | "info" = "warning"
+    type: "error" | "warning" | "info" = "warning",
   ) => {
     setErrorMessage(message);
     setErrorTitle(title || "");
@@ -310,13 +310,13 @@ export const CashierDashboardNew: React.FC = () => {
   const loadData = () => {
     // Load products
     const allProducts = getFromStorage("products", []).filter(
-      (p: any) => p.workspaceId === currentUser?.workspaceId
+      (p: any) => p.workspaceId === currentUser?.workspaceId,
     );
     setProducts(allProducts);
 
     // Load bills (fetch entire dataset as admin does - no cashierId filter)
     let allBills = getFromStorage("bills", []).filter(
-      (b: Bill) => b.workspaceId === currentUser?.workspaceId
+      (b: Bill) => b.workspaceId === currentUser?.workspaceId,
     );
 
     // Add dummy bills if none exist - REMOVED
@@ -329,12 +329,12 @@ export const CashierDashboardNew: React.FC = () => {
       (b: Bill) =>
         b.createdAt &&
         b.createdAt.startsWith(today) &&
-        b.paymentStatus === "paid"
+        b.paymentStatus === "paid",
     );
 
     const todayRevenue = todayBills.reduce(
       (sum: number, b: Bill) => sum + b.total,
-      0
+      0,
     );
     const avgOrderValue =
       todayBills.length > 0 ? todayRevenue / todayBills.length : 0;
@@ -342,7 +342,7 @@ export const CashierDashboardNew: React.FC = () => {
     setStats({
       todaySales: todayBills.length,
       todayOrders: allBills.filter(
-        (b: Bill) => b.createdAt && b.createdAt.startsWith(today)
+        (b: Bill) => b.createdAt && b.createdAt.startsWith(today),
       ).length,
       todayRevenue,
       averageOrderValue: avgOrderValue,
@@ -350,13 +350,13 @@ export const CashierDashboardNew: React.FC = () => {
 
     // Load bank accounts
     const accounts = getFromStorage("bankAccounts", []).filter(
-      (a: any) => a.workspaceId === currentUser?.workspaceId && a.isActive
+      (a: any) => a.workspaceId === currentUser?.workspaceId && a.isActive,
     );
     setBankAccounts(accounts);
 
     // Add dummy purchase orders if none exist
     const allPOs = getFromStorage("purchase_orders", []).filter(
-      (po: any) => po.workspaceId === currentUser?.workspaceId
+      (po: any) => po.workspaceId === currentUser?.workspaceId,
     );
 
     if (allPOs.length === 0 && currentUser?.workspaceId) {
@@ -369,7 +369,7 @@ export const CashierDashboardNew: React.FC = () => {
     setAllShifts(shifts);
 
     const activeShift = shifts.find(
-      (s) => s.cashierId === currentUser?.id && s.status === "active"
+      (s) => s.cashierId === currentUser?.id && s.status === "active",
     );
     setCurrentShift(activeShift || null);
 
@@ -377,7 +377,7 @@ export const CashierDashboardNew: React.FC = () => {
     const cashierShifts = shifts.filter(
       (s) =>
         s.cashierId === currentUser?.id &&
-        (s.status === "ended" || s.status === "transferred")
+        (s.status === "ended" || s.status === "transferred"),
     );
     if (cashierShifts.length > 0) {
       // Sort by date/time descending to get the most recent
@@ -396,55 +396,24 @@ export const CashierDashboardNew: React.FC = () => {
   const loadCashTransactions = () => {
     const transactions: CashInOutTransaction[] = getFromStorage(
       "cash_in_out_transactions",
-      []
+      [],
     );
     setCashTransactions(
       transactions.filter(
         (t) =>
           t.cashierId === currentUser?.id &&
-          (currentShift ? t.shiftId === currentShift.id : true)
-      )
+          (currentShift ? t.shiftId === currentShift.id : true),
+      ),
     );
   };
 
   // Shift Management Functions
   const startShift = async () => {
-    // ...existing code...
-    // Always fetch general ledger when switching to the 'general' tab
-    useEffect(() => {
-      if (ledgerTab === "general") {
-        setIsLoadingLedger(true);
-        setLedgerError(null);
-        fetch(
-          `${
-            import.meta.env.VITE_API_BASE_URL
-          }/cash-and-bank/account-ledger/general/`,
-          {
-            headers: {
-              "ngrok-skip-browser-warning": "true",
-            },
-          }
-        )
-          .then((res) => {
-            if (!res.ok) throw new Error("Failed to fetch general ledger");
-            return res.json();
-          })
-          .then((data) => {
-            setGeneralLedger(Array.isArray(data) ? data : [data]);
-            setIsLoadingLedger(false);
-          })
-          .catch((err) => {
-            setLedgerError(err.message || "Error loading ledger");
-            setIsLoadingLedger(false);
-          });
-      }
-    }, [ledgerTab]);
-
     if (startingCash < 0) {
       showError(
         "Please enter a valid starting cash amount!",
         "Invalid Amount",
-        "warning"
+        "warning",
       );
       return;
     }
@@ -467,7 +436,7 @@ export const CashierDashboardNew: React.FC = () => {
       .filter((s) => s.branchId)
       .sort(
         (a, b) =>
-          new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+          new Date(b.startTime).getTime() - new Date(a.startTime).getTime(),
       )[0];
 
     // Get branch ID directly from the cashier's user object (no API call needed)
@@ -486,7 +455,7 @@ export const CashierDashboardNew: React.FC = () => {
       showError(
         "You don't have a branch assigned. Please contact your administrator to assign you to a branch.",
         "Branch Required",
-        "warning"
+        "warning",
       );
       return;
     }
@@ -498,7 +467,7 @@ export const CashierDashboardNew: React.FC = () => {
       showError(
         "Invalid branch information. Please contact admin to fix your branch assignment.",
         "Invalid Branch",
-        "error"
+        "error",
       );
       return;
     }
@@ -534,8 +503,10 @@ export const CashierDashboardNew: React.FC = () => {
     try {
       const payload = {
         opening_float: String(startingCash),
+        tenant: Number(currentUser?.workspaceId || tenantId || 0),
         branch: branchIdPayload,
-        cashier: Number(currentUser?.id) || currentUser?.id,
+        status: "open",
+        cashier: currentUser?.id,
       };
 
       const response = await fetch(
@@ -548,13 +519,13 @@ export const CashierDashboardNew: React.FC = () => {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(payload),
-        }
+        },
       );
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => "");
         throw new Error(
-          errorText || `Failed to start shift (${response.status})`
+          errorText || `Failed to start shift (${response.status})`,
         );
       }
 
@@ -572,7 +543,7 @@ export const CashierDashboardNew: React.FC = () => {
             data?.starting_cash ??
             data?.start_cash ??
             data?.opening_float ??
-            startingCash
+            startingCash,
         ) || startingCash;
 
       const newShift: ShiftData = {
@@ -606,7 +577,7 @@ export const CashierDashboardNew: React.FC = () => {
       showError(
         error?.message || "Unable to start shift. Please try again.",
         "Start Failed",
-        "error"
+        "error",
       );
     } finally {
       setIsStartingShift(false);
@@ -620,7 +591,16 @@ export const CashierDashboardNew: React.FC = () => {
       showError(
         "Please enter a valid ending cash amount!",
         "Invalid Amount",
-        "warning"
+        "warning",
+      );
+      return;
+    }
+
+    if (!transferToName.trim()) {
+      showError(
+        "Please specify where the cash is being transferred (e.g., Vault).",
+        "Missing Information",
+        "warning",
       );
       return;
     }
@@ -670,7 +650,7 @@ export const CashierDashboardNew: React.FC = () => {
       .filter((s) => s.branchId)
       .sort(
         (a, b) =>
-          new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+          new Date(b.startTime).getTime() - new Date(a.startTime).getTime(),
       )[0];
     let resolvedBranchId =
       parsedUser?.branch ||
@@ -685,35 +665,39 @@ export const CashierDashboardNew: React.FC = () => {
     const token =
       localStorage.getItem("accessToken") || localStorage.getItem("auth_token");
 
-    try {
-      const payload = {
-        status: "closed",
-        amount: String(endingCash),
-        branch: branchIdPayload,
-        cashier: Number(currentUser?.id) || currentUser?.id,
-        variance: variance,
-        reason: variance !== 0 ? varianceReason : undefined,
-      };
+    const isBalanced = Math.abs(variance) < 0.01;
+    const endpointSuffix = isBalanced ? "close_balanced" : "close_variance";
 
+    const payload: any = {
+      actual_amount: endingCash,
+      notes: isBalanced ? "Shift ended balanced" : "Shift ended with variance",
+      transferred_to: transferToName,
+    };
+
+    if (!isBalanced) {
+      payload.variance_reason = varianceReason || "Unspecified variance";
+    }
+
+    try {
       const response = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/cash-and-bank/shifts/${
           currentShift.id
-        }/`,
+        }/${endpointSuffix}/`,
         {
-          method: "PATCH",
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
             "ngrok-skip-browser-warning": "true",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(payload),
-        }
+        },
       );
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => "");
         throw new Error(
-          errorText || `Failed to close shift (${response.status})`
+          errorText || `Failed to close shift (${response.status})`,
         );
       }
 
@@ -728,7 +712,7 @@ export const CashierDashboardNew: React.FC = () => {
       };
 
       const shifts = allShifts.map((s) =>
-        s.id === currentShift.id ? updatedShift : s
+        s.id === currentShift.id ? updatedShift : s,
       );
       saveToStorage("cashier_shifts", shifts);
 
@@ -743,7 +727,7 @@ export const CashierDashboardNew: React.FC = () => {
       showError(
         error?.message || "Unable to end shift. Please try again.",
         "End Failed",
-        "error"
+        "error",
       );
     }
   };
@@ -755,7 +739,7 @@ export const CashierDashboardNew: React.FC = () => {
       showError(
         "Please enter the name of the person you are transferring to!",
         "Name Required",
-        "warning"
+        "warning",
       );
       return;
     }
@@ -764,7 +748,7 @@ export const CashierDashboardNew: React.FC = () => {
       showError(
         "Please count and enter the cash amount!",
         "Invalid Amount",
-        "warning"
+        "warning",
       );
       return;
     }
@@ -814,7 +798,7 @@ export const CashierDashboardNew: React.FC = () => {
       .filter((s) => s.branchId)
       .sort(
         (a, b) =>
-          new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+          new Date(b.startTime).getTime() - new Date(a.startTime).getTime(),
       )[0];
     let resolvedBranchId =
       parsedUser?.branch ||
@@ -830,36 +814,34 @@ export const CashierDashboardNew: React.FC = () => {
       localStorage.getItem("accessToken") || localStorage.getItem("auth_token");
 
     try {
-      const payload = {
-        status: "transferred",
-        branch: branchIdPayload,
-        cashier: Number(currentUser?.id) || currentUser?.id,
-        transferred_to: transferToName,
-        expected_cash: expectedCash,
+      const payload: any = {
         counted_cash: transferCashCount,
-        variance: variance,
-        reason: variance !== 0 ? transferVarianceReason : undefined,
+        transferred_to: transferToName,
       };
+
+      if (variance !== 0) {
+        payload.variance_reason = transferVarianceReason;
+      }
 
       const response = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/cash-and-bank/shifts/${
           currentShift.id
-        }/`,
+        }/transfer_shift/`,
         {
-          method: "PATCH",
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
             "ngrok-skip-browser-warning": "true",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(payload),
-        }
+        },
       );
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => "");
         throw new Error(
-          errorText || `Failed to transfer shift (${response.status})`
+          errorText || `Failed to transfer shift (${response.status})`,
         );
       }
 
@@ -875,7 +857,7 @@ export const CashierDashboardNew: React.FC = () => {
       };
 
       const shifts = allShifts.map((s) =>
-        s.id === currentShift.id ? updatedShift : s
+        s.id === currentShift.id ? updatedShift : s,
       );
       saveToStorage("cashier_shifts", shifts);
 
@@ -891,7 +873,7 @@ export const CashierDashboardNew: React.FC = () => {
       showError(
         error?.message || "Unable to transfer shift. Please try again.",
         "Transfer Failed",
-        "error"
+        "error",
       );
     }
   };
@@ -929,7 +911,7 @@ export const CashierDashboardNew: React.FC = () => {
       cashIn: currentShift.cashIn + cashInAmount,
     };
     const shifts = allShifts.map((s) =>
-      s.id === currentShift.id ? updatedShift : s
+      s.id === currentShift.id ? updatedShift : s,
     );
     saveToStorage("cashier_shifts", shifts);
     setCurrentShift(updatedShift);
@@ -973,7 +955,7 @@ export const CashierDashboardNew: React.FC = () => {
       cashOut: currentShift.cashOut + cashOutAmount,
     };
     const shifts = allShifts.map((s) =>
-      s.id === currentShift.id ? updatedShift : s
+      s.id === currentShift.id ? updatedShift : s,
     );
     saveToStorage("cashier_shifts", shifts);
     setCurrentShift(updatedShift);
@@ -995,7 +977,7 @@ export const CashierDashboardNew: React.FC = () => {
       showError(
         "Please select bank and enter amount!",
         "Invalid Input",
-        "warning"
+        "warning",
       );
       return;
     }
@@ -1038,7 +1020,7 @@ export const CashierDashboardNew: React.FC = () => {
       cashOut: currentShift.cashOut + transferBankAmount,
     };
     const shifts = allShifts.map((s) =>
-      s.id === currentShift.id ? updatedShift : s
+      s.id === currentShift.id ? updatedShift : s,
     );
     saveToStorage("cashier_shifts", shifts);
     setCurrentShift(updatedShift);
@@ -1068,7 +1050,7 @@ export const CashierDashboardNew: React.FC = () => {
         showError(
           "Cannot add more than available stock!",
           "Stock Limit",
-          "warning"
+          "warning",
         );
         return;
       }
@@ -1099,7 +1081,7 @@ export const CashierDashboardNew: React.FC = () => {
       showError(
         "Product not found with this barcode!",
         "Product Not Found",
-        "warning"
+        "warning",
       );
     }
   };
@@ -1131,7 +1113,7 @@ export const CashierDashboardNew: React.FC = () => {
           };
         }
         return item;
-      })
+      }),
     );
   };
 
@@ -1142,7 +1124,7 @@ export const CashierDashboardNew: React.FC = () => {
   const calculateTotals = () => {
     const subtotal = cart.reduce(
       (sum, item) => sum + item.price * item.quantity,
-      0
+      0,
     );
     const discountAmount =
       discountType === "percentage" ? (subtotal * discount) / 100 : discount;
@@ -1241,7 +1223,7 @@ export const CashierDashboardNew: React.FC = () => {
         totalTransactions: currentShift!.totalTransactions + 1,
       };
       const shifts = allShifts.map((s) =>
-        s.id === currentShift!.id ? updatedShift : s
+        s.id === currentShift!.id ? updatedShift : s,
       );
       saveToStorage("cashier_shifts", shifts);
       setCurrentShift(updatedShift);
@@ -1300,7 +1282,7 @@ export const CashierDashboardNew: React.FC = () => {
     // Calculate return totals
     const returnSubtotal = itemsToReturn.reduce(
       (sum, item) => sum + item.price * item.quantity,
-      0
+      0,
     );
     const returnTax = (returnSubtotal * 13) / 100;
     const returnTotal = returnSubtotal + returnTax;
@@ -1409,7 +1391,7 @@ export const CashierDashboardNew: React.FC = () => {
                     label: "Started At",
                     value: new Date(currentShift.startTime).toLocaleTimeString(
                       "en-NP",
-                      { hour: "2-digit", minute: "2-digit" }
+                      { hour: "2-digit", minute: "2-digit" },
                     ),
                   },
                   {
@@ -1820,7 +1802,7 @@ export const CashierDashboardNew: React.FC = () => {
                 (p) =>
                   searchQuery === "" ||
                   p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  p.sku.toLowerCase().includes(searchQuery.toLowerCase())
+                  p.sku.toLowerCase().includes(searchQuery.toLowerCase()),
               )
               .map((product) => (
                 <button
@@ -2298,11 +2280,11 @@ export const CashierDashboardNew: React.FC = () => {
       // Calculate totals
       const totalDebit = ledgerData.reduce(
         (sum, entry) => sum + Number(entry.debit || 0),
-        0
+        0,
       );
       const totalCredit = ledgerData.reduce(
         (sum, entry) => sum + Number(entry.credit || 0),
-        0
+        0,
       );
       const netBalance = ledgerData.length
         ? Number(ledgerData[ledgerData.length - 1].balance)
@@ -2431,7 +2413,7 @@ export const CashierDashboardNew: React.FC = () => {
                         {entry.transaction_time_display ||
                           (entry.transaction_date
                             ? new Date(
-                                entry.transaction_date
+                                entry.transaction_date,
                               ).toLocaleTimeString()
                             : "")}
                       </td>
@@ -2555,10 +2537,10 @@ export const CashierDashboardNew: React.FC = () => {
       // Sort by date
       salesEntries.sort((a, b) => {
         const dateA = new Date(
-          `${a.date.split("/").reverse().join("-")} ${a.time}`
+          `${a.date.split("/").reverse().join("-")} ${a.time}`,
         ).getTime();
         const dateB = new Date(
-          `${b.date.split("/").reverse().join("-")} ${b.time}`
+          `${b.date.split("/").reverse().join("-")} ${b.time}`,
         ).getTime();
         return dateB - dateA;
       });
@@ -2566,15 +2548,15 @@ export const CashierDashboardNew: React.FC = () => {
       // Calculate totals
       const totalSales = salesEntries.reduce(
         (sum, entry) => sum + entry.total,
-        0
+        0,
       );
       const totalSubtotal = salesEntries.reduce(
         (sum, entry) => sum + entry.subtotal,
-        0
+        0,
       );
       const totalDiscount = salesEntries.reduce(
         (sum, entry) => sum + entry.discount,
-        0
+        0,
       );
       const totalTax = salesEntries.reduce((sum, entry) => sum + entry.tax, 0);
       const cashSales = salesEntries
@@ -2756,10 +2738,10 @@ export const CashierDashboardNew: React.FC = () => {
                               entry.paymentMethod === "cash"
                                 ? "bg-green-100 text-green-700"
                                 : entry.paymentMethod === "esewa"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : entry.paymentMethod === "fonepay"
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-purple-100 text-purple-700"
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : entry.paymentMethod === "fonepay"
+                                    ? "bg-blue-100 text-blue-700"
+                                    : "bg-purple-100 text-purple-700"
                             }`}
                           >
                             {entry.paymentMethod}
@@ -2864,10 +2846,10 @@ export const CashierDashboardNew: React.FC = () => {
       // Sort by date
       purchaseEntries.sort((a, b) => {
         const dateA = new Date(
-          `${a.date.split("/").reverse().join("-")} ${a.time}`
+          `${a.date.split("/").reverse().join("-")} ${a.time}`,
         ).getTime();
         const dateB = new Date(
-          `${b.date.split("/").reverse().join("-")} ${b.time}`
+          `${b.date.split("/").reverse().join("-")} ${b.time}`,
         ).getTime();
         return dateB - dateA;
       });
@@ -2875,15 +2857,15 @@ export const CashierDashboardNew: React.FC = () => {
       // Calculate totals
       const totalPurchases = purchaseEntries.reduce(
         (sum, entry) => sum + entry.total,
-        0
+        0,
       );
       const totalSubtotal = purchaseEntries.reduce(
         (sum, entry) => sum + entry.subtotal,
-        0
+        0,
       );
       const totalTax = purchaseEntries.reduce(
         (sum, entry) => sum + entry.tax,
-        0
+        0,
       );
       const paidPurchases = purchaseEntries
         .filter((e) => e.paymentStatus === "paid")
@@ -3045,10 +3027,10 @@ export const CashierDashboardNew: React.FC = () => {
                               entry.status === "completed"
                                 ? "bg-green-100 text-green-700"
                                 : entry.status === "in_transit"
-                                ? "bg-blue-100 text-blue-700"
-                                : entry.status === "confirmed"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-gray-100 text-gray-700"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : entry.status === "confirmed"
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : "bg-gray-100 text-gray-700"
                             }`}
                           >
                             {entry.status.replace("_", " ")}
@@ -3060,8 +3042,8 @@ export const CashierDashboardNew: React.FC = () => {
                               entry.paymentStatus === "paid"
                                 ? "bg-green-100 text-green-700"
                                 : entry.paymentStatus === "partial"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-red-100 text-red-700"
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : "bg-red-100 text-red-700"
                             }`}
                           >
                             {entry.paymentStatus}
@@ -3404,6 +3386,19 @@ export const CashierDashboardNew: React.FC = () => {
                     value={endingCash}
                     onChange={(e) => setEndingCash(Number(e.target.value))}
                     placeholder="Enter actual cash in drawer..."
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Transferred To *
+                  </label>
+                  <input
+                    type="text"
+                    value={transferToName}
+                    onChange={(e) => setTransferToName(e.target.value)}
+                    placeholder="e.g. Vault, Manager Name..."
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
@@ -4085,7 +4080,7 @@ export const CashierDashboardNew: React.FC = () => {
                     Date:{" "}
                     <span className="font-semibold text-gray-900">
                       {new Date(selectedBillForReturn.createdAt).toLocaleString(
-                        "en-NP"
+                        "en-NP",
                       )}
                     </span>
                   </p>
@@ -4120,7 +4115,7 @@ export const CashierDashboardNew: React.FC = () => {
                               ...item,
                               quantity: Math.min(
                                 Number(e.target.value),
-                                item.quantity
+                                item.quantity,
                               ),
                             };
                             setReturnItems(newReturnItems);

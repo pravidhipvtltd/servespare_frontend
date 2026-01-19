@@ -1,4 +1,11 @@
-import React from "react";
+import React, { useEffect } from "react";
+import {
+  Routes,
+  Route,
+  useNavigate,
+  useLocation,
+  Navigate,
+} from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { SyncProvider } from "./contexts/SyncContext";
@@ -8,6 +15,7 @@ import { Toaster } from "./components/ui/sonner";
 import { EntryLandingPage } from "./components/EntryLandingPage";
 import { LandingPage } from "./components/LandingPage";
 import { CustomerPanel } from "./components/CustomerPanel";
+import { CustomerAuthEnhanced } from "./components/customer/CustomerAuthEnhanced";
 import { SuperAdminDashboardRefined } from "./components/SuperAdminDashboardRefined";
 import { AdminDashboard as AdminDashboardWorldClass } from "./components/AdminDashboardWorldClass";
 import { InventoryManagerDashboardNew } from "./components/InventoryManagerDashboardNew";
@@ -40,6 +48,8 @@ export default function App() {
 
 const AppContent: React.FC = () => {
   const { currentUser, isLoading, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [needsProfileCompletion, setNeedsProfileCompletion] =
     React.useState(false);
   const [showPasswordChangeModal, setShowPasswordChangeModal] =
@@ -48,11 +58,6 @@ const AppContent: React.FC = () => {
   const [adminAccountForPasswordChange, setAdminAccountForPasswordChange] =
     React.useState<any>(null);
   const [isTestMode, setIsTestMode] = React.useState(false);
-
-  // NEW: App mode state (entry | customer | admin)
-  const [appMode, setAppMode] = React.useState<"entry" | "customer" | "admin">(
-    "entry"
-  );
 
   // Onboarding states for admin
   const [onboardingStep, setOnboardingStep] = React.useState<
@@ -120,7 +125,6 @@ const AppContent: React.FC = () => {
     }
   }, [currentUser]);
 
-  
   React.useEffect(() => {
     if (!currentUser) return;
 
@@ -133,7 +137,6 @@ const AppContent: React.FC = () => {
 
     // Priority 1: Force password change if needed
     if (mustChangePassword && currentUser.role === "admin") {
-      
       const tempAdminAccount = {
         id: userId,
         email: currentUser.email,
@@ -212,6 +215,31 @@ const AppContent: React.FC = () => {
     logout();
   };
 
+  // Role-based dashboard routing helper
+  const getDashboardRoute = (role: string) => {
+    switch (role) {
+      case "super_admin":
+        return "/admin/super-admin/dashboard";
+      case "admin":
+        return "/admin/admin/dashboard";
+      case "inventory_manager":
+        return "/admin/inventory-manager/dashboard";
+      case "cashier":
+        return "/admin/cashier/dashboard";
+      case "customer":
+        return "/customer/home";
+      default:
+        return "/";
+    }
+  };
+
+  // Effect to redirect to correct dashboard URL if at root or wrong path
+  useEffect(() => {
+    if (currentUser && location.pathname === "/") {
+      navigate(getDashboardRoute(currentUser.role));
+    }
+  }, [currentUser, location.pathname, navigate]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 flex items-center justify-center">
@@ -227,20 +255,34 @@ const AppContent: React.FC = () => {
   }
 
   if (!currentUser) {
-    // Show entry landing page or customer/admin panel based on appMode
-    if (appMode === "entry") {
-      return (
-        <EntryLandingPage
-          onSelectCustomer={() => setAppMode("customer")}
-          onSelectAdmin={() => setAppMode("admin")}
-        />
-      );
-    } else if (appMode === "customer") {
-      return <CustomerPanel onBackToEntry={() => setAppMode("entry")} />;
-    } else {
-      // Admin mode - show admin landing/login page
-      return <LandingPage onBackToEntry={() => setAppMode("entry")} />;
-    }
+    // Routes for unauthenticated users
+    return (
+      <>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <EntryLandingPage
+                onSelectCustomer={() => navigate("/customer")}
+                onSelectAdmin={() => navigate("/admin")}
+              />
+            }
+          />
+          <Route
+            path="/admin/*"
+            element={<LandingPage onBackToEntry={() => navigate("/")} />}
+          />
+          <Route
+            path="/customer/*"
+            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+          />
+          {/* Catch-all route for unauthenticated users redirecting to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+        <OfflineStatusBar />
+        <Toaster />
+      </>
+    );
   }
 
   // Show profile completion if needed
@@ -301,33 +343,68 @@ const AppContent: React.FC = () => {
     }
   }
 
-  // Role-based dashboard routing
-
-  let dashboardComponent;
-
-  switch (currentUser.role) {
-    case "super_admin":
-      dashboardComponent = <SuperAdminDashboardRefined />;
-      break;
-    case "admin":
-      dashboardComponent = <AdminDashboardWorldClass />;
-      break;
-    case "inventory_manager":
-      dashboardComponent = <InventoryManagerDashboardNew />;
-      break;
-    case "cashier":
-      dashboardComponent = <CashierDashboardNew />;
-      break;
-    case "customer":
-      dashboardComponent = <CustomerPanel onBackToEntry={logout} />;
-      break;
-    default:
-      dashboardComponent = <LandingPage />;
-  }
-
   return (
     <>
-      {dashboardComponent}
+      <Routes>
+        <Route
+          path="/admin/super-admin/*"
+          element={
+            currentUser.role === "super_admin" ? (
+              <SuperAdminDashboardRefined />
+            ) : (
+              <Navigate to={getDashboardRoute(currentUser.role)} replace />
+            )
+          }
+        />
+        <Route
+          path="/admin/admin/*"
+          element={
+            currentUser.role === "admin" ? (
+              <AdminDashboardWorldClass />
+            ) : (
+              <Navigate to={getDashboardRoute(currentUser.role)} replace />
+            )
+          }
+        />
+        <Route
+          path="/admin/inventory-manager/dashboard"
+          element={
+            currentUser.role === "inventory_manager" ? (
+              <InventoryManagerDashboardNew />
+            ) : (
+              <Navigate to={getDashboardRoute(currentUser.role)} replace />
+            )
+          }
+        />
+        <Route
+          path="/admin/cashier/dashboard"
+          element={
+            currentUser.role === "cashier" ? (
+              <CashierDashboardNew />
+            ) : (
+              <Navigate to={getDashboardRoute(currentUser.role)} replace />
+            )
+          }
+        />
+        <Route
+          path="/customer/home"
+          element={
+            currentUser.role === "customer" ? (
+              <CustomerPanel onBackToEntry={logout} />
+            ) : (
+              <Navigate to={getDashboardRoute(currentUser.role)} replace />
+            )
+          }
+        />
+        {/* Redirect any authenticated user trying to access other paths back to their dashboard */}
+        <Route
+          path="*"
+          element={
+            <Navigate to={getDashboardRoute(currentUser.role)} replace />
+          }
+        />
+      </Routes>
+
       {/* Force Password Change Modal */}
       {adminAccountForPasswordChange && showPasswordChangeModal && (
         <ForcePasswordChangeModal

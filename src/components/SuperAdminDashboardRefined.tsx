@@ -70,6 +70,7 @@ import { CredentialsModal } from "./modals/CredentialsModal";
 import SubscriptionPackageModal from "./modals/SubscriptionPackageModal";
 import { ChequeManagementPanel } from "./panels/ChequeManagementPanel";
 import { getBranches, Branch } from "../api/branch.api";
+import { useNavigate, useLocation } from "react-router-dom";
 
 // Subscription Package Types
 export type SubscriptionPackage = "basic" | "professional" | "enterprise";
@@ -218,7 +219,43 @@ const menuItems: MenuItem[] = [
 
 export const SuperAdminDashboardRefined: React.FC = () => {
   const { currentUser, logout } = useAuth();
-  const [activePanel, setActivePanel] = useState("dashboard");
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const getPanelFromPath = () => {
+    const path = location.pathname;
+    const prefix = "/admin/super-admin";
+
+    // Check if exactly the prefix or prefix/
+    if (path === prefix || path === prefix + "/") return "dashboard";
+
+    // Extract section relative to the prefix
+    let relativePart = "";
+    if (path.startsWith(prefix + "/")) {
+      relativePart = path.substring((prefix + "/").length);
+    } else if (path.startsWith(prefix)) {
+      relativePart = path.substring(prefix.length);
+    }
+
+    // Remove any trailing slash from the relative part for matching
+    if (relativePart.endsWith("/")) {
+      relativePart = relativePart.slice(0, -1);
+    }
+
+    // Default to dashboard if empty
+    if (!relativePart) return "dashboard";
+
+    // Check if it matches a known panel
+    const found = menuItems.find((item) => item.panel === relativePart);
+    return found ? found.panel : "dashboard";
+  };
+
+  const activePanel = getPanelFromPath() || "dashboard";
+
+  const handleNavigate = (panel: string) => {
+    navigate(`/admin/super-admin/${panel}`);
+  };
+
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [pendingVerificationsCount, setPendingVerificationsCount] = useState(0);
@@ -242,7 +279,6 @@ export const SuperAdminDashboardRefined: React.FC = () => {
     );
     setPendingVerificationsCount(pendingUsers.length);
 
-    // Load pending approvals count (business registrations)
     const pendingRegistrations = JSON.parse(
       localStorage.getItem("pending_registrations") || "[]",
     );
@@ -251,7 +287,6 @@ export const SuperAdminDashboardRefined: React.FC = () => {
     );
     setPendingApprovalsCount(pendingOnly.length);
 
-    // Fetch admin accounts from API using centralized service
     try {
       const data = await getSubscriptions(1, 1000);
 
@@ -314,7 +349,7 @@ export const SuperAdminDashboardRefined: React.FC = () => {
         return (
           <DashboardView
             adminAccounts={adminAccounts}
-            onNavigate={setActivePanel}
+            onNavigate={handleNavigate}
           />
         );
       case "admins":
@@ -361,13 +396,13 @@ export const SuperAdminDashboardRefined: React.FC = () => {
         return (
           <DashboardView
             adminAccounts={adminAccounts}
-            onNavigate={setActivePanel}
+            onNavigate={handleNavigate}
           />
         );
     }
   };
 
-  // Update menu items with dynamic badges
+  // Update menu items with dynamic badgesxc
   const updatedMenuItems = menuItems.map((item) => {
     if (item.id === "pending_verifications") {
       return { ...item, badge: pendingVerificationsCount };
@@ -426,7 +461,7 @@ export const SuperAdminDashboardRefined: React.FC = () => {
           {updatedMenuItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActivePanel(item.panel || "dashboard")}
+              onClick={() => handleNavigate(item.panel || "dashboard")}
               className={`w-full flex items-center justify-between px-6 py-3 text-left transition-all hover:bg-gray-800 ${
                 activePanel === item.panel
                   ? "bg-gradient-to-r from-orange-600 to-red-600 border-l-4 border-yellow-400 shadow-lg"

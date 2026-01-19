@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Settings,
   Package,
@@ -286,7 +287,47 @@ export const AdminDashboard: React.FC = () => {
   const { language } = useLanguage();
   const { lastUpdate } = useSync();
   const { hasPermission } = usePermissions();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [activePanel, setActivePanel] = useState("dashboard");
+
+  // Effect to sync panel with URL
+  useEffect(() => {
+    const path = location.pathname;
+    // Base path for admin dashboard
+    const prefix = "/admin/admin";
+
+    // Check if exactly the prefix or prefix/
+    if (path === prefix || path === prefix + "/") {
+      setActivePanel("dashboard");
+      return;
+    }
+
+    // Extract section relative to the prefix
+    let relativePart = "";
+    if (path.startsWith(prefix + "/")) {
+      relativePart = path.substring((prefix + "/").length);
+    } else if (path.startsWith(prefix)) {
+      relativePart = path.substring(prefix.length);
+    }
+
+    // Remove any trailing slash from the relative part for matching
+    if (relativePart.endsWith("/")) {
+      relativePart = relativePart.slice(0, -1);
+    }
+
+    if (!relativePart) {
+      setActivePanel("dashboard");
+      return;
+    }
+
+    setActivePanel(relativePart);
+  }, [location.pathname]);
+
+  const handleNavigate = (panel: string) => {
+    navigate(`/admin/admin/${panel}`);
+  };
+
   const [expandedSections, setExpandedSections] = useState<string[]>([
     "main",
     "stock-management",
@@ -343,7 +384,7 @@ export const AdminDashboard: React.FC = () => {
       console.log(
         "🔄 [fetchBranches] Branch list to map:",
         branchList.length,
-        branchList
+        branchList,
       );
 
       const mappedBranches = branchList.map((apiBranch: any) => ({
@@ -377,7 +418,7 @@ export const AdminDashboard: React.FC = () => {
         "✅ Branches loaded:",
         mappedBranches.length,
         "Total:",
-        finalBranches.length
+        finalBranches.length,
       );
     } catch (error) {
       console.error("❌ Error fetching branches:", error);
@@ -486,19 +527,19 @@ export const AdminDashboard: React.FC = () => {
   const checkSubscriptionExpiry = () => {
     const subscriptions = getFromStorage("subscriptions", []);
     const userSubscription = subscriptions.find(
-      (s: any) => s.workspaceId === currentUser?.workspaceId
+      (s: any) => s.workspaceId === currentUser?.workspaceId,
     );
 
     if (userSubscription && userSubscription.expiryDate) {
       const expiryDate = new Date(userSubscription.expiryDate);
       const now = new Date();
       const daysLeft = Math.ceil(
-        (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+        (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
       );
 
       if (daysLeft <= 10 && daysLeft >= 0) {
         const hasSeenWarning = sessionStorage.getItem(
-          "subscription_warning_seen"
+          "subscription_warning_seen",
         );
         if (!hasSeenWarning) {
           setExpiryInfo({
@@ -572,7 +613,7 @@ export const AdminDashboard: React.FC = () => {
     const filtered = menuStructure
       .map((section) => {
         const filteredChildren = section.children?.filter((item) =>
-          item.label.toLowerCase().includes(query)
+          item.label.toLowerCase().includes(query),
         );
 
         if (filteredChildren && filteredChildren.length > 0) {
@@ -620,7 +661,7 @@ export const AdminDashboard: React.FC = () => {
     setExpandedSections((prev) =>
       prev.includes(sectionId)
         ? prev.filter((id) => id !== sectionId)
-        : [...prev, sectionId]
+        : [...prev, sectionId],
     );
   };
 
@@ -630,7 +671,7 @@ export const AdminDashboard: React.FC = () => {
     setRecentPanels((prev) => {
       const updated = [panelId, ...prev.filter((p) => p !== panelId)].slice(
         0,
-        5
+        5,
       );
       return updated;
     });
@@ -934,7 +975,9 @@ export const AdminDashboard: React.FC = () => {
                   return (
                     <div key={item.id} className="relative group/item">
                       <button
-                        onClick={() => handlePanelChange(item.panel!)}
+                        onClick={() =>
+                          handleNavigate(item.panel || "dashboard")
+                        }
                         className={`w-full flex items-center ${
                           sidebarCollapsed
                             ? "justify-center px-2"
@@ -968,10 +1011,10 @@ export const AdminDashboard: React.FC = () => {
                                     item.badgeColor === "amber"
                                       ? "bg-amber-500 text-white"
                                       : item.badgeColor === "green"
-                                      ? "bg-green-500 text-white"
-                                      : item.badgeColor === "red"
-                                      ? "bg-red-500 text-white animate-pulse"
-                                      : "bg-blue-500 text-white"
+                                        ? "bg-green-500 text-white"
+                                        : item.badgeColor === "red"
+                                          ? "bg-red-500 text-white animate-pulse"
+                                          : "bg-blue-500 text-white"
                                   }`}
                                 >
                                   {item.badge}
@@ -1077,7 +1120,7 @@ export const AdminDashboard: React.FC = () => {
                         menuStructure
                           .flatMap((s) => s.children || [])
                           .find((i) => i.panel === activePanel)?.icon || Home,
-                        { className: "w-5 h-5 text-white" }
+                        { className: "w-5 h-5 text-white" },
                       )}
                     </div>
                     <div>
@@ -1239,8 +1282,8 @@ export const AdminDashboard: React.FC = () => {
                                       notif.type === "warning"
                                         ? "bg-yellow-500"
                                         : notif.type === "success"
-                                        ? "bg-green-500"
-                                        : "bg-blue-500"
+                                          ? "bg-green-500"
+                                          : "bg-blue-500"
                                     }`}
                                   ></div>
                                   <div className="flex-1">

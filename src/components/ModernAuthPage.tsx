@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { useNavigate } from "react-router-dom";
 import {
   Settings,
   Package,
@@ -37,6 +38,7 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
   initialMode = "login",
   onBack,
 }) => {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<"login" | "register">(initialMode);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -84,7 +86,6 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
           identifier: forgotPasswordEmail,
@@ -142,7 +143,6 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
           identifier: forgotPasswordEmail,
@@ -234,7 +234,6 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${resetToken}`,
-          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
           new_password: newPassword,
@@ -324,14 +323,11 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
     const API_URL = `${import.meta.env.VITE_API_BASE_URL}/auth/login/`;
 
     try {
-      
-
       // Call backend API directly
       const response = await fetch(`${API_URL}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true", // Bypass ngrok browser warning
         },
         body: JSON.stringify({
           username: loginData.identifier,
@@ -339,16 +335,13 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
         }),
       });
 
-     
-
       // Handle non-JSON responses
       let result;
       try {
         const text = await response.text();
-       
+
         result = text ? JSON.parse(text) : {};
       } catch (jsonError) {
-       
         setError(`Unable to login, Please try again,`);
         return;
       }
@@ -381,7 +374,6 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
 
       // Check if user must change password (first time login)
       if (result.user?.must_change_password === true) {
-        
         setIsFirstTimeLogin(true);
 
         // Store user email for OTP flow
@@ -397,7 +389,6 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
-                  "ngrok-skip-browser-warning": "true",
                 },
                 body: JSON.stringify({
                   identifier: userEmail,
@@ -406,7 +397,6 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
             );
 
             if (otpResponse.ok) {
-              
               setForgotPasswordStep("code");
               setShowForgotPassword(true);
             } else {
@@ -429,7 +419,6 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
       }
 
       if (result.must_reset) {
-       
         const accessToken =
           result.tokens?.access || result.access || result.access_token;
         if (accessToken) {
@@ -458,8 +447,6 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
         typeof result.user === "string" ? JSON.parse(result.user) : result.user;
       const userRole = userFromResponse?.role || userFromResponse?.user_role;
 
-     
-
       if (userRole === "customer") {
         setError("Username or password do not match.");
         setIsLoading(false);
@@ -482,9 +469,28 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
       const loginResult = await login(loginData.identifier, loginData.password);
 
       if (loginResult.success) {
-        console.log("✅ [Login] AuthContext login successful, reloading...");
-        // Reload to navigate to dashboard (role-based routing will happen automatically)
-        window.location.reload();
+        console.log("✅ [Login] AuthContext login successful, redirecting...");
+
+        let dashboardRoute = "/";
+        switch (userRole) {
+          case "super_admin":
+            dashboardRoute = "/admin/super-admin/dashboard";
+            break;
+          case "admin":
+            dashboardRoute = "/admin/admin/dashboard";
+            break;
+          case "inventory_manager":
+            dashboardRoute = "/admin/inventory-manager/dashboard";
+            break;
+          case "cashier":
+            dashboardRoute = "/admin/cashier/dashboard";
+            break;
+          case "customer":
+            dashboardRoute = "/customer/home";
+            break;
+        }
+
+        navigate(dashboardRoute, { replace: true });
       } else {
         setError(loginResult.message || "Login failed. Please try again.");
       }
