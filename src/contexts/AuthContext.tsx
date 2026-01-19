@@ -164,7 +164,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         message: "Login failed. Please try again.",
       };
     }
-
+//example
     try {
       // Parse user data from backend response
       const parsedUser = JSON.parse(storedUser);
