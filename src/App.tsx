@@ -183,10 +183,10 @@ const AppContent: React.FC = () => {
       }
 
       // Second check: Package selection
-      if (!hasPackage && !selectedPkg) {
-        setOnboardingStep("package");
-        return;
-      }
+      // if (!hasPackage && !selectedPkg) {
+      //   setOnboardingStep("package");
+      //   return;
+      // }
 
       // All requirements met
       setOnboardingStep("none");
