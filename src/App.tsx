@@ -227,7 +227,7 @@ const AppContent: React.FC = () => {
       case "cashier":
         return "/admin/cashier/dashboard";
       case "customer":
-        return "/customer/home";
+        return "/shop";
       default:
         return "/";
     }
@@ -275,44 +275,70 @@ const AppContent: React.FC = () => {
           {/* Customer panel routes */}
           <Route
             path="/customer"
-            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+            element={
+              <CustomerPanel key="guest" onBackToEntry={() => navigate("/")} />
+            }
           />
           <Route
             path="/customer/*"
-            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+            element={
+              <CustomerPanel key="guest" onBackToEntry={() => navigate("/")} />
+            }
           />
           {/* Customer panel routes at root level */}
           <Route
             path="/login"
-            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+            element={
+              <CustomerPanel key="guest" onBackToEntry={() => navigate("/")} />
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              <CustomerPanel key="guest" onBackToEntry={() => navigate("/")} />
+            }
           />
           <Route
             path="/shop"
-            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+            element={
+              <CustomerPanel key="guest" onBackToEntry={() => navigate("/")} />
+            }
           />
           <Route
             path="/cart"
-            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+            element={
+              <CustomerPanel key="guest" onBackToEntry={() => navigate("/")} />
+            }
           />
           <Route
             path="/my-orders"
-            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+            element={
+              <CustomerPanel key="guest" onBackToEntry={() => navigate("/")} />
+            }
           />
           <Route
             path="/profile"
-            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+            element={
+              <CustomerPanel key="guest" onBackToEntry={() => navigate("/")} />
+            }
           />
           <Route
             path="/checkout"
-            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+            element={
+              <CustomerPanel key="guest" onBackToEntry={() => navigate("/")} />
+            }
           />
           <Route
             path="/product/:id"
-            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+            element={
+              <CustomerPanel key="guest" onBackToEntry={() => navigate("/")} />
+            }
           />
           <Route
             path="/all-products"
-            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+            element={
+              <CustomerPanel key="guest" onBackToEntry={() => navigate("/")} />
+            }
           />
           {/* Catch-all route for unauthenticated users redirecting to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
@@ -415,7 +441,7 @@ const AppContent: React.FC = () => {
           }
         />
         <Route
-          path="/admin/cashier/dashboard"
+          path="/admin/cashier/*"
           element={
             currentUser.role === "cashier" ? (
               <CashierDashboardNew />
@@ -426,15 +452,111 @@ const AppContent: React.FC = () => {
         />
         <Route
           path="/customer/home"
+          element={<Navigate to="/shop" replace />}
+        />
+        <Route
+          path="/customer"
           element={
             currentUser.role === "customer" ? (
-              <CustomerPanel onBackToEntry={logout} />
+              <CustomerPanel key="auth" onBackToEntry={logout} />
             ) : (
               <Navigate to={getDashboardRoute(currentUser.role)} replace />
             )
           }
         />
-       
+        <Route
+          path="/customer/*"
+          element={
+            currentUser.role === "customer" ? (
+              <CustomerPanel key="auth" onBackToEntry={logout} />
+            ) : (
+              <Navigate to={getDashboardRoute(currentUser.role)} replace />
+            )
+          }
+        />
+        <Route
+          path="/shop"
+          element={
+            currentUser.role === "customer" ? (
+              <CustomerPanel key="auth" onBackToEntry={logout} />
+            ) : (
+              <Navigate to={getDashboardRoute(currentUser.role)} replace />
+            )
+          }
+        />
+        <Route
+          path="/cart"
+          element={
+            currentUser.role === "customer" ? (
+              <CustomerPanel key="auth" onBackToEntry={logout} />
+            ) : (
+              <Navigate to={getDashboardRoute(currentUser.role)} replace />
+            )
+          }
+        />
+        <Route
+          path="/my-orders"
+          element={
+            currentUser.role === "customer" ? (
+              <CustomerPanel key="auth" onBackToEntry={logout} />
+            ) : (
+              <Navigate to={getDashboardRoute(currentUser.role)} replace />
+            )
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            currentUser.role === "customer" ? (
+              <CustomerPanel key="auth" onBackToEntry={logout} />
+            ) : (
+              <Navigate to={getDashboardRoute(currentUser.role)} replace />
+            )
+          }
+        />
+        <Route
+          path="/checkout"
+          element={
+            currentUser.role === "customer" ? (
+              <CustomerPanel key="auth" onBackToEntry={logout} />
+            ) : (
+              <Navigate to={getDashboardRoute(currentUser.role)} replace />
+            )
+          }
+        />
+        <Route
+          path="/product/:id"
+          element={
+            currentUser.role === "customer" ? (
+              <CustomerPanel key="auth" onBackToEntry={logout} />
+            ) : (
+              <Navigate to={getDashboardRoute(currentUser.role)} replace />
+            )
+          }
+        />
+        <Route
+          path="/all-products"
+          element={
+            currentUser.role === "customer" ? (
+              <CustomerPanel key="auth" onBackToEntry={logout} />
+            ) : (
+              <Navigate to={getDashboardRoute(currentUser.role)} replace />
+            )
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <Navigate to={getDashboardRoute(currentUser.role)} replace />
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <Navigate to={getDashboardRoute(currentUser.role)} replace />
+          }
+        />
+
         <Route
           path="*"
           element={
@@ -453,7 +575,7 @@ const AppContent: React.FC = () => {
           }}
         />
       )}
-     
+
       {showKYCModal && currentUser && (
         <KYCFormModal
           userId={localStorage.getItem("user_id") || currentUser.id}

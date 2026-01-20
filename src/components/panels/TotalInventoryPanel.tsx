@@ -63,13 +63,13 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
   const popup = useCustomPopup();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [filteredInventory, setFilteredInventory] = useState<InventoryItem[]>(
-    []
+    [],
   );
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [parties, setParties] = useState<Party[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState<ItemCategory | "all">(
-    "all"
+    "all",
   );
   const [filterVehicleType, setFilterVehicleType] = useState<
     VehicleType | "all"
@@ -188,11 +188,11 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
 
       const res = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/stock-management/inventory/`,
-        { headers }
+        { headers },
       );
       if (res.status === 401) {
         throw new Error(
-          "Unauthorized: Authentication credentials were not provided."
+          "Unauthorized: Authentication credentials were not provided.",
         );
       }
       if (!res.ok) throw new Error(`API responded with ${res.status}`);
@@ -223,10 +223,16 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
         hsnCode: it.hsn_code || it.hsnCode || undefined,
         location: it.storage_location || it.location || undefined,
         warrantyPeriod: it.warranty_period || it.warrantyPeriod || undefined,
-        image:
-          Array.isArray(it.images) && it.images.length > 0
-            ? it.images[0]
-            : it.image || undefined,
+        image: (() => {
+          if (Array.isArray(it.images) && it.images.length > 0) {
+            const primary = it.images.find((img: any) => img.is_primary);
+            if (primary) return primary.image;
+            return typeof it.images[0] === "string"
+              ? it.images[0]
+              : it.images[0].image;
+          }
+          return it.image || undefined;
+        })(),
         // Prefer workspace ID from API if present, otherwise fallback to current user
         workspaceId:
           it.workspaceId ||
@@ -240,7 +246,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
 
       console.log(
         "TotalInventoryPanel: currentUser.workspaceId=",
-        currentUser?.workspaceId
+        currentUser?.workspaceId,
       );
 
       console.log("TotalInventoryPanel: token present=", !!token);
@@ -249,16 +255,16 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
 
       console.log(
         "TotalInventoryPanel: sample mapped item=",
-        mapped[0] || null
+        mapped[0] || null,
       );
       // eslint-disable-next-line no-console
       console.log(
         "TotalInventoryPanel: workspaceIds in mapped=",
-        mapped.map((m) => m.workspaceId)
+        mapped.map((m) => m.workspaceId),
       );
 
       const filteredByWorkspace = mapped.filter(
-        (i) => String(i.workspaceId) === String(currentUser?.workspaceId)
+        (i) => String(i.workspaceId) === String(currentUser?.workspaceId),
       );
 
       // Always update storage to ensure deletions are reflected
@@ -275,7 +281,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
         console.log(
           "TotalInventoryPanel: Using API-mapped items (count=",
           mapped.length,
-          ") and persisted to local storage"
+          ") and persisted to local storage",
         );
 
         setInventory(mapped);
@@ -286,12 +292,12 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
     } catch (err) {
       console.warn(
         "Failed to fetch remote inventory, using local storage",
-        err
+        err,
       );
       // eslint-disable-next-line no-console
       console.log(
         "TotalInventoryPanel: falling back to local storage. currentUser.workspaceId=",
-        currentUser?.workspaceId
+        currentUser?.workspaceId,
       );
     }
 
@@ -299,8 +305,8 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
     setInventory(
       allInventory.filter(
         (i: InventoryItem) =>
-          String(i.workspaceId) === String(currentUser?.workspaceId)
-      )
+          String(i.workspaceId) === String(currentUser?.workspaceId),
+      ),
     );
   };
 
@@ -317,7 +323,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
         `${
           import.meta.env.VITE_API_BASE_URL
         }/stock-management/parties/suppliers/`,
-        { headers }
+        { headers },
       );
 
       if (response.ok) {
@@ -351,8 +357,8 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
         const allParties = getFromStorage("parties", []);
         setParties(
           allParties.filter(
-            (p: Party) => p.workspaceId === currentUser?.workspaceId
-          )
+            (p: Party) => p.workspaceId === currentUser?.workspaceId,
+          ),
         );
       }
     } catch (err) {
@@ -360,8 +366,8 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
       const allParties = getFromStorage("parties", []);
       setParties(
         allParties.filter(
-          (p: Party) => p.workspaceId === currentUser?.workspaceId
-        )
+          (p: Party) => p.workspaceId === currentUser?.workspaceId,
+        ),
       );
     }
   };
@@ -469,30 +475,30 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
       formDataPayload.append("quantity", (formData.quantity || 0).toString());
       formDataPayload.append(
         "min_stock_level",
-        (formData.minStockLevel || 0).toString()
+        (formData.minStockLevel || 0).toString(),
       );
       formDataPayload.append("price", (formData.price || 0).toString());
       formDataPayload.append("mrp", (formData.mrp || 0).toString());
       if (formData.distributorPrice)
         formDataPayload.append(
           "distributor_price",
-          formData.distributorPrice.toString()
+          formData.distributorPrice.toString(),
         );
       if (formData.wholesalePrice)
         formDataPayload.append(
           "wholesale_price",
-          formData.wholesalePrice.toString()
+          formData.wholesalePrice.toString(),
         );
       if (formData.retailPrice)
         formDataPayload.append(
           "retail_pricing",
-          formData.retailPrice.toString()
+          formData.retailPrice.toString(),
         );
       if (formData.location)
         formDataPayload.append("storage_location", formData.location);
       formDataPayload.append(
         "warranty_period",
-        formData.warrantyPeriod || "no_warranty"
+        formData.warrantyPeriod || "no_warranty",
       );
 
       if (formData.bikeName)
@@ -527,7 +533,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
             method: "PATCH",
             headers,
             body: formDataPayload,
-          }
+          },
         );
       } else {
         response = await fetch(
@@ -536,7 +542,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
             method: "POST",
             headers,
             body: formDataPayload,
-          }
+          },
         );
       }
 
@@ -557,7 +563,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                 ? messages.join(", ")
                 : String(messages);
               return `${formattedField}: ${formattedMessages}`;
-            }
+            },
           );
 
           if (fieldErrors.length > 0) {
@@ -574,7 +580,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
       loadInventory();
       handleCloseSidebar();
       popup.showSuccess(
-        editingItem ? "Item updated successfully" : "Item added successfully"
+        editingItem ? "Item updated successfully" : "Item added successfully",
       );
     } catch (err: any) {
       console.error("Error saving item:", err);
@@ -642,7 +648,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
           "This action cannot be undone",
           "All related data will be removed",
         ],
-      }
+      },
     );
   };
 
@@ -658,13 +664,13 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
       () => {
         const allInventory = getFromStorage("products", []);
         const filtered = allInventory.filter(
-          (i: InventoryItem) => !selectedItems.includes(i.id)
+          (i: InventoryItem) => !selectedItems.includes(i.id),
         );
         saveToStorage("products", filtered);
         setSelectedItems([]);
         loadInventory();
         popup.showSuccess(
-          `${selectedItems.length} item(s) deleted successfully!`
+          `${selectedItems.length} item(s) deleted successfully!`,
         );
       },
       {
@@ -673,7 +679,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
           "This action cannot be undone",
           "All related data will be permanently removed",
         ],
-      }
+      },
     );
   };
 
@@ -687,7 +693,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
 
   const toggleSelectItem = (id: string) => {
     setSelectedItems((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
   };
 
@@ -721,15 +727,15 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
     } catch (error: any) {
       if (error.name === "NotAllowedError") {
         setScanError(
-          "Camera permission denied. Please use manual entry below."
+          "Camera permission denied. Please use manual entry below.",
         );
       } else if (error.name === "NotFoundError") {
         setScanError(
-          "No camera found on this device. Please use manual entry below."
+          "No camera found on this device. Please use manual entry below.",
         );
       } else if (error.name === "NotReadableError") {
         setScanError(
-          "Camera is already in use. Please use manual entry below."
+          "Camera is already in use. Please use manual entry below.",
         );
       } else {
         setScanError("Unable to access camera. Please use manual entry below.");
@@ -761,7 +767,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
     const foundItem = allInventory.find(
       (item: InventoryItem) =>
         item.workspaceId === currentUser?.workspaceId &&
-        item.barcode === barcode.trim()
+        item.barcode === barcode.trim(),
     ) as InventoryItem | undefined;
 
     if (foundItem) {
@@ -773,7 +779,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
 
       popup.showSuccess(
         `All details have been auto-filled!`,
-        `Product Found: ${foundItem.name}`
+        `Product Found: ${foundItem.name}`,
       );
     } else {
       setScanError(`No product found with barcode: ${barcode}`);
@@ -876,27 +882,33 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
 
   const paginatedInventory = finalFilteredInventory.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
   const lowStockCount = inventory.filter(
-    (i) => i.quantity <= i.minStockLevel
+    (i) => i.quantity <= i.minStockLevel,
   ).length;
   const totalValue = inventory.reduce(
     (sum, i) => sum + i.quantity * i.price,
-    0
+    0,
   );
   const totalItems = inventory.reduce((sum, i) => sum + i.quantity, 0);
 
-  const categoryCounts = inventory.reduce((acc, i) => {
-    acc[i.category] = (acc[i.category] || 0) + 1;
-    return acc;
-  }, {} as Record<ItemCategory, number>);
+  const categoryCounts = inventory.reduce(
+    (acc, i) => {
+      acc[i.category] = (acc[i.category] || 0) + 1;
+      return acc;
+    },
+    {} as Record<ItemCategory, number>,
+  );
 
-  const vehicleTypeCounts = inventory.reduce((acc, i) => {
-    acc[i.vehicleType] = (acc[i.vehicleType] || 0) + 1;
-    return acc;
-  }, {} as Record<VehicleType, number>);
+  const vehicleTypeCounts = inventory.reduce(
+    (acc, i) => {
+      acc[i.vehicleType] = (acc[i.vehicleType] || 0) + 1;
+      return acc;
+    },
+    {} as Record<VehicleType, number>,
+  );
 
   return (
     <div className="space-y-6">
@@ -1073,7 +1085,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                 key={type}
                 onClick={() =>
                   setFilterVehicleType(
-                    filterVehicleType === type ? "all" : type
+                    filterVehicleType === type ? "all" : type,
                   )
                 }
                 className={`px-3 py-1 rounded-full text-sm transition-all duration-200 ${
@@ -2206,7 +2218,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                   onSubmit={(e) => {
                     e.preventDefault();
                     const input = e.currentTarget.elements.namedItem(
-                      "manualBarcode"
+                      "manualBarcode",
                     ) as HTMLInputElement;
                     handleManualBarcodeEntry(input.value);
                   }}
@@ -2267,7 +2279,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                   .filter(
                     (item: InventoryItem) =>
                       item.workspaceId === currentUser?.workspaceId &&
-                      item.barcode
+                      item.barcode,
                   )
                   .slice(0, 3);
 

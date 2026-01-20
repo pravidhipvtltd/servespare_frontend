@@ -273,6 +273,11 @@ export const SuperAdminDashboardRefined: React.FC = () => {
   }, []);
 
   const loadData = async () => {
+    toast.error("apiii", {
+      duration: 10000,
+      description: "Super Admin Dashboard data fetching triggered",
+    });
+
     // Load pending verifications count
     const pendingUsers = JSON.parse(
       localStorage.getItem("pending_user_verifications") || "[]",
@@ -1191,8 +1196,8 @@ const AdminAccountsView: React.FC<{
         products: 1000,
       };
 
-      const currentAdmins = getFromStorage("admin_accounts", []);
-      saveToStorage("admin_accounts", [...currentAdmins, newAdmin]);
+      // Note: We no longer save to local storage as we are purely backend-driven.
+      // The loadData function will fetch the latest state from the backend.
 
       // Prepare for Step 2: Subscription Package Selection
       setCreatedTenantData({

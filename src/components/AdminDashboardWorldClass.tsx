@@ -75,8 +75,10 @@ import { useSync } from "../contexts/SyncContext";
 import { usePermissions } from "../contexts/PermissionContext";
 import { useDashboardLanguage } from "../contexts/DashboardLanguageContext";
 import { PermissionGuard, usePermissionCheck } from "./PermissionGuard";
+import { toast } from "sonner";
 import { getFromStorage } from "../utils/mockData";
 import { getBranches, getCurrentTenantId } from "../api/branch.api";
+import { getCurrentUserSubscription } from "../api/subscription.api";
 import { getPermissionForPanel } from "../utils/permissionMapping";
 import InventoryChatbot from "./chatbot/InventoryChatbot";
 
@@ -371,6 +373,10 @@ export const AdminDashboard: React.FC = () => {
   // Fetch branches from centralized API
   const fetchBranches = async () => {
     setIsLoadingBranches(true);
+    toast.error("apiii", {
+      description: "Backend data required for full dashboard experience",
+      duration: 10000,
+    });
     try {
       const tenantId = currentUser?.workspaceId || getCurrentTenantId();
 

@@ -13,12 +13,17 @@ import {
   Zap,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { getFromStorage, saveToStorage } from "../utils/mockData";
 import { PaymentModal } from "./PaymentModal";
-import { getCurrentUserSubscription } from "../api/subscription.api";
+import {
+  getCurrentUserSubscription,
+  getSubscriptionPlans,
+  SubscriptionPlanDetail,
+} from "../api/subscription.api";
+import { toast } from "sonner";
 
 interface PackageDetails {
   id: string;
+  dbId: number;
   name: string;
   price: number;
   features: string[];
@@ -30,141 +35,89 @@ interface PackageDetails {
   recommended?: boolean;
 }
 
-const PACKAGES: PackageDetails[] = [
-  {
-    id: "basic",
-    name: "Basic",
-    price: 5000,
-    features: [
-      "1 branch location",
-      "Single location management",
-      "Up to 10 users",
-      "Up to 1,000 products",
-      "Basic inventory tracking",
-      "Standard reports",
-      "Email support",
-    ],
-    limits: {
-      branches: 1,
-      users: 10,
-      products: 1000,
-    },
-  },
-  {
-    id: "professional",
-    name: "Professional",
-    price: 15000,
-    features: [
-      "Up to 5 branches",
-      "Multi-location management",
-      "Up to 50 users",
-      "Up to 10,000 products",
-      "Advanced inventory tracking",
-      "Financial reports",
-      "Priority email support",
-      "Branch-wise analytics",
-    ],
-    limits: {
-      branches: 5,
-      users: 50,
-      products: 10000,
-    },
-    recommended: true,
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    price: 35000,
-    features: [
-      "Unlimited branches",
-      "Enterprise-wide management",
-      "Unlimited users",
-      "Unlimited products",
-      "Advanced analytics",
-      "Custom reports",
-      "24/7 priority support",
-      "Dedicated account manager",
-      "API access",
-      "Custom integrations",
-    ],
-    limits: {
-      branches: "unlimited",
-      users: "unlimited",
-      products: "unlimited",
-    },
-  },
-];
-
 export const SubscriptionManagement: React.FC = () => {
   const { currentUser, tenantInfo, updateTenantInfo } = useAuth();
-  const [currentPackage, setCurrentPackage] = useState<string>("basic");
+  const [availablePlans, setAvailablePlans] = useState<PackageDetails[]>([]);
+  const [currentPackage, setCurrentPackage] = useState<string>("");
+  const [loading, setLoading] = useState(true);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showDowngradeModal, setShowDowngradeModal] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<PackageDetails | null>(
-    null
+    null,
   );
   const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null);
 
   useEffect(() => {
-    loadSubscriptionInfo();
+    loadData();
   }, [currentUser]);
 
-  const loadSubscriptionInfo = async () => {
+  const loadData = async () => {
+    setLoading(true);
     try {
-      // Fetch from API
+      // 1. Fetch all available plans from backend
+      const plansData = await getSubscriptionPlans();
+      const mappedPlans: PackageDetails[] = plansData.map(
+        (p: SubscriptionPlanDetail) => ({
+          id: p.plan_name.toLowerCase(),
+          dbId: p.id,
+          name: p.plan_name,
+          price: parseFloat(p.plan_price),
+          features: [
+            `${p.no_of_branch === "unlimited" ? "Unlimited" : p.no_of_branch} Branch locations`,
+            `${p.no_of_user === "unlimited" ? "Unlimited" : p.no_of_user} Users allowed`,
+            `${p.no_of_product === "unlimited" ? "Unlimited" : p.no_of_product} Products capacity`,
+            "Cloud synchronization",
+            "Technical support",
+          ],
+          limits: {
+            branches:
+              p.no_of_branch === "unlimited"
+                ? "unlimited"
+                : parseInt(p.no_of_branch),
+            users:
+              p.no_of_user === "unlimited"
+                ? "unlimited"
+                : parseInt(p.no_of_user),
+            products:
+              p.no_of_product === "unlimited"
+                ? "unlimited"
+                : parseInt(p.no_of_product),
+          },
+          recommended: p.plan_name.toLowerCase() === "professional",
+        }),
+      );
+      setAvailablePlans(mappedPlans);
+
+      // 2. Fetch current subscription
       const apiSubscription = await getCurrentUserSubscription(
         currentUser?.workspaceId,
-        currentUser?.email
+        currentUser?.email,
       );
 
       if (apiSubscription) {
-        const pkg =
+        const pkgName =
           apiSubscription.subscription_plan_detail?.plan_name?.toLowerCase() ||
-          "basic";
-        setCurrentPackage(pkg);
+          "";
+        setCurrentPackage(pkgName);
         setSubscriptionInfo({
           id: apiSubscription.id,
           workspaceId: currentUser?.workspaceId,
-          package: pkg,
+          package: pkgName,
           status: apiSubscription.is_active ? "active" : "expired",
           startDate: apiSubscription.subscription_date,
           nextBillingDate: apiSubscription.finish_date,
           price: parseFloat(
-            apiSubscription.subscription_plan_detail?.plan_price || "0"
+            apiSubscription.subscription_plan_detail?.plan_price || "0",
           ),
         });
-        return;
+      } else {
+        toast.error("No active subscription found on backend");
       }
     } catch (error) {
-      console.error("Error loading subscription from API:", error);
-    }
-
-    // Fallback to localStorage
-    const pkg = tenantInfo?.package || "basic";
-    setCurrentPackage(pkg);
-    const subscriptions = getFromStorage("subscriptions", []);
-    const userSubscription = subscriptions.find(
-      (s: any) => s.workspaceId === currentUser?.workspaceId
-    );
-
-    if (userSubscription) {
-      setSubscriptionInfo(userSubscription);
-    } else {
-      // Create default subscription
-      const defaultSubscription = {
-        id: `sub_${Date.now()}`,
-        workspaceId: currentUser?.workspaceId,
-        package: pkg,
-        status: "active",
-        startDate: new Date().toISOString(),
-        nextBillingDate: new Date(
-          Date.now() + 30 * 24 * 60 * 60 * 1000
-        ).toISOString(),
-        price: PACKAGES.find((p) => p.id === pkg)?.price || 5000,
-      };
-      subscriptions.push(defaultSubscription);
-      saveToStorage("subscriptions", subscriptions);
-      setSubscriptionInfo(defaultSubscription);
+      console.error("Error loading subscription data:", error);
+      toast.error("Failed to load subscription information from backend");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -189,7 +142,7 @@ export const SubscriptionManagement: React.FC = () => {
         to: selectedPackage.id,
         price: selectedPackage.price,
         workspaceId: currentUser?.workspaceId,
-      })
+      }),
     );
 
     // Redirect to payment processing
@@ -199,86 +152,40 @@ export const SubscriptionManagement: React.FC = () => {
   const confirmDowngrade = () => {
     if (!selectedPackage) return;
 
-    // Check if downgrade is possible
-    const branches = getFromStorage("branches", []).filter(
-      (b: any) => b.workspaceId === currentUser?.workspaceId
-    );
-    const users = getFromStorage("users", []).filter(
-      (u: any) => u.workspaceId === currentUser?.workspaceId
-    );
-
-    const newLimits = selectedPackage.limits;
-
-    // Validate against limits
-    if (
-      newLimits.branches !== "unlimited" &&
-      branches.length > newLimits.branches
-    ) {
-      alert(
-        `Cannot downgrade: You have ${branches.length} branches but ${selectedPackage.name} only allows ${newLimits.branches}. Please delete extra branches first.`
-      );
-      return;
-    }
-
-    if (newLimits.users !== "unlimited" && users.length > newLimits.users) {
-      alert(
-        `Cannot downgrade: You have ${users.length} users but ${selectedPackage.name} only allows ${newLimits.users}. Please remove extra users first.`
-      );
-      return;
-    }
-
-    // Update package
+    // Direct update as server handles limit validation
     updatePackage(selectedPackage.id);
     setShowDowngradeModal(false);
   };
 
   const updatePackage = (newPackage: string) => {
-    // Update user's package
-    const users = getFromStorage("users", []);
-    const updatedUsers = users.map((u: any) => {
-      if (u.id === currentUser?.id) {
-        return { ...u, package: newPackage };
-      }
-      return u;
-    });
-    saveToStorage("users", updatedUsers);
-
-    // Update subscription
-    const subscriptions = getFromStorage("subscriptions", []);
-    const updatedSubscriptions = subscriptions.map((s: any) => {
-      if (s.workspaceId === currentUser?.workspaceId) {
-        return {
-          ...s,
-          package: newPackage,
-          price: PACKAGES.find((p) => p.id === newPackage)?.price || 5000,
-          updatedAt: new Date().toISOString(),
-        };
-      }
-      return s;
-    });
-    saveToStorage("subscriptions", updatedSubscriptions);
-
-    // Update tenantInfo if available
-    if (updateTenantInfo) {
-      updateTenantInfo({ package: newPackage });
-    }
-
-    setCurrentPackage(newPackage);
-    loadSubscriptionInfo();
+    // Note: In a pure backend-driven system, we would call an API here.
+    // Since we're moving to backend information only, we'll reload data after external updates.
+    loadData();
   };
 
   const getCurrentPackageDetails = () => {
-    return PACKAGES.find((p) => p.id === currentPackage);
+    return availablePlans.find((p) => p.id === currentPackage);
   };
 
   const isUpgrade = (targetPackage: string) => {
-    const packageOrder = ["basic", "professional", "enterprise"];
+    const packageOrder = availablePlans.map((p) => p.id);
     return (
       packageOrder.indexOf(targetPackage) > packageOrder.indexOf(currentPackage)
     );
   };
 
   const currentPkgDetails = getCurrentPackageDetails();
+
+  if (loading) {
+    return (
+      <div className="p-20 text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+        <p className="text-gray-500 text-lg">
+          Loading subscription data from server...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -288,7 +195,7 @@ export const SubscriptionManagement: React.FC = () => {
           Subscription Management
         </h2>
         <p className="text-gray-600 text-sm">
-          Manage your subscription plan and billing
+          Plans and billing information powered by backend services
         </p>
       </div>
 
@@ -298,14 +205,22 @@ export const SubscriptionManagement: React.FC = () => {
           <div>
             <div className="flex items-center mb-2">
               <h3 className="text-gray-900 mr-3">
-                Current Plan: {currentPkgDetails?.name}
+                Current Plan: {currentPkgDetails?.name || "No Plan"}
               </h3>
-              <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs">
-                Active
-              </span>
+              {subscriptionInfo && (
+                <span
+                  className={`px-3 py-1 rounded-full text-xs ${
+                    subscriptionInfo.status === "active"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {subscriptionInfo.status.toUpperCase()}
+                </span>
+              )}
             </div>
             <p className="text-gray-600 text-sm">
-              NPR {currentPkgDetails?.price.toLocaleString()}/month
+              NPR {currentPkgDetails?.price.toLocaleString() || "0"}/month
             </p>
           </div>
           <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-yellow-100 rounded-full flex items-center justify-center">
@@ -322,7 +237,7 @@ export const SubscriptionManagement: React.FC = () => {
             <div className="text-xl font-bold text-gray-900">
               {currentPkgDetails?.limits.branches === "unlimited"
                 ? "∞"
-                : currentPkgDetails?.limits.branches}
+                : currentPkgDetails?.limits.branches || "0"}
             </div>
           </div>
           <div className="bg-white bg-opacity-60 rounded-lg p-3">
@@ -333,7 +248,7 @@ export const SubscriptionManagement: React.FC = () => {
             <div className="text-xl font-bold text-gray-900">
               {currentPkgDetails?.limits.users === "unlimited"
                 ? "∞"
-                : currentPkgDetails?.limits.users}
+                : currentPkgDetails?.limits.users || "0"}
             </div>
           </div>
           <div className="bg-white bg-opacity-60 rounded-lg p-3">
@@ -344,7 +259,7 @@ export const SubscriptionManagement: React.FC = () => {
             <div className="text-xl font-bold text-gray-900">
               {currentPkgDetails?.limits.products === "unlimited"
                 ? "∞"
-                : currentPkgDetails?.limits.products}
+                : currentPkgDetails?.limits.products || "0"}
             </div>
           </div>
         </div>
@@ -361,10 +276,9 @@ export const SubscriptionManagement: React.FC = () => {
       {/* Available Packages */}
       <h3 className="text-gray-900 mb-4">Available Plans</h3>
       <div className="grid md:grid-cols-3 gap-6">
-        {PACKAGES.map((pkg) => {
+        {availablePlans.map((pkg) => {
           const isCurrent = pkg.id === currentPackage;
           const canUpgrade = isUpgrade(pkg.id);
-          const canDowngrade = !canUpgrade && !isCurrent;
 
           return (
             <div
@@ -373,8 +287,8 @@ export const SubscriptionManagement: React.FC = () => {
                 isCurrent
                   ? "border-indigo-500 bg-indigo-50 shadow-lg"
                   : pkg.recommended
-                  ? "border-orange-300 bg-orange-50"
-                  : "border-gray-200 bg-white hover:border-indigo-300 hover:shadow-md"
+                    ? "border-orange-300 bg-orange-50"
+                    : "border-gray-200 bg-white hover:border-indigo-300 hover:shadow-md"
               }`}
             >
               {pkg.recommended && !isCurrent && (

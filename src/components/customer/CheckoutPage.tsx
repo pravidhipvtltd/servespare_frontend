@@ -37,7 +37,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 }) => {
   const [step, setStep] = useState(1);
   const [deliveryAddress, setDeliveryAddress] = useState(
-    customerData?.address || ""
+    customerData?.address || "",
   );
   const [phone, setPhone] = useState(customerData?.phone || "+977");
   const [city, setCity] = useState("Pokhara");
@@ -49,7 +49,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
   const subtotal = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
-    0
+    0,
   );
   const shipping = city === "Pokhara" ? 0 : 150;
   const tax = Math.round(subtotal * 0.13); // 13% VAT
@@ -95,12 +95,51 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             "ngrok-skip-browser-warning": "true",
           },
           body: JSON.stringify(checkoutPayload),
-        }
+        },
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to place order");
+        let errorMessage = "Failed to place order";
+        try {
+          const errorText = await response.text();
+          try {
+            const errorData = JSON.parse(errorText);
+            if (typeof errorData === "string") {
+              errorMessage = errorData;
+            } else if (Array.isArray(errorData)) {
+              errorMessage = errorData.join(", ");
+            } else if (typeof errorData === "object" && errorData) {
+              if (errorData.detail) errorMessage = errorData.detail;
+              else if (errorData.message) errorMessage = errorData.message;
+              else if (errorData.error) errorMessage = String(errorData.error);
+              else if (
+                errorData.non_field_errors &&
+                Array.isArray(errorData.non_field_errors)
+              ) {
+                errorMessage = errorData.non_field_errors.join(", ");
+              } else {
+                const fieldErrors = Object.entries(errorData)
+                  .filter(([key]) => key !== "status" && key !== "code")
+                  .map(([field, errors]) => {
+                    const errorStr = Array.isArray(errors)
+                      ? errors.join(", ")
+                      : String(errors);
+                    const fieldName =
+                      field.charAt(0).toUpperCase() +
+                      field.slice(1).replace(/_/g, " ");
+                    return `${fieldName}: ${errorStr}`;
+                  });
+                if (fieldErrors.length > 0)
+                  errorMessage = fieldErrors.join("\n");
+              }
+            }
+          } catch {
+            if (errorText && errorText.length < 500) errorMessage = errorText;
+          }
+        } catch (e) {
+          console.error("Error parsing response:", e);
+        }
+        throw new Error(errorMessage);
       }
 
       const orderData = await response.json();

@@ -26,6 +26,7 @@ import {
   Activity,
   Percent,
 } from "lucide-react";
+import { toast } from "sonner";
 import { getFromStorage } from "../../utils/mockData";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -104,6 +105,10 @@ export const FinancialReportsPanel: React.FC = () => {
   }, [dateRange]);
 
   const loadData = () => {
+    toast.error("apiii", {
+      description: "Backend data integration required for comprehensive financial reporting",
+      duration: 10000,
+    });
     // Load bills
     const allBills = getFromStorage("bills", []).filter((b: Bill) => {
       if (!b.createdAt) return false;

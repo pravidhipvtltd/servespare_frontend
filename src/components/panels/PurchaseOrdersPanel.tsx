@@ -149,7 +149,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
               "Content-Type": "application/json",
               "ngrok-skip-browser-warning": "true",
             },
-          }
+          },
         );
 
         if (response.ok) {
@@ -177,28 +177,29 @@ export const PurchaseOrdersPanel: React.FC = () => {
               updatedAt: apiPO.modified,
               invoiceFile: apiPO.purchase_invoice,
               workspaceId: currentUser?.workspaceId, // Maintain workspace context if needed
-            })
+            }),
           );
           setPurchaseOrders(mappedOrders);
         } else {
           console.error(
             "Failed to fetch purchase orders:",
-            response.statusText
+            response.statusText,
           );
           // Fallback to local storage if API fails
           const allPOs = getFromStorage("purchaseOrders", []);
           setPurchaseOrders(
             allPOs.filter(
-              (po: PurchaseOrder) => po.workspaceId === currentUser?.workspaceId
-            )
+              (po: PurchaseOrder) =>
+                po.workspaceId === currentUser?.workspaceId,
+            ),
           );
         }
       } else {
         const allPOs = getFromStorage("purchaseOrders", []);
         setPurchaseOrders(
           allPOs.filter(
-            (po: PurchaseOrder) => po.workspaceId === currentUser?.workspaceId
-          )
+            (po: PurchaseOrder) => po.workspaceId === currentUser?.workspaceId,
+          ),
         );
       }
     } catch (error) {
@@ -206,8 +207,8 @@ export const PurchaseOrdersPanel: React.FC = () => {
       const allPOs = getFromStorage("purchaseOrders", []);
       setPurchaseOrders(
         allPOs.filter(
-          (po: PurchaseOrder) => po.workspaceId === currentUser?.workspaceId
-        )
+          (po: PurchaseOrder) => po.workspaceId === currentUser?.workspaceId,
+        ),
       );
     }
   };
@@ -228,7 +229,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
               "Content-Type": "application/json",
               "ngrok-skip-browser-warning": "true",
             },
-          }
+          },
         );
 
         if (response.ok) {
@@ -264,8 +265,8 @@ export const PurchaseOrdersPanel: React.FC = () => {
             allParties.filter(
               (p: Party) =>
                 p.type === "supplier" &&
-                p.workspaceId === currentUser?.workspaceId
-            )
+                p.workspaceId === currentUser?.workspaceId,
+            ),
           );
         }
       } else {
@@ -274,8 +275,8 @@ export const PurchaseOrdersPanel: React.FC = () => {
           allParties.filter(
             (p: Party) =>
               p.type === "supplier" &&
-              p.workspaceId === currentUser?.workspaceId
-          )
+              p.workspaceId === currentUser?.workspaceId,
+          ),
         );
       }
     } catch (error) {
@@ -284,8 +285,8 @@ export const PurchaseOrdersPanel: React.FC = () => {
       setSuppliers(
         allParties.filter(
           (p: Party) =>
-            p.type === "supplier" && p.workspaceId === currentUser?.workspaceId
-        )
+            p.type === "supplier" && p.workspaceId === currentUser?.workspaceId,
+        ),
       );
     }
   };
@@ -294,8 +295,8 @@ export const PurchaseOrdersPanel: React.FC = () => {
     const allItems = getFromStorage("inventory", []);
     setInventoryItems(
       allItems.filter(
-        (item: InventoryItem) => item.workspaceId === currentUser?.workspaceId
-      )
+        (item: InventoryItem) => item.workspaceId === currentUser?.workspaceId,
+      ),
     );
   };
 
@@ -392,7 +393,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
       popup.showError(
         "Please fill in all required item fields (Item Name, Quantity, and Unit Price).",
         "Missing Required Fields",
-        "warning"
+        "warning",
       );
       return;
     }
@@ -441,7 +442,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
                   Authorization: `Bearer ${token}`,
                   "ngrok-skip-browser-warning": "true",
                 },
-              }
+              },
             );
 
             if (!response.ok) {
@@ -449,7 +450,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
               popup.showError(
                 "Failed to delete item from server",
                 "Delete Failed",
-                "error"
+                "error",
               );
               return;
             }
@@ -459,7 +460,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
           popup.showError(
             "An error occurred while deleting the item.",
             "Delete Failed",
-            "error"
+            "error",
           );
           return;
         }
@@ -467,7 +468,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
     }
 
     const updatedItems = (formData.items || []).filter(
-      (item) => item.id !== itemId
+      (item) => item.id !== itemId,
     );
     updatePOTotals(updatedItems);
   };
@@ -481,7 +482,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
 
     const discountAmount = items.reduce(
       (sum, item) => sum + (item.discount || 0),
-      0
+      0,
     );
     const taxAmount = items.reduce((sum, item) => {
       const quantity = item.orderedQuantity || 0;
@@ -511,7 +512,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
       popup.showError(
         "Please select a supplier before creating the purchase order.",
         "Supplier Required",
-        "warning"
+        "warning",
       );
       return;
     }
@@ -520,7 +521,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
       popup.showError(
         "Please add at least one item to the purchase order.",
         "Items Required",
-        "warning"
+        "warning",
       );
       return;
     }
@@ -568,7 +569,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
                 "ngrok-skip-browser-warning": "true",
               },
               body: JSON.stringify(apiPayload),
-            }
+            },
           );
         } else {
           const apiPayload = {
@@ -580,21 +581,12 @@ export const PurchaseOrdersPanel: React.FC = () => {
             notes: formData.notes || "",
             branch: currentBranchId,
             items: formData.items.map((item) => {
-              // Calculate tax amount for the item
-              const quantity = item.orderedQuantity || 0;
-              const price = item.unitPrice || 0;
-              const discount = item.discount || 0;
-              const taxPercent = item.taxPercent || 0;
-              const afterDiscount = quantity * price - discount;
-              const taxAmount = (afterDiscount * taxPercent) / 100;
-
               return {
                 item_name: item.itemName,
                 part_number: item.partNumber,
-                quantity: quantity,
-                unit_price: price,
-                tax: parseFloat(taxAmount.toFixed(2)),
-                // discount: discount // Is discount in the payload? User didn't show it but it might be useful. The user said "use this api ... for adding purchase orders" and gave a specific payload. I'll stick to their payload fields + necessary ones.
+                quantity: item.orderedQuantity || 0,
+                unit_price: item.unitPrice || 0,
+                tax: item.taxPercent || 13,
               };
             }),
           };
@@ -611,7 +603,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
                 "ngrok-skip-browser-warning": "true",
               },
               body: JSON.stringify(apiPayload),
-            }
+            },
           );
         }
 
@@ -622,14 +614,14 @@ export const PurchaseOrdersPanel: React.FC = () => {
             editingPO ? "Purchase Order Updated" : "Purchase Order Created",
             `The purchase order has been successfully ${
               editingPO ? "updated" : "created"
-            }.`
+            }.`,
           );
         } else {
           const errorData = await response.json();
           throw new Error(
             errorData.detail ||
               errorData.message ||
-              "Failed to save purchase order"
+              "Failed to save purchase order",
           );
         }
       } else {
@@ -640,7 +632,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
           const updated = allPOs.map((po: PurchaseOrder) =>
             po.id === editingPO.id
               ? { ...po, ...formData, updatedAt: new Date().toISOString() }
-              : po
+              : po,
           );
           saveToStorage("purchaseOrders", updated);
         } else {
@@ -659,7 +651,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
         handleCloseSidebar();
         popup.showSuccess(
           editingPO ? "Purchase Order Updated" : "Purchase Order Created",
-          "Saved locally (offline mode)"
+          "Saved locally (offline mode)",
         );
       }
     } catch (error: any) {
@@ -667,7 +659,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
       popup.showError(
         error.message || "An error occurred while saving the purchase order.",
         "Save Failed",
-        "error"
+        "error",
       );
     }
   };
@@ -694,14 +686,14 @@ export const PurchaseOrdersPanel: React.FC = () => {
                   "Content-Type": "application/json",
                   "ngrok-skip-browser-warning": "true",
                 },
-              }
+              },
             );
 
             if (response.ok) {
               // Also remove from local storage
               const allPOs = getFromStorage("purchaseOrders", []);
               const filtered = allPOs.filter(
-                (po: PurchaseOrder) => po.id !== poId
+                (po: PurchaseOrder) => po.id !== poId,
               );
               saveToStorage("purchaseOrders", filtered);
 
@@ -709,7 +701,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
               loadPurchaseOrders();
               popup.showSuccess(
                 "Purchase Order Deleted",
-                "The purchase order has been successfully deleted."
+                "The purchase order has been successfully deleted.",
               );
             } else {
               const errorData = await response.json().catch(() => ({}));
@@ -717,21 +709,21 @@ export const PurchaseOrdersPanel: React.FC = () => {
                 errorData.detail ||
                   "Failed to delete purchase order from server.",
                 "Delete Failed",
-                "error"
+                "error",
               );
             }
           } else {
             // Fallback to local storage if no token
             const allPOs = getFromStorage("purchaseOrders", []);
             const filtered = allPOs.filter(
-              (po: PurchaseOrder) => po.id !== poId
+              (po: PurchaseOrder) => po.id !== poId,
             );
             saveToStorage("purchaseOrders", filtered);
             setSelectedOrders([]);
             loadPurchaseOrders();
             popup.showSuccess(
               "Purchase Order Deleted",
-              "The purchase order has been successfully deleted."
+              "The purchase order has been successfully deleted.",
             );
           }
         } catch (error) {
@@ -739,11 +731,11 @@ export const PurchaseOrdersPanel: React.FC = () => {
           popup.showError(
             "An error occurred while deleting the purchase order. Please try again.",
             "Delete Failed",
-            "error"
+            "error",
           );
         }
       },
-      { type: "danger" }
+      { type: "danger" },
     );
   };
 
@@ -752,7 +744,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
       popup.showError(
         "Please select at least one purchase order to delete.",
         "No Orders Selected",
-        "warning"
+        "warning",
       );
       return;
     }
@@ -779,20 +771,20 @@ export const PurchaseOrdersPanel: React.FC = () => {
                     "Content-Type": "application/json",
                     "ngrok-skip-browser-warning": "true",
                   },
-                }
-              )
+                },
+              ),
             );
 
             const results = await Promise.allSettled(deletePromises);
             const successCount = results.filter(
-              (result) => result.status === "fulfilled" && result.value.ok
+              (result) => result.status === "fulfilled" && result.value.ok,
             ).length;
             const failedCount = selectedOrders.length - successCount;
 
             // Remove successfully deleted orders from local storage
             const allPOs = getFromStorage("purchaseOrders", []);
             const filtered = allPOs.filter(
-              (po: PurchaseOrder) => !selectedOrders.includes(po.id)
+              (po: PurchaseOrder) => !selectedOrders.includes(po.id),
             );
             saveToStorage("purchaseOrders", filtered);
 
@@ -802,27 +794,27 @@ export const PurchaseOrdersPanel: React.FC = () => {
             if (failedCount === 0) {
               popup.showSuccess(
                 "Orders Deleted",
-                `Successfully deleted ${successCount} purchase order(s).`
+                `Successfully deleted ${successCount} purchase order(s).`,
               );
             } else {
               popup.showError(
                 `Deleted ${successCount} order(s), but ${failedCount} failed. Please try again.`,
                 "Partial Delete",
-                "warning"
+                "warning",
               );
             }
           } else {
             // Fallback to local storage if no token
             const allPOs = getFromStorage("purchaseOrders", []);
             const filtered = allPOs.filter(
-              (po: PurchaseOrder) => !selectedOrders.includes(po.id)
+              (po: PurchaseOrder) => !selectedOrders.includes(po.id),
             );
             saveToStorage("purchaseOrders", filtered);
             setSelectedOrders([]);
             loadPurchaseOrders();
             popup.showSuccess(
               "Orders Deleted",
-              `Successfully deleted ${selectedOrders.length} purchase order(s).`
+              `Successfully deleted ${selectedOrders.length} purchase order(s).`,
             );
           }
         } catch (error) {
@@ -830,11 +822,11 @@ export const PurchaseOrdersPanel: React.FC = () => {
           popup.showError(
             "An error occurred while deleting purchase orders. Please try again.",
             "Delete Failed",
-            "error"
+            "error",
           );
         }
       },
-      { type: "danger" }
+      { type: "danger" },
     );
   };
 
@@ -848,7 +840,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
 
   const toggleSelectOrder = (id: string) => {
     setSelectedOrders((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
   };
 
@@ -868,7 +860,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
       popup.showError(
         "Only PDF files are allowed. Please upload a valid PDF document.",
         "Invalid File Type",
-        "warning"
+        "warning",
       );
     }
   };
@@ -892,7 +884,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
       popup.showError(
         "Only PDF files are allowed. Please upload a valid PDF document.",
         "Invalid File Type",
-        "warning"
+        "warning",
       );
     }
   };
@@ -929,7 +921,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
     if (!receivingPO) return;
 
     const allReceived = receivingPO.items.every(
-      (item) => item.receivedQuantity === item.orderedQuantity
+      (item) => item.receivedQuantity === item.orderedQuantity,
     );
 
     // Generate GRN
@@ -993,7 +985,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
     handleCloseReceivingSidebar();
     popup.showSuccess(
       "GRN Generated Successfully!",
-      `GRN ${grn.grnNumber} has been generated and inventory has been updated.`
+      `GRN ${grn.grnNumber} has been generated and inventory has been updated.`,
     );
   };
 
@@ -1008,19 +1000,22 @@ export const PurchaseOrdersPanel: React.FC = () => {
 
   const paginatedOrders = filteredPOs.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
-  const statusCounts = purchaseOrders.reduce((acc, po) => {
-    acc[po.status] = (acc[po.status] || 0) + 1;
-    return acc;
-  }, {} as Record<PurchaseOrderStatus, number>);
+  const statusCounts = purchaseOrders.reduce(
+    (acc, po) => {
+      acc[po.status] = (acc[po.status] || 0) + 1;
+      return acc;
+    },
+    {} as Record<PurchaseOrderStatus, number>,
+  );
 
   const stats = {
     totalPOs: purchaseOrders.length,
     totalValue: purchaseOrders.reduce(
       (sum, po) => sum + (po.totalAmount || 0),
-      0
+      0,
     ),
     pendingPOs: purchaseOrders.filter((po) => po.status === "ordered").length,
     receivedPOs: purchaseOrders.filter((po) => po.status === "received").length,
@@ -1215,7 +1210,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
                   </td>
                   <td className="py-4 px-4 text-gray-600 text-sm">
                     {new Date(po.expectedDeliveryDate).toLocaleDateString(
-                      "en-NP"
+                      "en-NP",
                     )}
                   </td>
                   <td className="py-4 px-4 text-gray-600 text-sm">
@@ -1834,7 +1829,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
                     <p className="text-gray-500 text-sm">Order Date</p>
                     <p className="text-gray-900">
                       {new Date(viewingPO.orderDate).toLocaleDateString(
-                        "en-NP"
+                        "en-NP",
                       )}
                     </p>
                   </div>
@@ -1842,7 +1837,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
                     <p className="text-gray-500 text-sm">Expected Delivery</p>
                     <p className="text-gray-900">
                       {new Date(
-                        viewingPO.expectedDeliveryDate
+                        viewingPO.expectedDeliveryDate,
                       ).toLocaleDateString("en-NP")}
                     </p>
                   </div>
@@ -2175,7 +2170,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
                   <span className="text-green-600">
                     {
                       receivingPO.items.filter(
-                        (i) => i.receivedQuantity === i.orderedQuantity
+                        (i) => i.receivedQuantity === i.orderedQuantity,
                       ).length
                     }
                   </span>

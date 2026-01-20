@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { apiFetch } from "../../utils/apiClient";
 import {
   ShoppingBag,
   Star,
