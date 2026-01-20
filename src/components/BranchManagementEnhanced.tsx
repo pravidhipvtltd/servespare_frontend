@@ -292,7 +292,6 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
   };
 
   const handleAddBranch = () => {
-  
     if (isLoadingSubscription) {
       popup.showError(
         "Please wait while we load your subscription information.",
@@ -941,7 +940,7 @@ const BranchModal: React.FC<BranchModalProps> = ({
     address: branch?.address || "",
     city: branch?.city || "",
     state: branch?.state || "",
-    phone: branch?.phone || "",
+    phone: branch?.phone || "+977",
     email: branch?.email || "",
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -1078,7 +1077,7 @@ const BranchModal: React.FC<BranchModalProps> = ({
                   setFormData({ ...formData, phone: e.target.value })
                 }
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="+977 9800000000"
+                placeholder="+977"
               />
             </div>
 
@@ -1429,7 +1428,7 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
                 setFormData({ ...formData, phone: e.target.value })
               }
               className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-              placeholder="+977 9800000000"
+              placeholder="+977"
             />
           </div>
 

@@ -41,7 +41,7 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
   const [formData, setFormData] = useState({
     name: "",
     contactEmail: "",
-    contactPhone: "",
+    contactPhone: "+977",
     address: "",
   });
 
@@ -64,7 +64,12 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
     saveToStorage("workspaces", [...allWorkspaces, newWorkspace]);
     onUpdate();
     setShowAddModal(false);
-    setFormData({ name: "", contactEmail: "", contactPhone: "", address: "" });
+    setFormData({
+      name: "",
+      contactEmail: "",
+      contactPhone: "+977",
+      address: "",
+    });
     alert("✅ Branch created successfully!");
   };
 
@@ -331,7 +336,7 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
                   onChange={(e) =>
                     setFormData({ ...formData, contactPhone: e.target.value })
                   }
-                  placeholder="+977-1234567890"
+                  placeholder="+977"
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
               </div>

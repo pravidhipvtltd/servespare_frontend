@@ -333,7 +333,7 @@ const BranchModal: React.FC<BranchModalProps> = ({
     address: branch?.address || "",
     city: branch?.city || "",
     state: branch?.state || "",
-    phone: branch?.phone || "",
+    phone: branch?.phone || "+977",
     email: branch?.email || "",
     manager: branch?.manager || "",
     managerName: branch?.managerName || "",
@@ -454,7 +454,7 @@ const BranchModal: React.FC<BranchModalProps> = ({
                   setFormData({ ...formData, phone: e.target.value })
                 }
                 className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
-                placeholder="+977-XXXXXXXXXX"
+                placeholder="+977"
                 required
               />
             </div>

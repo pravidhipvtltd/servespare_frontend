@@ -125,7 +125,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
   const [resetSuccess, setResetSuccess] = useState(false);
   const [resetToken, setResetToken] = useState("");
   const [forgotPasswordError, setForgotPasswordError] = useState<string | null>(
-    null,
+    null
   );
   const [isForgotPasswordLoading, setIsForgotPasswordLoading] = useState(false);
 
@@ -144,7 +144,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
     name: "",
     email: "",
     username: "",
-    phone: "",
+    phone: "+977",
     address: "",
     password: "",
     confirmPassword: "",
@@ -233,7 +233,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
           result.message ||
             result.detail ||
             result.error ||
-            "Failed to send OTP. Please check your email and try again.",
+            "Failed to send OTP. Please check your email and try again."
         );
         setIsForgotPasswordLoading(false);
         return;
@@ -243,7 +243,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
       setForgotPasswordError(null);
     } catch (err: any) {
       setForgotPasswordError(
-        "Cannot connect to server. Please check your internet connection.",
+        "Cannot connect to server. Please check your internet connection."
       );
     } finally {
       setIsForgotPasswordLoading(false);
@@ -283,7 +283,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
           result.message ||
             result.detail ||
             result.error ||
-            "Invalid or expired OTP. Please try again.",
+            "Invalid or expired OTP. Please try again."
         );
         setIsForgotPasswordLoading(false);
         return;
@@ -298,12 +298,12 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
         setForgotPasswordError(null);
       } else {
         setForgotPasswordError(
-          "Verification successful but no token received. Please contact support.",
+          "Verification successful but no token received. Please contact support."
         );
       }
     } catch (err: any) {
       setForgotPasswordError(
-        "Cannot connect to server. Please check your internet connection.",
+        "Cannot connect to server. Please check your internet connection."
       );
     } finally {
       setIsForgotPasswordLoading(false);
@@ -332,7 +332,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
     try {
       if (!resetToken) {
         setForgotPasswordError(
-          "Missing reset token. Please try verifying OTP again.",
+          "Missing reset token. Please try verifying OTP again."
         );
         setIsForgotPasswordLoading(false);
         return;
@@ -365,7 +365,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
           result.message ||
             result.detail ||
             result.error ||
-            "Failed to reset password. Please try again.",
+            "Failed to reset password. Please try again."
         );
         setIsForgotPasswordLoading(false);
         return;
@@ -380,7 +380,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
       }, 2000);
     } catch (err: any) {
       setForgotPasswordError(
-        "Cannot connect to server. Please check your internet connection.",
+        "Cannot connect to server. Please check your internet connection."
       );
     } finally {
       setIsForgotPasswordLoading(false);
@@ -418,7 +418,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
             "Content-Type": "application/json",
           },
           body: JSON.stringify(loginPayload),
-        },
+        }
       );
 
       const data = await response.json();
@@ -427,7 +427,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
         if (data.user.role !== "customer") {
           setLoginError(
             ` Username or Password donot match
-            }`,
+            }`
           );
           setIsLoading(false);
           return;
@@ -537,7 +537,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
             "ngrok-skip-browser-warning": "true",
           },
           body: JSON.stringify(payload),
-        },
+        }
       );
 
       const data = await response.json();
@@ -551,7 +551,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
           name: "",
           email: "",
           username: "",
-          phone: "",
+          phone: "+977",
           address: "",
           password: "",
           confirmPassword: "",
@@ -586,7 +586,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
           toast.error(
             data.message ||
               data.error ||
-              "Registration failed. Please try again.",
+              "Registration failed. Please try again."
           );
         }
       }
@@ -959,7 +959,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
                           ? "border-red-300 focus:border-red-500 focus:ring-red-100"
                           : "border-gray-200 focus:border-purple-500 focus:ring-purple-100"
                       }`}
-                      placeholder="+977XXXXXXXXXX"
+                      placeholder="+977"
                     />
                   </div>
                   {registerErrors.phone && (
@@ -1193,19 +1193,19 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
                     {resetSuccess
                       ? "Password Reset Successful"
                       : forgotPasswordStep === "email"
-                        ? "Forgot Password?"
-                        : forgotPasswordStep === "code"
-                          ? "Enter Verification Code"
-                          : "Set New Password"}
+                      ? "Forgot Password?"
+                      : forgotPasswordStep === "code"
+                      ? "Enter Verification Code"
+                      : "Set New Password"}
                   </h3>
                   <p className="text-gray-600 mt-2 text-sm">
                     {resetSuccess
                       ? "Your password has been successfully updated. You can now login with your new password."
                       : forgotPasswordStep === "email"
-                        ? "Enter your email address to receive a verification code."
-                        : forgotPasswordStep === "code"
-                          ? `We sent a code to ${forgotPasswordEmail}. Enter it below.`
-                          : "Create a strong password for your account."}
+                      ? "Enter your email address to receive a verification code."
+                      : forgotPasswordStep === "code"
+                      ? `We sent a code to ${forgotPasswordEmail}. Enter it below.`
+                      : "Create a strong password for your account."}
                   </p>
                 </div>
 
@@ -1338,7 +1338,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
                               type="button"
                               onClick={() =>
                                 setShowResetConfirmPassword(
-                                  !showResetConfirmPassword,
+                                  !showResetConfirmPassword
                                 )
                               }
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"

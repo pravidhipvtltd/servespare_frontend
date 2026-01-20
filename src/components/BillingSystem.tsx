@@ -30,7 +30,7 @@ export const BillingSystem: React.FC<BillingSystemProps> = ({
   const { currentUser } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("+977");
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "upi">(
     "cash"
   );
@@ -290,7 +290,7 @@ export const BillingSystem: React.FC<BillingSystemProps> = ({
               type="tel"
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
-              placeholder="Phone Number"
+              placeholder="+977"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
           </div>
