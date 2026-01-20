@@ -113,7 +113,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
           `${
             import.meta.env.VITE_API_BASE_URL
           }/stock-management/inventory/?page=${currentPage}`,
-          { headers }
+          { headers },
         );
 
         if (!response.ok) {
@@ -139,7 +139,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
             "Images:",
             images,
             "Display Image:",
-            displayImage
+            displayImage,
           );
 
           return {
@@ -150,10 +150,11 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
               item.vehicle_type === "two_wheeler"
                 ? "two-wheeler"
                 : item.vehicle_type === "four_wheeler"
-                ? "four-wheeler"
-                : "both",
+                  ? "four-wheeler"
+                  : "both",
             partType: item.item_type === "original" ? "original" : "local",
-            price: parseFloat(item.retail_pricing) || 0,
+            price:
+              parseFloat(item.price) || parseFloat(item.retail_pricing) || 0,
             originalPrice: parseFloat(item.mrp) || 0,
             rating: 4.5,
             reviews: Math.floor(Math.random() * 100) + 10,
@@ -711,8 +712,8 @@ const ProductCard: React.FC<{
                 product.badge === "Hot"
                   ? "bg-red-500"
                   : product.badge === "New"
-                  ? "bg-green-500"
-                  : "bg-blue-500"
+                    ? "bg-green-500"
+                    : "bg-blue-500"
               }`}
             >
               {product.badge}
@@ -727,7 +728,7 @@ const ProductCard: React.FC<{
             {Math.round(
               ((product.originalPrice - product.price) /
                 product.originalPrice) *
-                100
+                100,
             )}
             %
           </div>
@@ -851,8 +852,8 @@ const ProductListItem: React.FC<{
                   product.badge === "Hot"
                     ? "bg-red-500"
                     : product.badge === "New"
-                    ? "bg-green-500"
-                    : "bg-blue-500"
+                      ? "bg-green-500"
+                      : "bg-blue-500"
                 }`}
               >
                 {product.badge}
@@ -865,7 +866,7 @@ const ProductListItem: React.FC<{
               {Math.round(
                 ((product.originalPrice - product.price) /
                   product.originalPrice) *
-                  100
+                  100,
               )}
               %
             </div>

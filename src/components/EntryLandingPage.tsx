@@ -24,20 +24,6 @@ export const EntryLandingPage: React.FC<EntryLandingPageProps> = ({
 }) => {
   const [showQuickAccess, setShowQuickAccess] = React.useState(false);
 
-  // Show welcome toast on mount
-  React.useEffect(() => {
-    const hasSeenWelcome = sessionStorage.getItem("has_seen_welcome");
-    if (!hasSeenWelcome) {
-      setTimeout(() => {
-        toast.success("System Ready! 🚀", {
-          description: 'Click "View All Test Accounts" below to get started',
-          duration: 5000,
-        });
-        sessionStorage.setItem("has_seen_welcome", "true");
-      }, 1000);
-    }
-  }, []);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center p-4">
       <div className="max-w-6xl w-full">

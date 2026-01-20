@@ -212,7 +212,6 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
           identifier: forgotPasswordEmail,
@@ -262,7 +261,6 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
           identifier: forgotPasswordEmail,
@@ -345,7 +343,6 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${resetToken}`,
-          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
           new_password: newPassword,
@@ -419,7 +416,6 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
           },
           body: JSON.stringify(loginPayload),
         },
@@ -630,7 +626,6 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 flex items-center justify-center p-4 relative overflow-hidden">
-    
       <div className="absolute inset-0 overflow-hidden">
         <motion.div
           animate={{

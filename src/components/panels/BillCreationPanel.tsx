@@ -155,7 +155,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
         console.log(
           "🔄 [fetchBranches] Branch list to map:",
           branchList.length,
-          branchList
+          branchList,
         );
 
         const mappedBranches = branchList.map((apiBranch: any) => ({
@@ -207,7 +207,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
       const matches = parties.filter(
         (p) =>
           p.type === "customer" &&
-          p.name.toLowerCase().includes(formData.customerName.toLowerCase())
+          p.name.toLowerCase().includes(formData.customerName.toLowerCase()),
       );
       setNameSuggestions(matches);
     } else {
@@ -222,7 +222,8 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
       !formData.isWalkIn
     ) {
       const matches = parties.filter(
-        (p) => p.type === "customer" && p.phone.includes(formData.customerPhone)
+        (p) =>
+          p.type === "customer" && p.phone.includes(formData.customerPhone),
       );
       setPhoneSuggestions(matches);
 
@@ -253,9 +254,9 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
             `${
               import.meta.env.VITE_API_BASE_URL
             }/stock-management/inventory/?search=${encodeURIComponent(
-              itemSearchQuery.trim()
+              itemSearchQuery.trim(),
             )}`,
-            { headers }
+            { headers },
           );
 
           if (response.ok) {
@@ -275,7 +276,8 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
               costPrice: parseFloat(item.cost_price) || 0,
               location: item.location || "",
             }));
-            setFilteredItems(mappedItems.slice(0, 50));
+            const stockItems = mappedItems.filter((i: any) => i.quantity > 0);
+            setFilteredItems(stockItems.slice(0, 50));
             setShowItemSuggestions(true);
           } else {
             setFilteredItems([]);
@@ -301,8 +303,9 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
             mrp: i.mrp || 0,
             createdAt: i.createdAt || new Date().toISOString(),
           }));
-          setFilteredItems(mapped.slice(0, 50));
-          setShowItemSuggestions(mapped.length > 0);
+          const stockItems = mapped.filter((i: any) => i.quantity > 0);
+          setFilteredItems(stockItems.slice(0, 50));
+          setShowItemSuggestions(stockItems.length > 0);
         }
       } catch (error) {
         setFilteredItems([]);
@@ -334,15 +337,15 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
     // Load from 'products' key (standardized across system)
     const storedInventory = getFromStorage("products", []).filter(
       (i: InventoryItem) =>
-        i.workspaceId === currentUser?.workspaceId && i.quantity > 0
+        i.workspaceId === currentUser?.workspaceId && i.quantity > 0,
     );
     const storedParties = getFromStorage("parties", []).filter(
       (p: Party) =>
-        p.workspaceId === currentUser?.workspaceId && p.type === "customer"
+        p.workspaceId === currentUser?.workspaceId && p.type === "customer",
     );
     const storedAccounts = getFromStorage("bankAccounts", []).filter(
       (a: BankAccount) =>
-        a.workspaceId === currentUser?.workspaceId && a.isActive
+        a.workspaceId === currentUser?.workspaceId && a.isActive,
     );
 
     setInventory(storedInventory);
@@ -367,7 +370,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
 
       const res = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/stock-management/inventory/`,
-        { headers }
+        { headers },
       );
 
       if (res.ok) {
@@ -391,7 +394,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
 
         // Use remote inventory if available, otherwise keep local
         if (mapped.length > 0) {
-          setInventory(mapped);
+          setInventory(mapped.filter((i: any) => i.quantity > 0));
         }
       }
     } catch (err) {
@@ -447,7 +450,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
               quantity: i.quantity + 1,
               total: (i.quantity + 1) * i.price,
             }
-          : i
+          : i,
       );
       setFormData({ ...formData, items: updatedItems });
     } else {
@@ -471,7 +474,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
   const updateItem = (
     index: number,
     field: keyof BillItemWithWarranty,
-    value: any
+    value: any,
   ) => {
     const updatedItems = [...formData.items];
     updatedItems[index] = { ...updatedItems[index], [field]: value };
@@ -523,7 +526,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
   };
 
   const handleSaveBill = async (
-    status: "paid" | "pending" | "draft" = "paid"
+    status: "paid" | "pending" | "draft" = "paid",
   ) => {
     // Validation
     if (!formData.customerName.trim()) {
@@ -577,7 +580,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
     if (!selectedBranchId) {
       popup.showError(
         "Please select a branch before saving the bill",
-        "Validation Error"
+        "Validation Error",
       );
       return;
     }
@@ -634,7 +637,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
           method: "POST",
           headers,
           body: JSON.stringify(payload),
-        }
+        },
       );
 
       if (resp.ok) {
@@ -657,7 +660,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
       console.warn("Bill creation API failed:", err);
       popup.showError(
         "Failed to create bill on server. Saved locally.",
-        "Network Error"
+        "Network Error",
       );
     }
 
@@ -674,7 +677,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
           };
         }
         return item;
-      }
+      },
     );
     saveToStorage("products", updatedInventory);
 
@@ -958,7 +961,8 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
           <div className="text-center text-gray-500 text-sm mt-8 pt-6 border-t border-gray-300">
             <p>Thank you for your business!</p>
             <p className="mt-1">
-              Generated on {new Date().toLocaleString("en-NP")}
+              Generated on{" "}
+              {new Date(generatedBill.createdAt).toLocaleString("en-NP")}
             </p>
           </div>
         </div>
@@ -1146,14 +1150,14 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
                     if (e.key === "Enter") {
                       e.preventDefault();
                       const item = inventory.find(
-                        (i) => i.barcode === barcodeInput.trim()
+                        (i) => i.barcode === barcodeInput.trim(),
                       );
                       if (item) {
                         addItemToCart(item);
                       } else {
                         popup.showError(
                           "Item not found with this barcode",
-                          "Barcode Not Found"
+                          "Barcode Not Found",
                         );
                       }
                       setBarcodeInput("");
@@ -1300,7 +1304,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
                               updateItem(
                                 index,
                                 "quantity",
-                                parseInt(e.target.value) || 1
+                                parseInt(e.target.value) || 1,
                               )
                             }
                             className="w-20 text-center px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1315,7 +1319,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
                               updateItem(
                                 index,
                                 "price",
-                                parseFloat(e.target.value) || 0
+                                parseFloat(e.target.value) || 0,
                               )
                             }
                             className="w-24 text-right px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1488,7 +1492,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
                     <option value="">Select account...</option>
                     {bankAccounts
                       .filter(
-                        (acc) => acc.accountType === formData.paymentMethod
+                        (acc) => acc.accountType === formData.paymentMethod,
                       )
                       .map((account) => (
                         <option key={account.id} value={account.id}>
