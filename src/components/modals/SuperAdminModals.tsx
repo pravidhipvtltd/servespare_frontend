@@ -42,7 +42,7 @@ export const CreateAdminUserModal: React.FC<{
     password: "",
     password_confirm: "",
     full_name: "",
-    phone: "",
+    phone: "+977",
     location: "",
   });
 
@@ -225,7 +225,7 @@ export const CreateAdminUserModal: React.FC<{
                   setFormData({ ...formData, phone: e.target.value })
                 }
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="+977..."
+                placeholder="+977"
               />
             </div>
 
@@ -375,7 +375,7 @@ export const AddAdminModal: React.FC<{
                   setFormData({ ...formData, phone: e.target.value })
                 }
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                placeholder="+977-9876543210"
+                placeholder="+977"
               />
             </div>
 
@@ -562,8 +562,8 @@ export const ViewAdminModal: React.FC<{
                     admin.status === "active"
                       ? "bg-green-100 text-green-700"
                       : admin.status === "suspended"
-                        ? "bg-orange-100 text-orange-700"
-                        : "bg-gray-100 text-gray-700"
+                      ? "bg-orange-100 text-orange-700"
+                      : "bg-gray-100 text-gray-700"
                   }`}
                 >
                   {admin.status.toUpperCase()}
@@ -712,7 +712,6 @@ export const ViewAdminModal: React.FC<{
   );
 };
 
-
 export const EditAdminModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -809,6 +808,7 @@ export const EditAdminModal: React.FC<{
                   setFormData({ ...formData, phone: e.target.value })
                 }
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="+977"
               />
             </div>
 

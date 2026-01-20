@@ -272,8 +272,46 @@ const AppContent: React.FC = () => {
             path="/admin/*"
             element={<LandingPage onBackToEntry={() => navigate("/")} />}
           />
+          {/* Customer panel routes */}
+          <Route
+            path="/customer"
+            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+          />
           <Route
             path="/customer/*"
+            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+          />
+          {/* Customer panel routes at root level */}
+          <Route
+            path="/login"
+            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+          />
+          <Route
+            path="/shop"
+            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+          />
+          <Route
+            path="/cart"
+            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+          />
+          <Route
+            path="/my-orders"
+            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+          />
+          <Route
+            path="/profile"
+            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+          />
+          <Route
+            path="/checkout"
+            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+          />
+          <Route
+            path="/product/:id"
+            element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
+          />
+          <Route
+            path="/all-products"
             element={<CustomerPanel onBackToEntry={() => navigate("/")} />}
           />
           {/* Catch-all route for unauthenticated users redirecting to home */}
@@ -396,7 +434,7 @@ const AppContent: React.FC = () => {
             )
           }
         />
-        {/* Redirect any authenticated user trying to access other paths back to their dashboard */}
+       
         <Route
           path="*"
           element={
@@ -415,7 +453,7 @@ const AppContent: React.FC = () => {
           }}
         />
       )}
-      {/* KYC Form Modal */}
+     
       {showKYCModal && currentUser && (
         <KYCFormModal
           userId={localStorage.getItem("user_id") || currentUser.id}

@@ -43,7 +43,7 @@ export const CustomerAuth: React.FC<CustomerAuthProps> = ({
     name: "",
     email: "",
     password: "",
-    phone: "",
+    phone: "+977",
     address: "",
   });
 
@@ -467,7 +467,7 @@ export const CustomerAuth: React.FC<CustomerAuthProps> = ({
                             phone: e.target.value,
                           })
                         }
-                        placeholder="+977 123-456-7890"
+                        placeholder="+977"
                         className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
                       />
                     </div>

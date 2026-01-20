@@ -39,7 +39,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   const [deliveryAddress, setDeliveryAddress] = useState(
     customerData?.address || ""
   );
-  const [phone, setPhone] = useState(customerData?.phone || "");
+  const [phone, setPhone] = useState(customerData?.phone || "+977");
   const [city, setCity] = useState("Pokhara");
   const [deliveryState, setDeliveryState] = useState("Province 3");
   const [zipCode, setZipCode] = useState("");
@@ -243,7 +243,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+977 123-456-7890"
+                      placeholder="+977"
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
