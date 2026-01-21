@@ -53,7 +53,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
     profileImage: customerData?.profileImage || "",
   });
   const [profileImagePreview, setProfileImagePreview] = useState<string>(
-    customerData?.profileImage || ""
+    customerData?.profileImage || "",
   );
   const [imageFile, setImageFile] = useState<File | null>(null);
 
@@ -81,7 +81,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
             "Content-Type": "application/json",
             "ngrok-skip-browser-warning": "true",
           },
-        }
+        },
       );
 
       if (response.ok) {
@@ -137,8 +137,8 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
         "🔍 [handleSave] LocalStorage keys:",
         Object.keys(localStorage).filter(
           (k) =>
-            k.includes("token") || k.includes("user") || k.includes("customer")
-        )
+            k.includes("token") || k.includes("user") || k.includes("customer"),
+        ),
       );
 
       if (!token || !userId) {
@@ -147,7 +147,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
         console.error("   Token exists:", !!token);
         console.error(
           "   UserId from storage:",
-          localStorage.getItem("user_id")
+          localStorage.getItem("user_id"),
         );
         console.error("   UserId from customerData:", customerData?.id);
         return;
@@ -163,7 +163,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
           "✏️ [handleSave] Name changed:",
           customerData.name,
           "→",
-          formData.name
+          formData.name,
         );
       }
       if (formData.email !== customerData.email) {
@@ -172,7 +172,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
           "✏️ [handleSave] Email changed:",
           customerData.email,
           "→",
-          formData.email
+          formData.email,
         );
       }
       if (formData.phone !== (customerData.phone || "")) {
@@ -181,7 +181,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
           "✏️ [handleSave] Phone changed:",
           customerData.phone,
           "→",
-          formData.phone
+          formData.phone,
         );
       }
       if (formData.address !== (customerData.address || "")) {
@@ -190,7 +190,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
           "✏️ [handleSave] Address changed:",
           customerData.address,
           "→",
-          formData.address
+          formData.address,
         );
       }
 
@@ -212,7 +212,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
       }
 
       console.log(
-        `📡 [handleSave] Making PATCH request to /api/users/${userId}/`
+        `📡 [handleSave] Making PATCH request to /api/users/${userId}/`,
       );
 
       // Build request headers and body based on whether we have a file
@@ -239,7 +239,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
         // Don't set Content-Type header when using FormData
         // Browser will set it automatically with boundary
         console.log(
-          "📡 [handleSave] Sending as FormData (multipart/form-data) with file"
+          "📡 [handleSave] Sending as FormData (multipart/form-data) with file",
         );
       } else {
         // Use JSON for text-only updates
@@ -254,7 +254,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
           method: "PATCH",
           headers: requestHeaders,
           body: requestBody,
-        }
+        },
       );
 
       console.log("📥 [handleSave] Response status:", response.status);
@@ -276,7 +276,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
         // Update localStorage
         const customers = JSON.parse(localStorage.getItem("customers") || "[]");
         const updatedCustomers = customers.map((c: any) =>
-          c.id === customerData.id ? updatedCustomer : c
+          c.id === customerData.id ? updatedCustomer : c,
         );
         localStorage.setItem("customers", JSON.stringify(updatedCustomers));
 
@@ -294,7 +294,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
           console.error(
             "❌ [handleSave] Profile update failed:",
             response.status,
-            errorData
+            errorData,
           );
 
           // Extract error message from various possible API response formats
@@ -308,12 +308,20 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
           } else if (typeof errorData === "object") {
             // Check for field-specific errors
             const fieldErrors = Object.entries(errorData)
-              .filter(([key, value]) => key !== "message" && key !== "detail")
+              .filter(
+                ([key, value]) =>
+                  key !== "message" &&
+                  key !== "detail" &&
+                  key !== "status" &&
+                  key !== "code",
+              )
               .map(([key, value]) => {
-                if (Array.isArray(value)) {
-                  return `${key}: ${value.join(", ")}`;
-                }
-                return `${key}: ${value}`;
+                const errorStr = Array.isArray(value)
+                  ? value.join(", ")
+                  : String(value);
+                const fieldName =
+                  key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, " ");
+                return `${fieldName}: ${errorStr}`;
               });
             if (fieldErrors.length > 0) {
               errorMessage = fieldErrors.join("\n");
@@ -324,12 +332,12 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
         } catch (parseError) {
           console.error(
             "❌ [handleSave] Failed to parse error response:",
-            parseError
+            parseError,
           );
           console.error("❌ [handleSave] Response status:", response.status);
           console.error(
             "❌ [handleSave] Response statusText:",
-            response.statusText
+            response.statusText,
           );
 
           let errorMessage = "Failed to update profile";
@@ -354,7 +362,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
       console.error("❌ [handleSave] Error stack:", error.stack);
       toast.error(
         "An error occurred while updating your profile: " +
-          (error.message || "Unknown error")
+          (error.message || "Unknown error"),
       );
     }
   };

@@ -1,8 +1,19 @@
 // Add User Modal - Clean & Simple
-import React, { useState } from 'react';
-import { X, User, Mail, Phone, Lock, MapPin, Building2, Shield, AlertCircle, Check } from 'lucide-react';
-import { User as UserType, Workspace } from '../types';
-import { getFromStorage, saveToStorage } from '../utils/mockData';
+import React, { useState } from "react";
+import {
+  X,
+  User,
+  Mail,
+  Phone,
+  Lock,
+  MapPin,
+  Building2,
+  Shield,
+  AlertCircle,
+  Check,
+} from "lucide-react";
+import { User as UserType, Workspace } from "../types";
+import { getFromStorage, saveToStorage } from "../utils/mockData";
 
 interface AddUserModalProps {
   isOpen: boolean;
@@ -11,60 +22,91 @@ interface AddUserModalProps {
   workspaces: Workspace[];
 }
 
-export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onSuccess, workspaces }) => {
+export const AddUserModal: React.FC<AddUserModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  workspaces,
+}) => {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    password: '',
-    role: 'cashier',
-    workspaceId: workspaces[0]?.id || '',
-    address: '',
-    isActive: true
+    name: "",
+    email: "",
+    phone: "+977",
+    password: "",
+    role: "cashier",
+    workspaceId: workspaces[0]?.id || "",
+    address: "",
+    isActive: true,
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const roles = [
-    { id: 'super_admin', name: 'Super Admin', icon: Shield, color: 'red', description: 'Full system access' },
-    { id: 'admin', name: 'Admin', icon: Shield, color: 'purple', description: 'Manage store operations' },
-    { id: 'inventory_manager', name: 'Inventory Manager', icon: Shield, color: 'orange', description: 'Manage inventory' },
-    { id: 'cashier', name: 'Cashier', icon: Shield, color: 'green', description: 'Process sales' }
+    {
+      id: "super_admin",
+      name: "Super Admin",
+      icon: Shield,
+      color: "red",
+      description: "Full system access",
+    },
+    {
+      id: "admin",
+      name: "Admin",
+      icon: Shield,
+      color: "purple",
+      description: "Manage store operations",
+    },
+    {
+      id: "inventory_manager",
+      name: "Inventory Manager",
+      icon: Shield,
+      color: "orange",
+      description: "Manage inventory",
+    },
+    {
+      id: "cashier",
+      name: "Cashier",
+      icon: Shield,
+      color: "green",
+      description: "Process sales",
+    },
   ];
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
+      newErrors.name = "Name is required";
     }
 
     if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = "Email is required";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Invalid email format';
+      newErrors.email = "Invalid email format";
     }
 
     // Check if email already exists
-    const users: UserType[] = getFromStorage('users', []);
-    if (users.some(u => u.email.toLowerCase() === formData.email.toLowerCase())) {
-      newErrors.email = 'Email already exists';
+    const users: UserType[] = getFromStorage("users", []);
+    if (
+      users.some((u) => u.email.toLowerCase() === formData.email.toLowerCase())
+    ) {
+      newErrors.email = "Email already exists";
     }
 
     if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    } else if (!/^\+977[- ]?\d{10}$/.test(formData.phone.replace(/\s/g, ''))) {
-      newErrors.phone = 'Invalid Nepal phone number (use +977XXXXXXXXXX)';
+      newErrors.phone = "Phone number is required";
+    } else if (!/^\+977[- ]?\d{10}$/.test(formData.phone.replace(/\s/g, ""))) {
+      newErrors.phone = "Invalid Nepal phone number (use +977XXXXXXXXXX)";
     }
 
     if (!formData.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = "Password is required";
     } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+      newErrors.password = "Password must be at least 6 characters";
     }
 
     if (!formData.workspaceId) {
-      newErrors.workspaceId = 'Please select a branch';
+      newErrors.workspaceId = "Please select a branch";
     }
 
     setErrors(newErrors);
@@ -86,40 +128,40 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onS
       workspaceId: formData.workspaceId,
       address: formData.address.trim(),
       isActive: formData.isActive,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
 
-    const users: UserType[] = getFromStorage('users', []);
-    saveToStorage('users', [...users, newUser]);
+    const users: UserType[] = getFromStorage("users", []);
+    saveToStorage("users", [...users, newUser]);
 
     // Reset form
     setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      password: '',
-      role: 'cashier',
-      workspaceId: workspaces[0]?.id || '',
-      address: '',
-      isActive: true
+      name: "",
+      email: "",
+      phone: "+977",
+      password: "",
+      role: "cashier",
+      workspaceId: workspaces[0]?.id || "",
+      address: "",
+      isActive: true,
     });
     setErrors({});
 
     onSuccess();
-    alert('✅ User created successfully!');
+    alert("✅ User created successfully!");
     onClose();
   };
 
   const handleClose = () => {
     setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      password: '',
-      role: 'cashier',
-      workspaceId: workspaces[0]?.id || '',
-      address: '',
-      isActive: true
+      name: "",
+      email: "",
+      phone: "+977",
+      password: "",
+      role: "cashier",
+      workspaceId: workspaces[0]?.id || "",
+      address: "",
+      isActive: true,
     });
     setErrors({});
     onClose();
@@ -127,7 +169,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onS
 
   if (!isOpen) return null;
 
-  const selectedRole = roles.find(r => r.id === formData.role);
+  const selectedRole = roles.find((r) => r.id === formData.role);
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -157,9 +199,12 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onS
           <div className="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4 flex items-start space-x-3">
             <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-blue-800 font-semibold">User Account Creation</p>
+              <p className="text-blue-800 font-semibold">
+                User Account Creation
+              </p>
               <p className="text-blue-700 text-sm mt-1">
-                Fill in all required fields. User will be able to login with their email and password.
+                Fill in all required fields. User will be able to login with
+                their email and password.
               </p>
             </div>
           </div>
@@ -179,10 +224,14 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onS
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 placeholder="Enter full name"
                 className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 ${
-                  errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                  errors.name
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-300 focus:ring-blue-500"
                 }`}
               />
               {errors.name && (
@@ -202,10 +251,14 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onS
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
                   placeholder="user@example.com"
                   className={`w-full pl-11 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 ${
-                    errors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                    errors.email
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-blue-500"
                   }`}
                 />
               </div>
@@ -226,10 +279,14 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onS
                 <input
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="+977-XXXXXXXXXX"
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
+                  placeholder="+977"
                   className={`w-full pl-11 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 ${
-                    errors.phone ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                    errors.phone
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-blue-500"
                   }`}
                 />
               </div>
@@ -249,7 +306,9 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onS
                 <MapPin className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
                 <textarea
                   value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, address: e.target.value })
+                  }
                   placeholder="Enter address"
                   rows={2}
                   className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -275,10 +334,14 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onS
                 <input
                   type="password"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
                   placeholder="Minimum 6 characters"
                   className={`w-full pl-11 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 ${
-                    errors.password ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                    errors.password
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-blue-500"
                   }`}
                 />
               </div>
@@ -302,7 +365,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onS
                     className={`p-4 rounded-xl border-2 transition-all text-left ${
                       formData.role === role.id
                         ? `bg-${role.color}-50 border-${role.color}-500`
-                        : 'bg-white border-gray-200 hover:border-gray-400'
+                        : "bg-white border-gray-200 hover:border-gray-400"
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -311,8 +374,12 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onS
                         <Check className={`w-5 h-5 text-${role.color}-600`} />
                       )}
                     </div>
-                    <div className="text-gray-900 font-semibold mb-1">{role.name}</div>
-                    <div className="text-gray-600 text-xs">{role.description}</div>
+                    <div className="text-gray-900 font-semibold mb-1">
+                      {role.name}
+                    </div>
+                    <div className="text-gray-600 text-xs">
+                      {role.description}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -327,9 +394,13 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onS
                 <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <select
                   value={formData.workspaceId}
-                  onChange={(e) => setFormData({ ...formData, workspaceId: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, workspaceId: e.target.value })
+                  }
                   className={`w-full pl-11 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 appearance-none ${
-                    errors.workspaceId ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                    errors.workspaceId
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-blue-500"
                   }`}
                 >
                   <option value="">Select a branch</option>
@@ -350,18 +421,24 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onS
             {/* Active Status */}
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
               <div>
-                <div className="text-gray-900 font-semibold">Account Status</div>
-                <div className="text-gray-600 text-sm">User can login immediately after creation</div>
+                <div className="text-gray-900 font-semibold">
+                  Account Status
+                </div>
+                <div className="text-gray-600 text-sm">
+                  User can login immediately after creation
+                </div>
               </div>
               <button
-                onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
+                onClick={() =>
+                  setFormData({ ...formData, isActive: !formData.isActive })
+                }
                 className={`relative w-16 h-8 rounded-full transition-colors ${
-                  formData.isActive ? 'bg-green-500' : 'bg-gray-300'
+                  formData.isActive ? "bg-green-500" : "bg-gray-300"
                 }`}
               >
                 <div
                   className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                    formData.isActive ? 'translate-x-8' : 'translate-x-0'
+                    formData.isActive ? "translate-x-8" : "translate-x-0"
                   }`}
                 />
               </button>

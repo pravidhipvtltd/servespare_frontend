@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { useNavigate } from "react-router-dom";
 import {
   Mail,
   Lock,
@@ -20,6 +21,7 @@ import { toast } from "sonner";
 interface CustomerAuthProps {
   onLogin: (customer: any) => void;
   onBackToEntry: () => void;
+  initialMode?: "login" | "register";
 }
 
 type AuthMode = "login" | "register";
@@ -107,8 +109,23 @@ const nepalLocations = [
 export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
   onLogin,
   onBackToEntry,
+  initialMode = "login",
 }) => {
-  const [mode, setMode] = useState<AuthMode>("login");
+  const [mode, setMode] = useState<AuthMode>(initialMode);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
+
+  const handleModeChange = (newMode: AuthMode) => {
+    setMode(newMode);
+    if (newMode === "login") {
+      navigate("/login");
+    } else {
+      navigate("/register");
+    }
+  };
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -144,7 +161,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
     name: "",
     email: "",
     username: "",
-    phone: "",
+    phone: "+977",
     address: "",
     password: "",
     confirmPassword: "",
@@ -212,7 +229,6 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
           identifier: forgotPasswordEmail,
@@ -262,7 +278,6 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
           identifier: forgotPasswordEmail,
@@ -345,7 +360,6 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${resetToken}`,
-          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
           new_password: newPassword,
@@ -419,7 +433,6 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
           },
           body: JSON.stringify(loginPayload),
         },
@@ -445,13 +458,56 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
         // Store user info
         localStorage.setItem("user", JSON.stringify(data.user));
         localStorage.setItem("customer_user", JSON.stringify(data.user));
+        localStorage.setItem("user_role", data.user.role);
 
         toast.success(data.message || "Login successful!");
 
         // Refresh page immediately
         window.location.reload();
       } else {
-        setLoginError(data.message || data.error || "Invalid credentials");
+        const errorData = data;
+        let errorMessage = "Invalid credentials";
+
+        if (errorData) {
+          if (typeof errorData === "string") {
+            errorMessage = errorData;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (errorData.error) {
+            errorMessage = errorData.error;
+          } else if (errorData.detail) {
+            errorMessage = errorData.detail;
+          } else if (
+            errorData.non_field_errors &&
+            Array.isArray(errorData.non_field_errors)
+          ) {
+            errorMessage = errorData.non_field_errors.join(", ");
+          } else {
+            // Check for field-specific errors
+            const fieldErrors = Object.entries(errorData)
+              .filter(
+                ([key]) =>
+                  key !== "status" &&
+                  key !== "code" &&
+                  key !== "tokens" &&
+                  key !== "user",
+              )
+              .map(([field, errors]) => {
+                const errorStr = Array.isArray(errors)
+                  ? errors.join(", ")
+                  : String(errors);
+                const fieldName =
+                  field.charAt(0).toUpperCase() +
+                  field.slice(1).replace(/_/g, " ");
+                return `${fieldName}: ${errorStr}`;
+              });
+
+            if (fieldErrors.length > 0) {
+              errorMessage = fieldErrors.join("\n");
+            }
+          }
+        }
+        setLoginError(errorMessage);
       }
     } catch (error) {
       setLoginError("Network error. Please check your connection.");
@@ -548,51 +604,68 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
 
       if (response.ok) {
         toast.success("Registration successful! Please login.");
-        setMode("login");
+        handleModeChange("login");
         setLoginUsername(registerData.username);
         // Reset form
         setRegisterData({
           name: "",
           email: "",
           username: "",
-          phone: "",
+          phone: "+977",
           address: "",
           password: "",
           confirmPassword: "",
         });
       } else {
         // Handle various error formats from API
-        const apiErrors: any = {};
-        if (data.username) {
-          apiErrors.username = Array.isArray(data.username)
-            ? data.username.join(", ")
-            : data.username;
-        }
-        if (data.email) {
-          apiErrors.email = Array.isArray(data.email)
-            ? data.email.join(", ")
-            : data.email;
-        }
-        if (data.phone) {
-          apiErrors.phone = Array.isArray(data.phone)
-            ? data.phone.join(", ")
-            : data.phone;
-        }
-        if (data.password) {
-          apiErrors.password = Array.isArray(data.password)
-            ? data.password.join(", ")
-            : data.password;
-        }
+        const errorData = data;
+        let errorMessage = "Registration failed";
 
-        if (Object.keys(apiErrors).length > 0) {
-          setRegisterErrors(apiErrors);
-        } else {
-          toast.error(
-            data.message ||
-              data.error ||
-              "Registration failed. Please try again.",
-          );
+        if (errorData) {
+          if (typeof errorData === "string") {
+            errorMessage = errorData;
+          } else if (
+            errorData.non_field_errors &&
+            Array.isArray(errorData.non_field_errors)
+          ) {
+            errorMessage = errorData.non_field_errors.join(", ");
+          } else {
+            // Check for field-specific errors
+            const fieldErrors = Object.entries(errorData)
+              .filter(([key]) => key !== "status" && key !== "code")
+              .map(([field, errors]) => {
+                const errorStr = Array.isArray(errors)
+                  ? errors.join(", ")
+                  : String(errors);
+                const fieldName =
+                  field.charAt(0).toUpperCase() +
+                  field.slice(1).replace(/_/g, " ");
+                return `${fieldName}: ${errorStr}`;
+              });
+
+            if (fieldErrors.length > 0) {
+              errorMessage = fieldErrors.join("\n");
+            } else if (errorData.message) {
+              errorMessage = errorData.message;
+            } else if (errorData.detail) {
+              errorMessage = errorData.detail;
+            }
+          }
         }
+        setRegisterError(errorMessage);
+
+        // Also map to field-specific errors if any for form feedback
+        const apiErrors: any = {};
+        if (typeof data === "object") {
+          Object.keys(data).forEach((key) => {
+            if (key in registerData || key === "non_field_errors") {
+              apiErrors[key] = Array.isArray(data[key])
+                ? data[key].join(", ")
+                : data[key];
+            }
+          });
+        }
+        setErrors(apiErrors);
       }
     } catch (error) {
       toast.error("Network error. Please check your connection.");
@@ -624,13 +697,12 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
     localStorage.setItem("customers", JSON.stringify(customers));
 
     toast.success("Registration successful! Please login.");
-    setMode("login");
+    handleModeChange("login");
     setLoginUsername(registerData.username);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 flex items-center justify-center p-4 relative overflow-hidden">
-    
       <div className="absolute inset-0 overflow-hidden">
         <motion.div
           animate={{
@@ -715,7 +787,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
           {/* Tab Switcher */}
           <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
             <button
-              onClick={() => setMode("login")}
+              onClick={() => handleModeChange("login")}
               className={`flex-1 py-2 rounded-lg font-semibold transition-all ${
                 mode === "login"
                   ? "bg-white text-purple-600 shadow-sm"
@@ -725,7 +797,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
               Login
             </button>
             <button
-              onClick={() => setMode("register")}
+              onClick={() => handleModeChange("register")}
               className={`flex-1 py-2 rounded-lg font-semibold transition-all ${
                 mode === "register"
                   ? "bg-white text-purple-600 shadow-sm"
@@ -964,7 +1036,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
                           ? "border-red-300 focus:border-red-500 focus:ring-red-100"
                           : "border-gray-200 focus:border-purple-500 focus:ring-purple-100"
                       }`}
-                      placeholder="+977XXXXXXXXXX"
+                      placeholder="+977"
                     />
                   </div>
                   {registerErrors.phone && (
@@ -1138,7 +1210,9 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
                 ? "Don't have an account? "
                 : "Already have an account? "}
               <button
-                onClick={() => setMode(mode === "login" ? "register" : "login")}
+                onClick={() =>
+                  handleModeChange(mode === "login" ? "register" : "login")
+                }
                 className="text-purple-600 font-semibold hover:text-purple-700 transition-colors"
               >
                 {mode === "login" ? "Register now" : "Sign in"}

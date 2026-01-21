@@ -1,14 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { User } from "../types";
 
 interface AuthContextType {
   currentUser: User | null;
   login: (
     email: string,
-    password: string
+    password: string,
   ) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   refreshUser: () => void;
+  refreshAccessToken: () => Promise<boolean>;
   isLoading: boolean;
   tenantInfo: {
     businessName: string;
@@ -16,7 +18,7 @@ interface AuthContextType {
     status: string;
   } | null;
   updateTenantInfo: (
-    updates: Partial<{ businessName: string; package: string; status: string }>
+    updates: Partial<{ businessName: string; package: string; status: string }>,
   ) => void;
 }
 
@@ -28,6 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [tenantInfo, setTenantInfo] = useState<any>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Check for existing session - prioritize backend tokens
@@ -149,7 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const login = async (
     username: string,
-    password: string
+    password: string,
   ): Promise<{ success: boolean; message?: string }> => {
     console.log("🔐 Attempting login:", username);
 
@@ -164,7 +167,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         message: "Login failed. Please try again.",
       };
     }
-
+    //example
     try {
       // Parse user data from backend response
       const parsedUser = JSON.parse(storedUser);
@@ -294,34 +297,125 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     console.log("👋 Logging out...");
+    const role = currentUser?.role || localStorage.getItem("user_role");
+
+    try {
+      // Call backend logout API
+      const token = localStorage.getItem("accessToken");
+      const refreshToken = localStorage.getItem("refreshToken");
+
+      if (token && refreshToken) {
+        await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/logout/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            refresh_token: refreshToken,
+          }),
+        });
+      }
+    } catch (error) {
+      console.error("Logout API call failed:", error);
+      // We continue with local logout even if API fails
+    }
+
     setCurrentUser(null);
     setTenantInfo(null);
-    // Clear all auth-related localStorage (including backend tokens)
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
-    localStorage.removeItem("user_id");
-    localStorage.removeItem("user_email");
-    localStorage.removeItem("user_name");
-    localStorage.removeItem("user_role");
-    localStorage.removeItem("tenant_id");
-    localStorage.removeItem("business_name");
-    localStorage.removeItem("tenant_package");
-    localStorage.removeItem("tenant_status");
-    localStorage.removeItem("session_active");
+
+    // Clear all auth-related localStorage
+    const authKeys = [
+      "auth_token",
+      "accessToken",
+      "refreshToken",
+      "user",
+      "user_id",
+      "user_email",
+      "user_name",
+      "user_role",
+      "tenant_id",
+      "business_name",
+      "tenant_package",
+      "tenant_status",
+      "session_active",
+      "branch_id",
+      "user_branch",
+      "package_active",
+      "selected_package",
+      "customer_user",
+    ];
+
+    authKeys.forEach((key) => localStorage.removeItem(key));
+
     console.log("✅ Logged out successfully");
+    if (role === "customer") {
+      navigate("/customer");
+    } else {
+      navigate("/");
+    }
   };
 
   const updateTenantInfo = (
-    updates: Partial<{ businessName: string; package: string; status: string }>
+    updates: Partial<{ businessName: string; package: string; status: string }>,
   ) => {
     setTenantInfo((prev: any) => ({
       ...prev,
       ...updates,
     }));
+  };
+
+  // Function to refresh the access token using the refresh token
+  const refreshAccessToken = async (): Promise<boolean> => {
+    const refreshToken = localStorage.getItem("refreshToken");
+
+    if (!refreshToken) {
+      console.error("❌ No refresh token available");
+      return false;
+    }
+
+    try {
+      console.log("🔄 Refreshing access token...");
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/token/refresh/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
+          },
+          body: JSON.stringify({
+            refresh: refreshToken,
+          }),
+        },
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const newAccessToken = data.access || data.accessToken;
+
+        if (newAccessToken) {
+          localStorage.setItem("accessToken", newAccessToken);
+          localStorage.setItem("auth_token", newAccessToken);
+          console.log("✅ Access token refreshed successfully");
+          return true;
+        } else {
+          console.error("❌ No access token in refresh response");
+          return false;
+        }
+      } else {
+        console.error("❌ Token refresh failed:", response.status);
+        // If refresh fails, likely refresh token is also expired
+        // Force logout
+        logout();
+        return false;
+      }
+    } catch (error) {
+      console.error("❌ Error refreshing token:", error);
+      return false;
+    }
   };
 
   return (
@@ -331,6 +425,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         login,
         logout,
         refreshUser,
+        refreshAccessToken,
         isLoading,
         tenantInfo,
         updateTenantInfo,

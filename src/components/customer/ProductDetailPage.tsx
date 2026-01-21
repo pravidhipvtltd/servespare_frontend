@@ -217,7 +217,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           const data = await response.json();
           console.log("Favorite added, API response:", data);
           setIsWishlisted(true);
-          // Store the favorite ID for later deletion - only use what API returns
+          
           const favId = data.id || data.favorite_id;
           console.log("Storing favorite ID:", favId);
           setFavoriteId(favId);

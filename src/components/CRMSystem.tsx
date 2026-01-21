@@ -105,7 +105,7 @@ export const CRMSystem: React.FC = () => {
   const [contactForm, setContactForm] = useState<Partial<Contact>>({
     name: "",
     email: "",
-    phone: "",
+    phone: "+977",
     company: "",
     designation: "",
     address: "",
@@ -465,7 +465,7 @@ export const CRMSystem: React.FC = () => {
     setContactForm({
       name: "",
       email: "",
-      phone: "",
+      phone: "+977",
       company: "",
       designation: "",
       address: "",
@@ -1173,7 +1173,7 @@ export const CRMSystem: React.FC = () => {
                       setContactForm({ ...contactForm, phone: e.target.value })
                     }
                     required
-                    placeholder="+977-9800000000"
+                    placeholder="+977"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
