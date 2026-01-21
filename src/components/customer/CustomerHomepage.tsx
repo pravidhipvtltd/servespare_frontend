@@ -211,6 +211,10 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
           const firstImage = images[0]?.image;
           const displayImage = primaryImage || firstImage || "";
 
+          // Show MRP as the primary price as requested
+          const displayPrice = parseFloat(item.mrp || 0);
+          const originalPrice = parseFloat(item.price || 0);
+
           return {
             id: String(item.id),
             name: item.item_name,
@@ -221,8 +225,8 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
                 : item.vehicle_type === "four_wheeler"
                   ? "four-wheeler"
                   : "both",
-            price: parseFloat(item.price) || 0,
-            originalPrice: parseFloat(item.mrp) || 0,
+            price: displayPrice,
+            originalPrice: originalPrice,
             rating: 4.5,
             reviews: Math.floor(Math.random() * 100) + 10,
             image: displayImage,

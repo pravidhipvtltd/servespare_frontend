@@ -273,11 +273,6 @@ export const SuperAdminDashboardRefined: React.FC = () => {
   }, []);
 
   const loadData = async () => {
-    toast.error("apiii", {
-      duration: 10000,
-      description: "Super Admin Dashboard data fetching triggered",
-    });
-
     // Load pending verifications count
     const pendingUsers = JSON.parse(
       localStorage.getItem("pending_user_verifications") || "[]",

@@ -35,9 +35,11 @@ import {
   Badge,
   Link as LinkIcon,
   Barcode,
+  Camera,
   UserCheck,
   Users,
 } from "lucide-react";
+import { Html5Qrcode } from "html5-qrcode";
 import { getFromStorage, saveToStorage } from "../../utils/mockData";
 import { useAuth } from "../../contexts/AuthContext";
 import { getBranches, getCurrentTenantId } from "../../api/branch.api";
@@ -122,6 +124,113 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
   // Barcode scanning state
   const barcodeInputRef = useRef<HTMLInputElement>(null);
   const [barcodeInput, setBarcodeInput] = useState("");
+  const [isScanning, setIsScanning] = useState(false);
+  const scannerRef = useRef<any>(null);
+
+  const stopScanning = async () => {
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+      } catch (err) {
+        console.warn("Stop scanner error:", err);
+      }
+      scannerRef.current = null;
+    }
+    setIsScanning(false);
+  };
+
+  const toggleScanning = async () => {
+    if (isScanning) {
+      await stopScanning();
+    } else {
+      setIsScanning(true);
+    }
+  };
+
+  useEffect(() => {
+    let html5QrCode: Html5Qrcode | null = null;
+
+    if (isScanning) {
+      // Small timeout to ensure the "reader" div is mounted in the DOM
+      const startScanner = async () => {
+        try {
+          html5QrCode = new Html5Qrcode("reader");
+          scannerRef.current = html5QrCode;
+
+          const config = {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0,
+          };
+
+          await html5QrCode.start(
+            { facingMode: "environment" }, // Prefer back camera on mobile, laptop camera otherwise
+            config,
+            (decodedText) => {
+              // Success callback
+              const item = inventory.find(
+                (i) =>
+                  i.barcode === decodedText || i.partNumber === decodedText,
+              );
+              if (item) {
+                addItemToCart(item);
+                stopScanning();
+              } else {
+                console.log("Barcode not found in inventory:", decodedText);
+              }
+            },
+            (errorMessage) => {
+              // This is called for every frame where no code is found
+            },
+          );
+        } catch (err) {
+          console.error("Failed to start scanner:", err);
+
+          try {
+            if (html5QrCode) {
+              await html5QrCode.start(
+                { facingMode: "user" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText) => {
+                  const item = inventory.find((i) => i.barcode === decodedText);
+                  if (item) {
+                    addItemToCart(item);
+                    stopScanning();
+                  }
+                },
+                () => {},
+              );
+            }
+          } catch (fallbackErr) {
+            console.error("Scanner fallback failed:", fallbackErr);
+            popup.showError(
+              "Could not access camera. Please check permissions.",
+            );
+            stopScanning();
+          }
+        }
+      };
+
+      startScanner();
+    }
+
+    return () => {
+      if (scannerRef.current) {
+        const scanner = scannerRef.current;
+        scannerRef.current = null;
+
+        // Use a more robust check or just try to stop
+        try {
+          scanner.stop().catch((err: any) => {
+            // This often happens if the scanner wasn't fully started or already stopped
+            console.warn("Scanner stop ignored:", err);
+          });
+        } catch (err) {
+          console.error("Immediate scanner stop error:", err);
+        }
+      }
+    };
+  }, [isScanning, inventory]);
 
   const [formData, setFormData] = useState<BillFormData>({
     customerName: "",
@@ -236,7 +345,6 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
     }
   }, [formData.customerPhone, parties, formData.isWalkIn]);
 
-  // Item search filtering - use API and local inventory
   useEffect(() => {
     const searchItems = async () => {
       setSearchLoading(true);
@@ -248,7 +356,6 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
 
         if (token) headers["Authorization"] = `Bearer ${token}`;
 
-        // If query present, call API search endpoint, otherwise show local inventory
         if (itemSearchQuery.trim()) {
           const response = await fetch(
             `${
@@ -284,7 +391,6 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
             setShowItemSuggestions(false);
           }
         } else {
-          // No search query — show the loaded inventory (from `inventory` state)
           const mapped = inventory.map((i: any) => ({
             id: i.id,
             name: i.name || i.item_name || "",
@@ -1135,38 +1241,74 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
 
           {/* Barcode Scanner */}
           <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl p-4 text-white">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 mb-3">
               <Barcode className="w-6 h-6" />
-              <div className="flex-1">
+              <div className="flex-1 flex items-center justify-between">
                 <label className="block text-sm text-purple-100 mb-1">
                   Scan Barcode
                 </label>
-                <input
-                  ref={barcodeInputRef}
-                  type="text"
-                  value={barcodeInput}
-                  onChange={(e) => setBarcodeInput(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      const item = inventory.find(
-                        (i) => i.barcode === barcodeInput.trim(),
-                      );
-                      if (item) {
-                        addItemToCart(item);
-                      } else {
-                        popup.showError(
-                          "Item not found with this barcode",
-                          "Barcode Not Found",
-                        );
-                      }
-                      setBarcodeInput("");
-                    }
-                  }}
-                  placeholder="Scan or enter barcode..."
-                  className="w-full px-4 py-2 bg-white text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300"
-                />
+                <button
+                  onClick={toggleScanning}
+                  className={`flex items-center space-x-2 px-3 py-1 rounded-lg text-sm transition-all ${
+                    isScanning
+                      ? "bg-red-500 text-white"
+                      : "bg-white text-purple-600 hover:bg-purple-50"
+                  }`}
+                >
+                  {isScanning ? (
+                    <>
+                      <X className="w-4 h-4" />
+                      <span>Close Camera</span>
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="w-4 h-4" />
+                      <span>Open Camera</span>
+                    </>
+                  )}
+                </button>
               </div>
+            </div>
+
+            {isScanning && (
+              <div className="mb-4 bg-white rounded-lg overflow-hidden border-2 border-purple-200">
+                <div
+                  id="reader"
+                  className="w-full"
+                  style={{ minHeight: "300px" }}
+                ></div>
+                <p className="text-center text-xs text-gray-500 p-2 italic bg-purple-50">
+                  Align barcode within the square to scan
+                </p>
+              </div>
+            )}
+
+            <div className="flex items-center space-x-3">
+              <input
+                ref={barcodeInputRef}
+                type="text"
+                value={barcodeInput}
+                onChange={(e) => setBarcodeInput(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const item = inventory.find(
+                      (i) => i.barcode === barcodeInput.trim(),
+                    );
+                    if (item) {
+                      addItemToCart(item);
+                    } else {
+                      popup.showError(
+                        "Item not found with this barcode",
+                        "Barcode Not Found",
+                      );
+                    }
+                    setBarcodeInput("");
+                  }
+                }}
+                placeholder="Scan or enter barcode..."
+                className="w-full px-4 py-2 bg-white text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300"
+              />
             </div>
           </div>
 
