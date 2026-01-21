@@ -306,23 +306,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   <div className="grid md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm text-gray-700 mb-2">
-                        <Building className="w-4 h-4 inline mr-2" />
-                        City *
-                      </label>
-                      <select
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      >
-                        <option value="Pokhara">Pokhara</option>
-                        <option value="Lalitpur">Lalitpur</option>
-                        <option value="Bhaktapur">Bhaktapur</option>
-                        <option value="Pokhara">Pokhara</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-700 mb-2">
                         State *
                       </label>
                       <select
@@ -337,6 +320,23 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                         <option value="Province 5">Province 5</option>
                         <option value="Karnali">Karnali</option>
                         <option value="Sudurpashchim">Sudurpashchim</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-700 mb-2">
+                        <Building className="w-4 h-4 inline mr-2" />
+                        City *
+                      </label>
+                      <select
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      >
+                        <option value="Pokhara">Pokhara</option>
+                        <option value="Lalitpur">Lalitpur</option>
+                        <option value="Bhaktapur">Bhaktapur</option>
+                        <option value="Pokhara">Pokhara</option>
+                        <option value="Other">Other</option>
                       </select>
                     </div>
                     <div>
