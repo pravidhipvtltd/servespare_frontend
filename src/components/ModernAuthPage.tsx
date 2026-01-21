@@ -486,7 +486,7 @@ export const ModernAuthPage: React.FC<ModernAuthPageProps> = ({
             dashboardRoute = "/admin/cashier/dashboard";
             break;
           case "customer":
-            dashboardRoute = "/customer/home";
+            dashboardRoute = "/shop";
             break;
         }
 

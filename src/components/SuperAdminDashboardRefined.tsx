@@ -86,9 +86,9 @@ export interface AdminAccount {
   subscriptionStartDate: string;
   subscriptionEndDate: string;
   status: "active" | "suspended" | "expired";
-  demoMode: boolean; // Whether admin is in demo mode
-  password: string; // Admin's password (hashed in production)
-  isFirstLogin: boolean; // Whether admin needs to change password on first login
+  demoMode: boolean;
+  password: string;
+  isFirstLogin: boolean;
   createdBySuperAdmin: boolean; // Whether this account was created by SuperAdmin
   dueAmount: number;
   lastPaymentDate: string;
@@ -273,6 +273,11 @@ export const SuperAdminDashboardRefined: React.FC = () => {
   }, []);
 
   const loadData = async () => {
+    toast.error("apiii", {
+      duration: 10000,
+      description: "Super Admin Dashboard data fetching triggered",
+    });
+
     // Load pending verifications count
     const pendingUsers = JSON.parse(
       localStorage.getItem("pending_user_verifications") || "[]",
@@ -1191,8 +1196,8 @@ const AdminAccountsView: React.FC<{
         products: 1000,
       };
 
-      const currentAdmins = getFromStorage("admin_accounts", []);
-      saveToStorage("admin_accounts", [...currentAdmins, newAdmin]);
+      // Note: We no longer save to local storage as we are purely backend-driven.
+      // The loadData function will fetch the latest state from the backend.
 
       // Prepare for Step 2: Subscription Package Selection
       setCreatedTenantData({
@@ -1404,7 +1409,44 @@ const AdminAccountsView: React.FC<{
       } else {
         const errorData = await response.json();
         console.error("Update failed:", errorData);
-        toast.error("Failed to update admin account");
+
+        // Extract specific error messages from backend
+        let errorMessage = "Failed to update admin account";
+
+        if (errorData) {
+          if (typeof errorData === "string") {
+            errorMessage = errorData;
+          } else if (errorData.detail) {
+            errorMessage = errorData.detail;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (
+            errorData.non_field_errors &&
+            Array.isArray(errorData.non_field_errors)
+          ) {
+            errorMessage = errorData.non_field_errors.join(", ");
+          } else {
+            // Check for field-specific errors
+            const fieldErrors = Object.entries(errorData)
+              .filter(([key]) => key !== "status" && key !== "code") // Exclude common metadata
+              .map(([field, errors]) => {
+                const errorStr = Array.isArray(errors)
+                  ? errors.join(", ")
+                  : String(errors);
+                // Capitalize field name for better readability
+                const fieldName =
+                  field.charAt(0).toUpperCase() +
+                  field.slice(1).replace(/_/g, " ");
+                return `${fieldName}: ${errorStr}`;
+              });
+
+            if (fieldErrors.length > 0) {
+              errorMessage = fieldErrors.join("\n");
+            }
+          }
+        }
+
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error("Error updating admin:", error);

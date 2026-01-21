@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   ShoppingCart,
   LogOut,
@@ -151,8 +152,43 @@ export const CashierDashboardNew: React.FC = () => {
 
   const { currentUser, logout } = useAuth();
   const { t } = useLanguage();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [activePanel, setActivePanel] = useState("dashboard");
+
+  // Effect to sync panel with URL
+  useEffect(() => {
+    const path = location.pathname;
+    const prefix = "/admin/cashier";
+
+    if (
+      path === prefix ||
+      path === prefix + "/" ||
+      path === prefix + "/dashboard"
+    ) {
+      setActivePanel("dashboard");
+      return;
+    }
+
+    let relativePart = "";
+    if (path.startsWith(prefix + "/")) {
+      relativePart = path.substring((prefix + "/").length);
+    }
+
+    if (relativePart.endsWith("/")) {
+      relativePart = relativePart.slice(0, -1);
+    }
+
+    if (relativePart) {
+      setActivePanel(relativePart);
+    }
+  }, [location.pathname]);
+
+  const handleNavigate = (panel: string) => {
+    navigate(`/admin/cashier/${panel}`);
+  };
+
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -1519,7 +1555,7 @@ export const CashierDashboardNew: React.FC = () => {
         <h3 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h3>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <button
-            onClick={() => setActivePanel("bill-creation")}
+            onClick={() => handleNavigate("bill-creation")}
             className="flex flex-col items-center space-y-2 p-6 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl hover:from-indigo-100 hover:to-indigo-200 transition-all border-2 border-indigo-200"
           >
             <FileEdit className="w-10 h-10 text-indigo-600" />
@@ -1527,7 +1563,7 @@ export const CashierDashboardNew: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActivePanel("cash-drawer")}
+            onClick={() => handleNavigate("cash-drawer")}
             className="flex flex-col items-center space-y-2 p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-xl hover:from-green-100 hover:to-green-200 transition-all border-2 border-green-200"
           >
             <Wallet className="w-10 h-10 text-green-600" />
@@ -1535,7 +1571,7 @@ export const CashierDashboardNew: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActivePanel("returns")}
+            onClick={() => handleNavigate("returns")}
             className="flex flex-col items-center space-y-2 p-6 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl hover:from-orange-100 hover:to-orange-200 transition-all border-2 border-orange-200"
           >
             <RotateCcw className="w-10 h-10 text-orange-600" />
@@ -1543,7 +1579,7 @@ export const CashierDashboardNew: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActivePanel("sales")}
+            onClick={() => handleNavigate("sales")}
             className="flex flex-col items-center space-y-2 p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl hover:from-purple-100 hover:to-purple-200 transition-all border-2 border-purple-200"
           >
             <History className="w-10 h-10 text-purple-600" />
@@ -1560,7 +1596,7 @@ export const CashierDashboardNew: React.FC = () => {
             <h3 className="text-white font-bold text-lg">Recent Sales</h3>
           </div>
           <button
-            onClick={() => setActivePanel("sales")}
+            onClick={() => handleNavigate("sales")}
             className="px-3 py-1 bg-white/20 hover:bg-white/30 text-white rounded-lg text-sm transition-colors"
           >
             View All
@@ -2191,7 +2227,7 @@ export const CashierDashboardNew: React.FC = () => {
           a return
         </p>
         <button
-          onClick={() => setActivePanel("sales")}
+          onClick={() => handleNavigate("sales")}
           className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
         >
           Go to Sales History
@@ -3241,7 +3277,7 @@ export const CashierDashboardNew: React.FC = () => {
                   return (
                     <button
                       key={item.id}
-                      onClick={() => setActivePanel(item.id)}
+                      onClick={() => handleNavigate(item.id)}
                       className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${
                         isActive
                           ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"

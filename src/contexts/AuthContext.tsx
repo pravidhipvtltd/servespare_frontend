@@ -10,6 +10,7 @@ interface AuthContextType {
   ) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   refreshUser: () => void;
+  refreshAccessToken: () => Promise<boolean>;
   isLoading: boolean;
   tenantInfo: {
     businessName: string;
@@ -298,6 +299,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const logout = async () => {
     console.log("👋 Logging out...");
+    const role = currentUser?.role || localStorage.getItem("user_role");
 
     try {
       // Call backend logout API
@@ -343,12 +345,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       "user_branch",
       "package_active",
       "selected_package",
+      "customer_user",
     ];
 
     authKeys.forEach((key) => localStorage.removeItem(key));
 
     console.log("✅ Logged out successfully");
-    navigate("/");
+    if (role === "customer") {
+      navigate("/customer");
+    } else {
+      navigate("/");
+    }
   };
 
   const updateTenantInfo = (
@@ -360,6 +367,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }));
   };
 
+  // Function to refresh the access token using the refresh token
+  const refreshAccessToken = async (): Promise<boolean> => {
+    const refreshToken = localStorage.getItem("refreshToken");
+
+    if (!refreshToken) {
+      console.error("❌ No refresh token available");
+      return false;
+    }
+
+    try {
+      console.log("🔄 Refreshing access token...");
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/token/refresh/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
+          },
+          body: JSON.stringify({
+            refresh: refreshToken,
+          }),
+        },
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const newAccessToken = data.access || data.accessToken;
+
+        if (newAccessToken) {
+          localStorage.setItem("accessToken", newAccessToken);
+          localStorage.setItem("auth_token", newAccessToken);
+          console.log("✅ Access token refreshed successfully");
+          return true;
+        } else {
+          console.error("❌ No access token in refresh response");
+          return false;
+        }
+      } else {
+        console.error("❌ Token refresh failed:", response.status);
+        // If refresh fails, likely refresh token is also expired
+        // Force logout
+        logout();
+        return false;
+      }
+    } catch (error) {
+      console.error("❌ Error refreshing token:", error);
+      return false;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -367,6 +425,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         login,
         logout,
         refreshUser,
+        refreshAccessToken,
         isLoading,
         tenantInfo,
         updateTenantInfo,
