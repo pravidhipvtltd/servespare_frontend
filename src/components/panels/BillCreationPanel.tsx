@@ -114,6 +114,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
   const [filteredItems, setFilteredItems] = useState<InventoryItem[]>([]);
   const [selectedItemIndex, setSelectedItemIndex] = useState<number>(-1);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
 
   // Customer auto-detect states
   const [nameSuggestions, setNameSuggestions] = useState<Party[]>([]);
@@ -379,7 +380,10 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
               warrantyPeriod:
                 item.warranty_period || item.warranty || "No Warranty",
               retailPrice: parseFloat(item.retail_pricing) || 0,
-              wholesalePrice: parseFloat(item.wholesale_pricing) || 0,
+              wholesalePrice: parseFloat(item.wholesale_price) || 0,
+              distributorPrice: parseFloat(item.distributor_price) || 0,
+              price: parseFloat(item.price) || 0,
+              mrp: parseFloat(item.mrp) || 0,
               costPrice: parseFloat(item.cost_price) || 0,
               location: item.location || "",
             }));
@@ -492,7 +496,10 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
           warrantyPeriod:
             item.warranty_period || item.warranty || "No Warranty",
           retailPrice: parseFloat(item.retail_pricing) || 0,
-          wholesalePrice: parseFloat(item.wholesale_pricing) || 0,
+          wholesalePrice: parseFloat(item.wholesale_price) || 0,
+          distributorPrice: parseFloat(item.distributor_price) || 0,
+          price: parseFloat(item.price) || 0,
+          mrp: parseFloat(item.mrp) || 0,
           costPrice: parseFloat(item.cost_price) || 0,
           location: item.location || "",
           workspaceId: item.branch || currentUser?.workspaceId,
@@ -525,22 +532,8 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
   };
 
   const getCustomerPricing = (item: InventoryItem): number => {
-    const customerType = formData.customerType;
-
-    switch (customerType) {
-      case "retail":
-        return item.retailPrice || item.price || 0;
-      case "retailer":
-        return item.retailPrice || item.price || 0;
-      case "wholesaler":
-        return item.wholesalePrice || item.price || 0;
-      case "distributor":
-        return item.distributorPrice || item.price || 0;
-      case "workshop":
-        return item.retailPrice || item.price || 0;
-      default:
-        return item.price || 0;
-    }
+    // Always use MRP as the rate
+    return item.mrp || item.price || 0;
   };
 
   const addItemToCart = (item: InventoryItem) => {
@@ -575,6 +568,59 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
 
     setItemSearchQuery("");
     setShowItemSuggestions(false);
+    setSelectedItemIds(new Set());
+  };
+
+  const addMultipleItemsToCart = () => {
+    const itemsToAdd = filteredItems.filter((item) =>
+      selectedItemIds.has(item.id),
+    );
+
+    if (itemsToAdd.length === 0) return;
+
+    const updatedItems = [...formData.items];
+
+    itemsToAdd.forEach((item) => {
+      const price = getCustomerPricing(item);
+      const existingItemIndex = updatedItems.findIndex(
+        (i) => i.itemId === item.id,
+      );
+
+      if (existingItemIndex !== -1) {
+        // Increment quantity of existing item
+        updatedItems[existingItemIndex].quantity += 1;
+        updatedItems[existingItemIndex].total =
+          updatedItems[existingItemIndex].quantity *
+          updatedItems[existingItemIndex].price;
+      } else {
+        // Add new item
+        const newItem: BillItemWithWarranty = {
+          itemId: item.id,
+          itemName: item.name,
+          quantity: 1,
+          price: price,
+          total: price,
+          warranty: item.warrantyPeriod || "No Warranty",
+          barcode: item.barcode,
+        };
+        updatedItems.push(newItem);
+      }
+    });
+
+    setFormData({ ...formData, items: updatedItems });
+    setSelectedItemIds(new Set());
+    setItemSearchQuery("");
+    setShowItemSuggestions(false);
+  };
+
+  const toggleItemSelection = (itemId: string) => {
+    const newSelection = new Set(selectedItemIds);
+    if (newSelection.has(itemId)) {
+      newSelection.delete(itemId);
+    } else {
+      newSelection.add(itemId);
+    }
+    setSelectedItemIds(newSelection);
   };
 
   const updateItem = (
@@ -587,8 +633,9 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
 
     // Recalculate total for this item
     if (field === "quantity" || field === "price") {
-      updatedItems[index].total =
-        updatedItems[index].quantity * updatedItems[index].price;
+      const qty = updatedItems[index].quantity === "" ? 0 : updatedItems[index].quantity;
+      const prc = updatedItems[index].price === "" ? 0 : updatedItems[index].price;
+      updatedItems[index].total = qty * prc;
     }
 
     setFormData({ ...formData, items: updatedItems });
@@ -601,10 +648,11 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
 
   const calculateTotals = () => {
     const subtotal = formData.items.reduce((sum, item) => sum + item.total, 0);
+    const discountValue = formData.discount === "" ? 0 : formData.discount;
     const discountAmount =
       formData.discountType === "percentage"
-        ? (subtotal * formData.discount) / 100
-        : formData.discount;
+        ? (subtotal * discountValue) / 100
+        : discountValue;
     const afterDiscount = subtotal - discountAmount;
     const taxAmount = (afterDiscount * formData.tax) / 100;
     const total = afterDiscount + taxAmount;
@@ -1158,10 +1206,19 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
                   type="text"
                   value={formData.customerPhone}
                   onChange={(e) => {
-                    setFormData({ ...formData, customerPhone: e.target.value });
-                    setShowPhoneSuggestions(true);
+                    const value = e.target.value;
+                    // Only allow +977 followed by up to 10 digits
+                    if (value.startsWith("+977") && value.length <= 14) {
+                      setFormData({ ...formData, customerPhone: value });
+                      setShowPhoneSuggestions(true);
+                    } else if (!value.startsWith("+977") && value.length <= 14) {
+                      // Allow typing even if doesn't start with +977 yet
+                      setFormData({ ...formData, customerPhone: value });
+                      setShowPhoneSuggestions(true);
+                    }
                   }}
                   placeholder="+977"
+                  maxLength={14}
                   className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 {showPhoneSuggestions && phoneSuggestions.length > 0 && (
@@ -1330,45 +1387,74 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
               />
               {showItemSuggestions && filteredItems.length > 0 && (
                 <div className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                  {/* Add Selected Items Button */}
+                  {selectedItemIds.size > 0 && (
+                    <div className="sticky top-0 bg-blue-50 border-b-2 border-blue-200 p-3 z-10">
+                      <button
+                        onClick={addMultipleItemsToCart}
+                        className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>
+                          Add {selectedItemIds.size} Selected Item
+                          {selectedItemIds.size > 1 ? "s" : ""}
+                        </span>
+                      </button>
+                    </div>
+                  )}
+
                   {filteredItems.map((item) => (
-                    <button
+                    <div
                       key={item.id}
-                      onClick={() => addItemToCart(item)}
-                      className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-200 last:border-b-0"
+                      className="flex items-start px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-200 last:border-b-0"
                     >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-semibold text-gray-900">
-                            {item.name}
-                          </p>
-                          <div className="flex items-center space-x-3 mt-1">
-                            {item.partNumber && (
+                      {/* Checkbox for multi-select */}
+                      <input
+                        type="checkbox"
+                        checked={selectedItemIds.has(item.id)}
+                        onChange={() => toggleItemSelection(item.id)}
+                        className="mt-1 mr-3 w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                      />
+
+                      {/* Item details - clicking adds item directly */}
+                      <button
+                        onClick={() => addItemToCart(item)}
+                        className="flex-1 text-left"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-gray-900">
+                              {item.name}
+                            </p>
+                            <div className="flex items-center space-x-3 mt-1">
+                              {item.partNumber && (
+                                <span className="text-xs text-gray-500">
+                                  PN: {item.partNumber}
+                                </span>
+                              )}
+                              {item.barcode && (
+                                <span className="text-xs text-gray-500">
+                                  BC: {item.barcode}
+                                </span>
+                              )}
+                              <span className="text-xs text-blue-600">
+                                Stock: {item.quantity}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right ml-4">
+                            <p className="font-bold text-blue-600">
+                              Rs{getCustomerPricing(item).toLocaleString()}
+                            </p>
+                            {item.warrantyPeriod && (
                               <span className="text-xs text-gray-500">
-                                PN: {item.partNumber}
+                                {item.warrantyPeriod}
                               </span>
                             )}
-                            {item.barcode && (
-                              <span className="text-xs text-gray-500">
-                                BC: {item.barcode}
-                              </span>
-                            )}
-                            <span className="text-xs text-blue-600">
-                              Stock: {item.quantity}
-                            </span>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-bold text-blue-600">
-                            Rs{getCustomerPricing(item).toLocaleString()}
-                          </p>
-                          {item.warrantyPeriod && (
-                            <span className="text-xs text-gray-500">
-                              {item.warrantyPeriod}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </button>
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -1441,12 +1527,12 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
                           <input
                             type="number"
                             min="1"
-                            value={item.quantity}
+                            value={item.quantity === "" ? "" : item.quantity}
                             onChange={(e) =>
                               updateItem(
                                 index,
                                 "quantity",
-                                parseInt(e.target.value) || 1,
+                                e.target.value === "" ? "" : parseInt(e.target.value),
                               )
                             }
                             className="w-20 text-center px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1456,12 +1542,13 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
                           <input
                             type="number"
                             min="0"
-                            value={item.price}
+                            step="1"
+                            value={item.price === "" ? "" : item.price}
                             onChange={(e) =>
                               updateItem(
                                 index,
                                 "price",
-                                parseFloat(e.target.value) || 0,
+                                e.target.value === "" ? "" : parseFloat(e.target.value),
                               )
                             }
                             className="w-24 text-right px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1514,11 +1601,12 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
                   <input
                     type="number"
                     min="0"
-                    value={formData.discount}
+                    step="1"
+                    value={formData.discount === "" ? "" : formData.discount}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        discount: parseFloat(e.target.value) || 0,
+                        discount: e.target.value === "" ? "" : parseFloat(e.target.value),
                       })
                     }
                     className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"

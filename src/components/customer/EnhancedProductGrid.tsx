@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Star, ShoppingCart, Heart, Eye, TrendingUp } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Product {
   id: string;
@@ -33,9 +34,119 @@ export const EnhancedProductGrid: React.FC<EnhancedProductGridProps> = ({
   showViewAll = true
 }) => {
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
+  const [wishlistedItems, setWishlistedItems] = useState<Record<string, string>>({});
+  const [loadingWishlist, setLoadingWishlist] = useState<string | null>(null);
+
+  // Fetch user's wishlist on mount
+  useEffect(() => {
+    const fetchWishlist = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        if (!token) return;
+
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/carts/favorites/`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'ngrok-skip-browser-warning': 'true',
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const favorites = data.results || data;
+          const wishlistMap: Record<string, string> = {};
+          
+          favorites.forEach((fav: any) => {
+            const inventoryId = String(fav.inventory?.id || fav.inventory_id);
+            wishlistMap[inventoryId] = String(fav.id);
+          });
+          
+          setWishlistedItems(wishlistMap);
+        }
+      } catch (error) {
+        console.error('Error fetching wishlist:', error);
+      }
+    };
+
+    fetchWishlist();
+  }, []);
 
   const calculateDiscount = (original: number, current: number) => {
     return Math.round(((original - current) / original) * 100);
+  };
+
+  const handleWishlistToggle = async (product: Product, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      toast.error('Please login to add items to wishlist');
+      return;
+    }
+
+    setLoadingWishlist(product.id);
+
+    try {
+      const isWishlisted = wishlistedItems[product.id];
+
+      if (isWishlisted) {
+        // Remove from wishlist
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/carts/favorites/${isWishlisted}/`,
+          {
+            method: 'DELETE',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'ngrok-skip-browser-warning': 'true',
+            },
+          }
+        );
+
+        if (response.ok) {
+          const newWishlist = { ...wishlistedItems };
+          delete newWishlist[product.id];
+          setWishlistedItems(newWishlist);
+          toast.success('Removed from wishlist');
+        } else {
+          const error = await response.json().catch(() => ({}));
+          toast.error(error.detail || 'Failed to remove from wishlist');
+        }
+      } else {
+        // Add to wishlist
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/carts/favorites/add/`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+              'ngrok-skip-browser-warning': 'true',
+            },
+            body: JSON.stringify({
+              inventory_id: parseInt(product.id, 10),
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const favoriteId = String(data.data?.id || data.id);
+          setWishlistedItems({ ...wishlistedItems, [product.id]: favoriteId });
+          toast.success(data.message || 'Added to wishlist');
+        } else {
+          const error = await response.json().catch(() => ({}));
+          toast.error(error.detail || 'Failed to add to wishlist');
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling wishlist:', error);
+      toast.error('Failed to update wishlist');
+    } finally {
+      setLoadingWishlist(null);
+    }
   };
 
   return (
@@ -100,14 +211,16 @@ export const EnhancedProductGrid: React.FC<EnhancedProductGridProps> = ({
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Wishlist functionality
-                    }}
-                    className="bg-white text-gray-900 p-2 rounded-full hover:bg-orange-500 hover:text-white transition-colors"
-                    title="Add to Wishlist"
+                    onClick={(e) => handleWishlistToggle(product, e)}
+                    disabled={loadingWishlist === product.id}
+                    className={`p-2 rounded-full transition-colors ${
+                      wishlistedItems[product.id]
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-white text-gray-900 hover:bg-orange-500 hover:text-white'
+                    } ${loadingWishlist === product.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title={wishlistedItems[product.id] ? 'Remove from Wishlist' : 'Add to Wishlist'}
                   >
-                    <Heart className="w-4 h-4" />
+                    <Heart className={`w-4 h-4 ${wishlistedItems[product.id] ? 'fill-current' : ''}`} />
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.1 }}
