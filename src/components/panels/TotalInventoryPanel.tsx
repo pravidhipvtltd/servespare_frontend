@@ -1498,6 +1498,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                       }
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
                       min="0"
+                      step="1"
                       required
                     />
                   </div>
@@ -1517,6 +1518,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                       }
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
                       min="0"
+                      step="1"
                       required
                     />
                   </div>
@@ -1539,7 +1541,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                       }
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
                       min="0"
-                      step="0.01"
+                      step="1"
                       required
                     />
                   </div>
@@ -1559,7 +1561,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                       }
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
                       min="0"
-                      step="0.01"
+                      step="1"
                       required
                     />
                   </div>
@@ -1770,8 +1772,8 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
                         min="0"
-                        step="0.01"
-                        placeholder="0.00"
+                        step="1"
+                        placeholder="0"
                       />
                       <p className="text-xs text-gray-400 mt-1">
                         Walk-in customers
@@ -1793,8 +1795,8 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
                         min="0"
-                        step="0.01"
-                        placeholder="0.00"
+                        step="1"
+                        placeholder="0"
                       />
                       <p className="text-xs text-gray-400 mt-1">Bulk orders</p>
                     </div>
@@ -1814,8 +1816,8 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
                         min="0"
-                        step="0.01"
-                        placeholder="0.00"
+                        step="1"
+                        placeholder="0"
                       />
                       <p className="text-xs text-gray-400 mt-1">Distributors</p>
                     </div>
