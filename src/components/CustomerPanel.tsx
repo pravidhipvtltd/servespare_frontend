@@ -173,20 +173,26 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
 
         const mappedItems = Array.isArray(cartItemsArray)
           ? cartItemsArray.map((item: any) => {
-              // Use exact price from inventory API response
-              const price = parseFloat(item.inventory.price || 0);
+              // Prioritize MRP as requested by the user for the display price
+              const price = parseFloat(
+                item.inventory?.mrp || item.unit_price || item.price || 0,
+              );
 
               return {
-                id: String(item.inventory.id),
-                name: item.inventory.item_name || "Product",
+                id: String(item.inventory?.id || item.inventory_id || ""),
+                name:
+                  item.inventory?.item_name || item.inventory_name || "Product",
                 category:
-                  item.inventory.category_display ||
-                  item.inventory.category ||
+                  item.inventory?.category_display ||
+                  item.inventory?.category ||
                   "",
+                priceIndex: price, // For debugging/tracking if needed
                 price: price,
-                originalPrice: parseFloat(item.inventory.mrp || 0),
+                originalPrice: parseFloat(
+                  item.inventory?.price || item.inventory?.mrp || 0,
+                ),
                 quantity: parseFloat(item.quantity || 0),
-                image: item.inventory.primary_image || "",
+                image: item.inventory?.primary_image || "",
                 cartItemId: item.id,
               };
             })

@@ -153,8 +153,8 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
                   ? "four-wheeler"
                   : "both",
             partType: item.item_type === "original" ? "original" : "local",
-            price: parseFloat(item.price) || 0,
-            originalPrice: parseFloat(item.mrp) || 0,
+            price: parseFloat(item.mrp) || 0,
+            originalPrice: parseFloat(item.price) || 0,
             rating: 4.5,
             reviews: Math.floor(Math.random() * 100) + 10,
             image: displayImage,
