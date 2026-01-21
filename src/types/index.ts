@@ -172,7 +172,7 @@ export interface CashDrawerShift {
   expectedAmount?: number;
   actualAmount?: number;
   difference?: number; // Positive = surplus, Negative = loss
-  status: "open" | "closed" | "force_closed";
+  status: "open" | "closed" | "force_closed" | "transferred";
   transactions: CashTransaction[];
   notes?: string;
   varianceReason?: string; // Reason for cash variance (surplus/shortage)

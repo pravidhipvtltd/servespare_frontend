@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import {
   motion,
   AnimatePresence,
@@ -69,10 +70,35 @@ const LandingPageContent: React.FC<LandingPageProps> = ({ onBackToEntry }) => {
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState<PageType>("home");
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
   const [selectedFeature, setSelectedFeature] = useState<string>("");
   const { language } = useLandingLanguage();
+
+  // Determine current page from URL path
+  const getCurrentPage = (): PageType => {
+    const path = location.pathname.split("/").pop();
+    if (!path || path === "admin") return "home";
+    if (path === "login" || path === "register") return "home"; // Login/Register is overlay on home
+    return path as PageType;
+  };
+
+  const currentPage = getCurrentPage();
+
+  // Handle direct navigation to login/register
+  useEffect(() => {
+    if (location.pathname.endsWith("/login")) {
+      setShowLogin(true);
+      setShowRegister(false);
+    } else if (location.pathname.endsWith("/register")) {
+      setShowRegister(true);
+      setShowLogin(false);
+    } else {
+      setShowLogin(false);
+      setShowRegister(false);
+    }
+  }, [location]);
 
   // Listen for navigation events from feature cards
   useEffect(() => {
@@ -87,7 +113,12 @@ const LandingPageContent: React.FC<LandingPageProps> = ({ onBackToEntry }) => {
 
   if (showLogin) {
     return (
-      <ModernAuthPage initialMode="login" onBack={() => setShowLogin(false)} />
+      <ModernAuthPage
+        initialMode="login"
+        onBack={() => {
+          navigate(-1);
+        }}
+      />
     );
   }
 
@@ -95,16 +126,25 @@ const LandingPageContent: React.FC<LandingPageProps> = ({ onBackToEntry }) => {
     return (
       <ModernAuthPage
         initialMode="register"
-        onBack={() => setShowRegister(false)}
+        onBack={() => {
+          navigate(-1);
+        }}
       />
     );
   }
 
   const handleNavigation = (page: PageType) => {
-    setCurrentPage(page);
+    if (page === "home") {
+      navigate("/admin");
+    } else {
+      navigate(`/admin/${page}`);
+    }
     setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  const handleLogin = () => navigate("/admin/login");
+  const handleRegister = () => navigate("/admin/register");
 
   const handleBookDemo = (featureName: string) => {
     setSelectedFeature(featureName);
@@ -115,8 +155,8 @@ const LandingPageContent: React.FC<LandingPageProps> = ({ onBackToEntry }) => {
     <div className="min-h-screen bg-white">
       {/* Navigation */}
       <Navigation
-        setShowLogin={setShowLogin}
-        setShowRegister={setShowRegister}
+        onLogin={handleLogin}
+        onRegister={handleRegister}
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
         currentPage={currentPage}
@@ -128,7 +168,7 @@ const LandingPageContent: React.FC<LandingPageProps> = ({ onBackToEntry }) => {
       {currentPage === "home" && (
         <>
           <HeroSection
-            setShowRegister={setShowRegister}
+            onRegister={handleRegister}
             onNavigateToDownload={() => handleNavigation("download")}
           />
           <FeaturesSection onBookDemo={handleBookDemo} />
@@ -143,7 +183,7 @@ const LandingPageContent: React.FC<LandingPageProps> = ({ onBackToEntry }) => {
       {currentPage === "features" && (
         <FeaturesPage
           onNavigateToPricing={() => handleNavigation("pricing")}
-          onNavigateToRegister={() => setShowRegister(true)}
+          onNavigateToRegister={handleRegister}
         />
       )}
       {currentPage === "pricing" && (
@@ -162,7 +202,7 @@ const LandingPageContent: React.FC<LandingPageProps> = ({ onBackToEntry }) => {
 
       {/* Footer */}
       <Footer
-        setShowLogin={setShowLogin}
+        onLogin={handleLogin}
         onNavigate={handleNavigation}
         currentPage={currentPage}
       />
@@ -193,16 +233,16 @@ export const LandingPage: React.FC<{ onBackToEntry?: () => void }> = ({
 
 // Navigation Component
 const Navigation: React.FC<{
-  setShowLogin: (show: boolean) => void;
-  setShowRegister: (show: boolean) => void;
+  onLogin: () => void;
+  onRegister: () => void;
   mobileMenuOpen: boolean;
   setMobileMenuOpen: (open: boolean) => void;
   currentPage: PageType;
   onNavigate: (page: PageType) => void;
   onBackToEntry: () => void;
 }> = ({
-  setShowLogin,
-  setShowRegister,
+  onLogin,
+  onRegister,
   mobileMenuOpen,
   setMobileMenuOpen,
   currentPage,
@@ -341,7 +381,7 @@ const Navigation: React.FC<{
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => setShowLogin(true)}
+              onClick={onLogin}
               className=" bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-lg px-5 py-2.5 rounded-full font-semibold transition-all border-2 border-gray-200 hover:border-indigo-600"
             >
               {t("nav.login")}
@@ -350,7 +390,7 @@ const Navigation: React.FC<{
             {/* <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => setShowRegister(true)}
+              onClick={onRegister}
               className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-full font-semibold hover:shadow-lg transition-all"
             >
               {t("button.register")}
@@ -390,7 +430,7 @@ const Navigation: React.FC<{
               </button>
             ))}
             <button
-              onClick={() => setShowLogin(true)}
+              onClick={onLogin}
               className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-3 rounded-lg font-semibold"
             >
               {t("nav.login")}
@@ -402,11 +442,12 @@ const Navigation: React.FC<{
   );
 };
 
+// HeroSection
 // Hero Section
 const HeroSection: React.FC<{
-  setShowRegister: (show: boolean) => void;
+  onRegister: () => void;
   onNavigateToDownload: () => void;
-}> = ({ setShowRegister, onNavigateToDownload }) => {
+}> = ({ onRegister, onNavigateToDownload }) => {
   const { t } = useLandingLanguage();
   const heroRef = useRef(null);
   const { scrollYProgress } = useScroll({
@@ -501,7 +542,7 @@ const HeroSection: React.FC<{
               className="flex flex-wrap gap-4"
             >
               <button
-                onClick={() => setShowRegister(true)}
+                onClick={onRegister}
                 className="group bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-full font-semibold flex items-center space-x-2 hover:shadow-xl transition-all hover:scale-105"
               >
                 <span>{t("button.getStarted")}</span>
@@ -1140,10 +1181,10 @@ const CTASection: React.FC<{ onNavigateToPricing: () => void }> = ({
 
 // Footer
 const Footer: React.FC<{
-  setShowLogin: (show: boolean) => void;
+  onLogin: () => void;
   onNavigate: (page: PageType) => void;
   currentPage: PageType;
-}> = ({ setShowLogin, onNavigate, currentPage }) => {
+}> = ({ onLogin, onNavigate, currentPage }) => {
   return (
     <footer className="bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -1210,7 +1251,6 @@ const Footer: React.FC<{
             <div className="flex space-x-2">
               <span className="px-3 py-1 bg-white/10 rounded text-xs">NP</span>
               <span className="px-3 py-1 bg-white/10 rounded text-xs">IN</span>
-             
             </div>
           </div>
 
@@ -1244,7 +1284,7 @@ const Footer: React.FC<{
               </li>
               <li>
                 <button
-                  onClick={() => setShowLogin(true)}
+                  onClick={onLogin}
                   className="text-gray-300 hover:text-white transition-colors text-sm flex items-center"
                 >
                   Login

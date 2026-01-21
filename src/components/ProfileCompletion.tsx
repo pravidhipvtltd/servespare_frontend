@@ -25,7 +25,7 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
   const [profileData, setProfileData] = useState({
     businessName: "",
     ownerName: "",
-    phone: "",
+    phone: "+977",
     address: "",
     panVatNumber: "",
     password: "",
@@ -208,7 +208,7 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
                   setProfileData({ ...profileData, phone: e.target.value })
                 }
                 className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
-                placeholder="+977 9801234567"
+                placeholder="+977"
                 required
               />
             </div>

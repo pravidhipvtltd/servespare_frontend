@@ -70,6 +70,7 @@ import { CredentialsModal } from "./modals/CredentialsModal";
 import SubscriptionPackageModal from "./modals/SubscriptionPackageModal";
 import { ChequeManagementPanel } from "./panels/ChequeManagementPanel";
 import { getBranches, Branch } from "../api/branch.api";
+import { useNavigate, useLocation } from "react-router-dom";
 
 // Subscription Package Types
 export type SubscriptionPackage = "basic" | "professional" | "enterprise";
@@ -85,9 +86,9 @@ export interface AdminAccount {
   subscriptionStartDate: string;
   subscriptionEndDate: string;
   status: "active" | "suspended" | "expired";
-  demoMode: boolean; // Whether admin is in demo mode
-  password: string; // Admin's password (hashed in production)
-  isFirstLogin: boolean; // Whether admin needs to change password on first login
+  demoMode: boolean;
+  password: string;
+  isFirstLogin: boolean;
   createdBySuperAdmin: boolean; // Whether this account was created by SuperAdmin
   dueAmount: number;
   lastPaymentDate: string;
@@ -218,7 +219,43 @@ const menuItems: MenuItem[] = [
 
 export const SuperAdminDashboardRefined: React.FC = () => {
   const { currentUser, logout } = useAuth();
-  const [activePanel, setActivePanel] = useState("dashboard");
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const getPanelFromPath = () => {
+    const path = location.pathname;
+    const prefix = "/admin/super-admin";
+
+    // Check if exactly the prefix or prefix/
+    if (path === prefix || path === prefix + "/") return "dashboard";
+
+    // Extract section relative to the prefix
+    let relativePart = "";
+    if (path.startsWith(prefix + "/")) {
+      relativePart = path.substring((prefix + "/").length);
+    } else if (path.startsWith(prefix)) {
+      relativePart = path.substring(prefix.length);
+    }
+
+    // Remove any trailing slash from the relative part for matching
+    if (relativePart.endsWith("/")) {
+      relativePart = relativePart.slice(0, -1);
+    }
+
+    // Default to dashboard if empty
+    if (!relativePart) return "dashboard";
+
+    // Check if it matches a known panel
+    const found = menuItems.find((item) => item.panel === relativePart);
+    return found ? found.panel : "dashboard";
+  };
+
+  const activePanel = getPanelFromPath() || "dashboard";
+
+  const handleNavigate = (panel: string) => {
+    navigate(`/admin/super-admin/${panel}`);
+  };
+
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [pendingVerificationsCount, setPendingVerificationsCount] = useState(0);
@@ -236,13 +273,17 @@ export const SuperAdminDashboardRefined: React.FC = () => {
   }, []);
 
   const loadData = async () => {
+    toast.error("apiii", {
+      duration: 10000,
+      description: "Super Admin Dashboard data fetching triggered",
+    });
+
     // Load pending verifications count
     const pendingUsers = JSON.parse(
       localStorage.getItem("pending_user_verifications") || "[]",
     );
     setPendingVerificationsCount(pendingUsers.length);
 
-    // Load pending approvals count (business registrations)
     const pendingRegistrations = JSON.parse(
       localStorage.getItem("pending_registrations") || "[]",
     );
@@ -251,7 +292,6 @@ export const SuperAdminDashboardRefined: React.FC = () => {
     );
     setPendingApprovalsCount(pendingOnly.length);
 
-    // Fetch admin accounts from API using centralized service
     try {
       const data = await getSubscriptions(1, 1000);
 
@@ -314,7 +354,7 @@ export const SuperAdminDashboardRefined: React.FC = () => {
         return (
           <DashboardView
             adminAccounts={adminAccounts}
-            onNavigate={setActivePanel}
+            onNavigate={handleNavigate}
           />
         );
       case "admins":
@@ -361,13 +401,13 @@ export const SuperAdminDashboardRefined: React.FC = () => {
         return (
           <DashboardView
             adminAccounts={adminAccounts}
-            onNavigate={setActivePanel}
+            onNavigate={handleNavigate}
           />
         );
     }
   };
 
-  // Update menu items with dynamic badges
+  // Update menu items with dynamic badgesxc
   const updatedMenuItems = menuItems.map((item) => {
     if (item.id === "pending_verifications") {
       return { ...item, badge: pendingVerificationsCount };
@@ -426,7 +466,7 @@ export const SuperAdminDashboardRefined: React.FC = () => {
           {updatedMenuItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActivePanel(item.panel || "dashboard")}
+              onClick={() => handleNavigate(item.panel || "dashboard")}
               className={`w-full flex items-center justify-between px-6 py-3 text-left transition-all hover:bg-gray-800 ${
                 activePanel === item.panel
                   ? "bg-gradient-to-r from-orange-600 to-red-600 border-l-4 border-yellow-400 shadow-lg"
@@ -1156,8 +1196,8 @@ const AdminAccountsView: React.FC<{
         products: 1000,
       };
 
-      const currentAdmins = getFromStorage("admin_accounts", []);
-      saveToStorage("admin_accounts", [...currentAdmins, newAdmin]);
+      // Note: We no longer save to local storage as we are purely backend-driven.
+      // The loadData function will fetch the latest state from the backend.
 
       // Prepare for Step 2: Subscription Package Selection
       setCreatedTenantData({
@@ -1369,7 +1409,44 @@ const AdminAccountsView: React.FC<{
       } else {
         const errorData = await response.json();
         console.error("Update failed:", errorData);
-        toast.error("Failed to update admin account");
+
+        // Extract specific error messages from backend
+        let errorMessage = "Failed to update admin account";
+
+        if (errorData) {
+          if (typeof errorData === "string") {
+            errorMessage = errorData;
+          } else if (errorData.detail) {
+            errorMessage = errorData.detail;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (
+            errorData.non_field_errors &&
+            Array.isArray(errorData.non_field_errors)
+          ) {
+            errorMessage = errorData.non_field_errors.join(", ");
+          } else {
+            // Check for field-specific errors
+            const fieldErrors = Object.entries(errorData)
+              .filter(([key]) => key !== "status" && key !== "code") // Exclude common metadata
+              .map(([field, errors]) => {
+                const errorStr = Array.isArray(errors)
+                  ? errors.join(", ")
+                  : String(errors);
+                // Capitalize field name for better readability
+                const fieldName =
+                  field.charAt(0).toUpperCase() +
+                  field.slice(1).replace(/_/g, " ");
+                return `${fieldName}: ${errorStr}`;
+              });
+
+            if (fieldErrors.length > 0) {
+              errorMessage = fieldErrors.join("\n");
+            }
+          }
+        }
+
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error("Error updating admin:", error);

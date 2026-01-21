@@ -23,7 +23,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    phone: "",
+    phone: "+977",
     message: "",
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -51,7 +51,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
       // Reset after 3 seconds
       setTimeout(() => {
         setIsSubmitted(false);
-        setFormData({ name: "", email: "", phone: "", message: "" });
+        setFormData({ name: "", email: "", phone: "+977", message: "" });
         onClose();
       }, 3000);
     }, 1500);
@@ -218,7 +218,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                         name="phone"
                         value={formData.phone}
                         onChange={handleChange}
-                        placeholder="+977 XXXXXXXXXX"
+                        placeholder="+977"
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
                       />
                     </motion.div>

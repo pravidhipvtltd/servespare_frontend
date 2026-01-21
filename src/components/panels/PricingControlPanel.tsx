@@ -8,7 +8,6 @@ import {
   Info,
   AlertCircle,
   CheckCircle,
-  Lightbulb,
   Target,
   ArrowUp,
   ArrowDown,
@@ -21,12 +20,17 @@ import {
   Calculator,
   Zap,
   Package,
+  Tag,
 } from "lucide-react";
 import { getFromStorage, saveToStorage } from "../../utils/mockData";
 import { useAuth } from "../../contexts/AuthContext";
 import { InventoryItem } from "../../types";
+import { useCustomPopup } from "../../hooks/useCustomPopup";
+import { PopupContainer } from "../PopupContainer";
+import { toast } from "sonner";
 
 interface PricingTier {
+  mrp: number;
   retail: number;
   wholesale: number;
   distributor: number;
@@ -45,7 +49,9 @@ interface MarginData {
 
 export const PricingControlPanel: React.FC = () => {
   const { currentUser } = useAuth();
+  const popup = useCustomPopup();
   const [items, setItems] = useState<PricingData[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState<PricingData | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -54,6 +60,7 @@ export const PricingControlPanel: React.FC = () => {
   >("all");
 
   const [pricing, setPricing] = useState<PricingTier>({
+    mrp: 0,
     retail: 0,
     wholesale: 0,
     distributor: 0,
@@ -61,36 +68,98 @@ export const PricingControlPanel: React.FC = () => {
 
   useEffect(() => {
     loadItems();
-  }, []);
+  }, [currentUser]);
 
-  const loadItems = () => {
-    const inventory = getFromStorage("inventory", []).filter(
-      (i: InventoryItem) => i.workspaceId === currentUser?.workspaceId
-    );
+  const loadItems = async () => {
+    if (!currentUser) return;
+    setLoading(true);
+    try {
+      const token =
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("access_token") ||
+        localStorage.getItem("token");
 
-    // Add mock pricing data
-    const itemsWithPricing = inventory.map((item: InventoryItem) => ({
-      ...item,
-      costPrice: item.price,
-      pricing: {
-        retail: item.mrp,
-        wholesale: Math.round(item.mrp * 0.85),
-        distributor: Math.round(item.mrp * 0.75),
-      },
-    }));
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
+      };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    setItems(itemsWithPricing);
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/stock-management/inventory/`,
+        { headers },
+      );
+      if (!res.ok) throw new Error(`API responded with ${res.status}`);
+      const data = await res.json();
+      const results = data.results || data;
+
+      const mappedData: PricingData[] = (results || []).map((it: any) => ({
+        id: String(it.id),
+        name: it.item_name || it.name || "",
+        partNumber: it.part_number || it.partNumber || "",
+        price: parseFloat(it.price || 0) || 0,
+        mrp: parseFloat(it.mrp || 0) || 0,
+        retailPrice: parseFloat(it.retail_pricing || it.retailPrice || 0) || 0,
+        wholesalePrice:
+          parseFloat(it.wholesale_price || it.wholesalePrice || 0) || 0,
+        distributorPrice:
+          parseFloat(it.distributor_price || it.distributorPrice || 0) || 0,
+        workspaceId:
+          it.workspace || it.workspace_id || currentUser?.workspaceId,
+        branchId: it.branch || undefined,
+        vehicleType: it.vehicle_type || "two_wheeler",
+        costPrice: parseFloat(it.price || 0) || 0,
+        pricing: {
+          mrp: parseFloat(it.mrp || 0) || 0,
+          retail:
+            parseFloat(it.retail_pricing || 0) ||
+            parseFloat(it.mrp || 0) ||
+            Math.round((parseFloat(it.price) || 0) * 1.3),
+          wholesale:
+            parseFloat(it.wholesale_price || 0) ||
+            Math.round((parseFloat(it.mrp) || 0) * 0.85),
+          distributor:
+            parseFloat(it.distributor_price || 0) ||
+            Math.round((parseFloat(it.mrp) || 0) * 0.75),
+        },
+      }));
+
+      const filteredByWorkspace = mappedData.filter(
+        (i) => String(i.workspaceId) === String(currentUser?.workspaceId),
+      );
+      setItems(filteredByWorkspace);
+    } catch (err) {
+      console.error("Error loading items for pricing:", err);
+      // Fallback
+      const inventory = getFromStorage("inventory", []).filter(
+        (i: InventoryItem) => i.workspaceId === currentUser?.workspaceId,
+      );
+
+      const itemsWithPricing = inventory.map((item: InventoryItem) => ({
+        ...item,
+        costPrice: item.price,
+        pricing: {
+          mrp: item.mrp || 0,
+          retail: item.mrp || item.retailPrice || 0,
+          wholesale: item.wholesalePrice || Math.round((item.mrp || 0) * 0.85),
+          distributor:
+            item.distributorPrice || Math.round((item.mrp || 0) * 0.75),
+        },
+      }));
+      setItems(itemsWithPricing);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOpenModal = (item: PricingData) => {
     setSelectedItem(item);
-    setPricing(
-      item.pricing || {
-        retail: item.mrp,
-        wholesale: Math.round(item.mrp * 0.85),
-        distributor: Math.round(item.mrp * 0.75),
-      }
-    );
+    setPricing({
+      mrp: item.pricing?.mrp || item.mrp || 0,
+      retail: item.pricing?.retail || item.retailPrice || 0,
+      wholesale: item.pricing?.wholesale || item.wholesalePrice || 0,
+      distributor: item.pricing?.distributor || item.distributorPrice || 0,
+    });
     setModalOpen(true);
   };
 
@@ -99,31 +168,86 @@ export const PricingControlPanel: React.FC = () => {
     setSelectedItem(null);
   };
 
-  const handleSavePricing = () => {
+  const handleSavePricing = async () => {
     if (!selectedItem) return;
 
-    const allItems = getFromStorage("inventory", []);
-    const updated = allItems.map((item: InventoryItem) =>
-      item.id === selectedItem.id
-        ? { ...item, mrp: pricing.retail, price: selectedItem.costPrice }
-        : item
-    );
-    saveToStorage("inventory", updated);
+    try {
+      const token =
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("access_token") ||
+        localStorage.getItem("token");
 
-    // Update local state
-    const updatedItems = items.map((item) =>
-      item.id === selectedItem.id
-        ? { ...item, pricing, mrp: pricing.retail }
-        : item
-    );
-    setItems(updatedItems);
+      const headers: Record<string, string> = {
+        "ngrok-skip-browser-warning": "true",
+      };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    handleCloseModal();
+      const formDataPayload = new FormData();
+      // Only include the price related fields as per request
+      formDataPayload.append("price", (selectedItem.costPrice || 0).toString());
+      formDataPayload.append("mrp", pricing.mrp.toString());
+      formDataPayload.append("retail_pricing", pricing.retail.toString());
+      formDataPayload.append("wholesale_price", pricing.wholesale.toString());
+      formDataPayload.append(
+        "distributor_price",
+        pricing.distributor.toString(),
+      );
+
+      if (selectedItem.branchId) {
+        formDataPayload.append("branch", selectedItem.branchId.toString());
+      }
+      formDataPayload.append("is_active", "true");
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/stock-management/inventory/${
+          selectedItem.id
+        }/`,
+        {
+          method: "PATCH",
+          headers,
+          body: formDataPayload,
+        },
+      );
+
+      if (!response.ok) {
+        const responseData = await response.json();
+        console.error("Server API Error:", responseData);
+        let errorMsg = responseData.detail || responseData.message;
+
+        // Extract field-specific errors if no generic message exists
+        if (!errorMsg && typeof responseData === "object") {
+          const fieldErrors = Object.entries(responseData).map(
+            ([field, messages]) => {
+              const formattedField = field
+                .replace(/_/g, " ")
+                .replace(/\b\w/g, (c) => c.toUpperCase());
+              const formattedMessages = Array.isArray(messages)
+                ? messages.join(", ")
+                : String(messages);
+              return `${formattedField}: ${formattedMessages}`;
+            },
+          );
+
+          if (fieldErrors.length > 0) {
+            errorMsg = fieldErrors.join("\n");
+          }
+        }
+
+        throw new Error(errorMsg || "Failed to update pricing");
+      }
+
+      toast.success("Pricing updated successfully");
+      loadItems(); // Refresh data
+      handleCloseModal();
+    } catch (err: any) {
+      console.error("Error saving pricing:", err);
+      popup.showError("Update Failed", err.message);
+    }
   };
 
   const calculateMargin = (
     sellPrice: number,
-    costPrice: number
+    costPrice: number,
   ): MarginData => {
     const amount = sellPrice - costPrice;
     const percentage = (amount / sellPrice) * 100;
@@ -174,23 +298,6 @@ export const PricingControlPanel: React.FC = () => {
     setPricing({ ...pricing, [tier]: Math.max(0, pricing[tier] + amount) });
   };
 
-  const generateSmartRecommendations = (costPrice: number) => {
-    const targetMargin = 30; // 30% target margin
-    const suggestedRetail = Math.round(costPrice / (1 - targetMargin / 100));
-    const suggestedWholesale = Math.round(suggestedRetail * 0.85);
-    const suggestedDistributor = Math.round(suggestedRetail * 0.75);
-
-    const competitorMin = Math.round(suggestedRetail * 0.95);
-    const competitorMax = Math.round(suggestedRetail * 1.15);
-
-    return {
-      retail: suggestedRetail,
-      wholesale: suggestedWholesale,
-      distributor: suggestedDistributor,
-      competitorRange: { min: competitorMin, max: competitorMax },
-    };
-  };
-
   const filteredItems = items.filter((item) => {
     const matchesSearch =
       (item.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -204,21 +311,21 @@ export const PricingControlPanel: React.FC = () => {
     totalItems: items.length,
     avgRetailPrice: Math.round(
       items.reduce((sum, item) => sum + (item.pricing?.retail || item.mrp), 0) /
-        items.length || 0
+        items.length || 0,
     ),
     avgMargin: Math.round(
       items.reduce((sum, item) => {
         const margin = calculateMargin(
           item.pricing?.retail || item.mrp,
-          item.costPrice || item.price
+          item.costPrice || item.price,
         );
         return sum + margin.percentage;
-      }, 0) / items.length || 0
+      }, 0) / items.length || 0,
     ),
     itemsNeedReview: items.filter((item) => {
       const margin = calculateMargin(
         item.pricing?.retail || item.mrp,
-        item.costPrice || item.price
+        item.costPrice || item.price,
       );
       return margin.percentage < 15;
     }).length,
@@ -344,117 +451,130 @@ export const PricingControlPanel: React.FC = () => {
 
       {/* Product List Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">
-                  Product
-                </th>
-                <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">
-                  Vehicle Type
-                </th>
-                <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">
-                  Cost Price
-                </th>
-                <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">
-                  Retail Price
-                </th>
-                <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">
-                  Wholesale
-                </th>
-                <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">
-                  Distributor
-                </th>
-                <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">
-                  Margin
-                </th>
-                <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">
-                  Action
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredItems.map((item) => {
-                const costPrice = item.costPrice || item.price || 0;
-                const retailPrice = item.pricing?.retail || item.mrp || 0;
-                const wholesalePrice =
-                  item.pricing?.wholesale ||
-                  (retailPrice ? Math.round(retailPrice * 0.85) : 0);
-                const distributorPrice =
-                  item.pricing?.distributor ||
-                  (retailPrice ? Math.round(retailPrice * 0.75) : 0);
-                const margin = calculateMargin(retailPrice, costPrice);
+        {loading ? (
+          <div className="p-20 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-500">Loading inventory pricing...</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">
+                    Product
+                  </th>
+                  <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">
+                    Vehicle Type
+                  </th>
+                  <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">
+                    Cost Price
+                  </th>
+                  <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">
+                    MRP
+                  </th>
+                  <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">
+                    Retail Price
+                  </th>
+                  <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">
+                    Wholesale
+                  </th>
+                  <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">
+                    Distributor
+                  </th>
+                  <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">
+                    Margin
+                  </th>
+                  <th className="text-left text-gray-600 text-sm font-semibold py-4 px-6">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredItems.map((item) => {
+                  const costPrice = item.costPrice || item.price || 0;
+                  const mrp = item.pricing?.mrp || item.mrp || 0;
+                  const retailPrice =
+                    item.pricing?.retail || item.retailPrice || 0;
+                  const wholesalePrice =
+                    item.pricing?.wholesale || item.wholesalePrice || 0;
+                  const distributorPrice =
+                    item.pricing?.distributor || item.distributorPrice || 0;
+                  const margin = calculateMargin(retailPrice, costPrice);
 
-                return (
-                  <tr
-                    key={item.id}
-                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
-                    onClick={() => handleOpenModal(item)}
-                  >
-                    <td className="py-4 px-6">
-                      <div>
-                        <div className="text-gray-900 font-medium">
-                          {item.name}
+                  return (
+                    <tr
+                      key={item.id}
+                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
+                      onClick={() => handleOpenModal(item)}
+                    >
+                      <td className="py-4 px-6">
+                        <div>
+                          <div className="text-gray-900 font-medium">
+                            {item.name}
+                          </div>
+                          <div className="text-gray-500 text-sm">
+                            {item.partNumber || "N/A"}
+                          </div>
                         </div>
-                        <div className="text-gray-500 text-sm">
-                          {item.partNumber || "N/A"}
+                      </td>
+                      <td className="py-4 px-6">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                            item.vehicleType === "two_wheeler"
+                              ? "bg-blue-50 text-blue-700"
+                              : "bg-green-50 text-green-700"
+                          }`}
+                        >
+                          {item.vehicleType === "two_wheeler"
+                            ? "2 Wheeler"
+                            : "4 Wheeler"}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 text-gray-900">
+                        Rs{costPrice.toLocaleString()}
+                      </td>
+                      <td className="py-4 px-6 text-amber-600 font-medium">
+                        Rs{mrp.toLocaleString()}
+                      </td>
+                      <td className="py-4 px-6 text-gray-900 font-medium">
+                        Rs{retailPrice.toLocaleString()}
+                      </td>
+                      <td className="py-4 px-6 text-gray-700">
+                        Rs{wholesalePrice.toLocaleString()}
+                      </td>
+                      <td className="py-4 px-6 text-gray-700">
+                        Rs{distributorPrice.toLocaleString()}
+                      </td>
+                      <td className="py-4 px-6">
+                        <div
+                          className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium ${getMarginColor(
+                            margin.status,
+                          )}`}
+                        >
+                          {getMarginIcon(margin.status)}
+                          <span>{margin.percentage.toFixed(1)}%</span>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                          item.vehicleType === "two_wheeler"
-                            ? "bg-blue-50 text-blue-700"
-                            : "bg-green-50 text-green-700"
-                        }`}
-                      >
-                        {item.vehicleType === "two_wheeler"
-                          ? "2 Wheeler"
-                          : "4 Wheeler"}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-gray-900">
-                      Rs{costPrice.toLocaleString()}
-                    </td>
-                    <td className="py-4 px-6 text-gray-900 font-medium">
-                      Rs{retailPrice.toLocaleString()}
-                    </td>
-                    <td className="py-4 px-6 text-gray-700">
-                      Rs{wholesalePrice.toLocaleString()}
-                    </td>
-                    <td className="py-4 px-6 text-gray-700">
-                      Rs{distributorPrice.toLocaleString()}
-                    </td>
-                    <td className="py-4 px-6">
-                      <div
-                        className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium ${getMarginColor(
-                          margin.status
-                        )}`}
-                      >
-                        {getMarginIcon(margin.status)}
-                        <span>{margin.percentage.toFixed(1)}%</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenModal(item);
-                        }}
-                        className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 font-medium"
-                      >
-                        <span>Edit Pricing</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenModal(item);
+                          }}
+                          className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 font-medium"
+                        >
+                          <span>Edit Pricing</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Pricing Modal */}
@@ -493,10 +613,86 @@ export const PricingControlPanel: React.FC = () => {
               </div>
 
               <div className="p-8 overflow-y-auto max-h-[calc(90vh-180px)]">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="max-w-5xl mx-auto">
                   {/* Main Pricing Section */}
-                  <div className="lg:col-span-2">
-                    <div className="grid grid-cols-3 gap-6">
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                      {/* MRP Column */}
+                      <div className="space-y-4">
+                        <div className="text-center">
+                          <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg">
+                            <Tag className="w-8 h-8 text-white" />
+                          </div>
+                          <h4 className="text-gray-900 font-semibold text-lg">
+                            MRP
+                          </h4>
+                          <p className="text-gray-500 text-sm">
+                            Max Retail Price
+                          </p>
+                        </div>
+
+                        <div className="bg-gradient-to-br from-amber-50 to-white border-2 border-amber-200 rounded-xl p-6">
+                          <label className="block text-gray-700 text-sm font-medium mb-3">
+                            Price (NPR)
+                          </label>
+                          <div className="space-y-3">
+                            <div className="relative">
+                              <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
+                                Rs
+                              </span>
+                              <input
+                                type="number"
+                                value={pricing.mrp}
+                                onChange={(e) =>
+                                  handlePriceChange(
+                                    "mrp",
+                                    Number(e.target.value),
+                                  )
+                                }
+                                className="w-full pl-8 pr-4 py-4 border-2 border-gray-300 rounded-xl text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                              />
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => incrementPrice("mrp", -10)}
+                                className="flex-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                              >
+                                <ArrowDown className="w-4 h-4 mx-auto" />
+                              </button>
+                              <button
+                                onClick={() => incrementPrice("mrp", -1)}
+                                className="flex-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm"
+                              >
+                                -1
+                              </button>
+                              <button
+                                onClick={() => incrementPrice("mrp", 1)}
+                                className="flex-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm"
+                              >
+                                +1
+                              </button>
+                              <button
+                                onClick={() => incrementPrice("mrp", 10)}
+                                className="flex-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                              >
+                                <ArrowUp className="w-4 h-4 mx-auto" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="mt-4 pt-4 border-t border-amber-200">
+                            <div className="text-center p-3 rounded-lg bg-amber-50 text-amber-700">
+                              <div className="text-xs font-medium uppercase tracking-wider mb-1">
+                                Reference Price
+                              </div>
+                              <div className="font-semibold">
+                                Rs {pricing.mrp.toLocaleString()}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Retail Column */}
                       <div className="space-y-4">
                         <div className="text-center">
@@ -507,7 +703,7 @@ export const PricingControlPanel: React.FC = () => {
                             Retail
                           </h4>
                           <p className="text-gray-500 text-sm">
-                            End customer price
+                            Real Selling Price
                           </p>
                         </div>
 
@@ -526,7 +722,7 @@ export const PricingControlPanel: React.FC = () => {
                                 onChange={(e) =>
                                   handlePriceChange(
                                     "retail",
-                                    Number(e.target.value)
+                                    Number(e.target.value),
                                   )
                                 }
                                 className="w-full pl-8 pr-4 py-4 border-2 border-gray-300 rounded-xl text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
@@ -566,12 +762,12 @@ export const PricingControlPanel: React.FC = () => {
                             {(() => {
                               const margin = calculateMargin(
                                 pricing.retail,
-                                selectedItem.costPrice || selectedItem.price
+                                selectedItem.costPrice || selectedItem.price,
                               );
                               return (
                                 <div
                                   className={`text-center p-3 rounded-lg ${getMarginColor(
-                                    margin.status
+                                    margin.status,
                                   )}`}
                                 >
                                   <div className="flex items-center justify-center space-x-2 mb-1">
@@ -617,7 +813,7 @@ export const PricingControlPanel: React.FC = () => {
                                 onChange={(e) =>
                                   handlePriceChange(
                                     "wholesale",
-                                    Number(e.target.value)
+                                    Number(e.target.value),
                                   )
                                 }
                                 className="w-full pl-8 pr-4 py-4 border-2 border-gray-300 rounded-xl text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -656,12 +852,12 @@ export const PricingControlPanel: React.FC = () => {
                             {(() => {
                               const margin = calculateMargin(
                                 pricing.wholesale,
-                                selectedItem.costPrice || selectedItem.price
+                                selectedItem.costPrice || selectedItem.price,
                               );
                               return (
                                 <div
                                   className={`text-center p-3 rounded-lg ${getMarginColor(
-                                    margin.status
+                                    margin.status,
                                   )}`}
                                 >
                                   <div className="flex items-center justify-center space-x-2 mb-1">
@@ -709,7 +905,7 @@ export const PricingControlPanel: React.FC = () => {
                                 onChange={(e) =>
                                   handlePriceChange(
                                     "distributor",
-                                    Number(e.target.value)
+                                    Number(e.target.value),
                                   )
                                 }
                                 className="w-full pl-8 pr-4 py-4 border-2 border-gray-300 rounded-xl text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -754,12 +950,12 @@ export const PricingControlPanel: React.FC = () => {
                             {(() => {
                               const margin = calculateMargin(
                                 pricing.distributor,
-                                selectedItem.costPrice || selectedItem.price
+                                selectedItem.costPrice || selectedItem.price,
                               );
                               return (
                                 <div
                                   className={`text-center p-3 rounded-lg ${getMarginColor(
-                                    margin.status
+                                    margin.status,
                                   )}`}
                                 >
                                   <div className="flex items-center justify-center space-x-2 mb-1">
@@ -780,125 +976,44 @@ export const PricingControlPanel: React.FC = () => {
                     </div>
 
                     {/* Cost Price Reference */}
-                    <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                    <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                          <Calculator className="w-5 h-5 text-gray-500" />
-                          <span className="text-gray-700">
-                            Cost Price (Your Purchase)
-                          </span>
-                        </div>
-                        <span className="text-gray-900 font-semibold text-lg">
-                          Rs
-                          {(
-                            selectedItem.costPrice || selectedItem.price
-                          ).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Smart Recommendations Sidebar */}
-                  <div className="space-y-6">
-                    <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-xl p-6">
-                      <div className="flex items-center space-x-3 mb-4">
-                        <div className="w-10 h-10 bg-yellow-400 rounded-lg flex items-center justify-center">
-                          <Lightbulb className="w-5 h-5 text-white" />
-                        </div>
-                        <h4 className="text-gray-900 font-semibold">
-                          Smart Recommendations
-                        </h4>
-                      </div>
-
-                      {(() => {
-                        const recommendations = generateSmartRecommendations(
-                          selectedItem.costPrice || selectedItem.price
-                        );
-                        return (
-                          <div className="space-y-4">
-                            <div className="bg-white rounded-lg p-4 border border-yellow-200">
-                              <div className="text-sm text-gray-600 mb-2">
-                                Suggested Retail Price
-                              </div>
-                              <div className="text-2xl font-bold text-green-600">
-                                Rs{recommendations.retail.toLocaleString()}
-                              </div>
-                              <div className="text-xs text-gray-500 mt-1">
-                                Based on 30% margin target
-                              </div>
-                            </div>
-
-                            <div className="bg-white rounded-lg p-4 border border-yellow-200">
-                              <div className="text-sm text-gray-600 mb-2">
-                                Suggested Wholesale
-                              </div>
-                              <div className="text-xl font-bold text-blue-600">
-                                Rs{recommendations.wholesale.toLocaleString()}
-                              </div>
-                              <div className="text-xs text-gray-500 mt-1">
-                                15% discount from retail
-                              </div>
-                            </div>
-
-                            <div className="bg-white rounded-lg p-4 border border-yellow-200">
-                              <div className="text-sm text-gray-600 mb-2">
-                                Suggested Distributor
-                              </div>
-                              <div className="text-xl font-bold text-purple-600">
-                                Rs{recommendations.distributor.toLocaleString()}
-                              </div>
-                              <div className="text-xs text-gray-500 mt-1">
-                                25% discount from retail
-                              </div>
-                            </div>
-
-                            <div className="bg-white rounded-lg p-4 border border-yellow-200">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <Target className="w-4 h-4 text-gray-600" />
-                                <div className="text-sm text-gray-600">
-                                  Competitor Price Range
-                                </div>
-                              </div>
-                              <div className="text-lg font-bold text-gray-900">
-                                Rs
-                                {recommendations.competitorRange.min.toLocaleString()}{" "}
-                                - Rs
-                                {recommendations.competitorRange.max.toLocaleString()}
-                              </div>
-                              <div className="text-xs text-gray-500 mt-1">
-                                Market analysis estimate
-                              </div>
-                            </div>
-
-                            <button
-                              onClick={() => {
-                                setPricing({
-                                  retail: recommendations.retail,
-                                  wholesale: recommendations.wholesale,
-                                  distributor: recommendations.distributor,
-                                });
-                              }}
-                              className="w-full px-4 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-lg hover:from-yellow-500 hover:to-orange-600 transition-all font-medium shadow-md"
-                            >
-                              Apply Recommendations
-                            </button>
+                          <Calculator className="w-6 h-6 text-gray-400" />
+                          <div>
+                            <span className="text-gray-500 text-sm block">
+                              Investment / Purchase Cost
+                            </span>
+                            <span className="text-gray-900 font-semibold text-lg">
+                              Cost Price: Rs
+                              {(
+                                selectedItem.costPrice || selectedItem.price
+                              ).toLocaleString()}
+                            </span>
                           </div>
-                        );
-                      })()}
-                    </div>
-
-                    {/* Info Box */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                      <div className="flex items-start space-x-3">
-                        <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                        <div className="text-sm text-blue-900">
-                          <p className="font-medium mb-1">Pricing Tips</p>
-                          <ul className="space-y-1 text-xs text-blue-700">
-                            <li>• Maintain minimum 15% margin</li>
-                            <li>• Wholesale: 10-20% below retail</li>
-                            <li>• Distributor: 20-30% below retail</li>
-                            <li>• Check competitor prices regularly</li>
-                          </ul>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-gray-500 text-xs block uppercase tracking-wider font-medium mb-1">
+                            Current Margin (Retail)
+                          </span>
+                          {(() => {
+                            const margin = calculateMargin(
+                              pricing.retail,
+                              selectedItem.costPrice || selectedItem.price,
+                            );
+                            return (
+                              <div
+                                className={`inline-flex items-center px-4 py-2 rounded-lg font-bold text-lg ${getMarginColor(
+                                  margin.status,
+                                )}`}
+                              >
+                                {getMarginIcon(margin.status)}
+                                <span className="ml-2">
+                                  {margin.percentage.toFixed(1)}%
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -925,6 +1040,22 @@ export const PricingControlPanel: React.FC = () => {
           </div>
         </>
       )}
+
+      {/* Popup Container */}
+      <PopupContainer
+        showSuccessPopup={popup.showSuccessPopup}
+        successTitle={popup.successTitle}
+        successMessage={popup.successMessage}
+        onSuccessClose={popup.hideSuccess}
+        showErrorPopup={popup.showErrorPopup}
+        errorTitle={popup.errorTitle}
+        errorMessage={popup.errorMessage}
+        errorType={popup.errorType}
+        onErrorClose={popup.hideError}
+        showConfirmDialog={popup.showConfirmDialog}
+        confirmConfig={popup.confirmConfig}
+        onConfirmCancel={popup.hideConfirm}
+      />
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
   ShoppingCart,
@@ -33,6 +34,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { toast } from "sonner";
+import { apiFetch } from "../utils/apiClient";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CustomerAuthEnhanced } from "./customer/CustomerAuthEnhanced";
 import { CustomerHomepage } from "./customer/CustomerHomepage";
@@ -62,6 +64,8 @@ interface CustomerPanelProps {
 export const CustomerPanel: React.FC<CustomerPanelProps> = ({
   onBackToEntry,
 }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState<CustomerView>("products");
   const [customerData, setCustomerData] = useState<any>(null);
@@ -82,6 +86,11 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
     vehicleType?: string;
     authenticity?: string;
   }>({});
+  const normalizedPath = location.pathname.replace(/\/+$/, "") || "/";
+  const authRouteMode: "login" | "register" =
+    normalizedPath === "/register" || normalizedPath === "/customer/register"
+      ? "register"
+      : "login";
 
   // Check if customer is already logged in
   useEffect(() => {
@@ -95,20 +104,67 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
     }
   }, []);
 
+  // Sync view with route for login/register and main entry points
+  useEffect(() => {
+    const isPath = (...paths: string[]) => paths.includes(normalizedPath);
+
+    if (
+      isPath("/login", "/customer/login", "/register", "/customer/register")
+    ) {
+      setCurrentView("auth");
+      return;
+    }
+
+    if (isPath("/cart", "/customer/cart")) {
+      setCurrentView("cart");
+      return;
+    }
+
+    if (isPath("/checkout", "/customer/checkout")) {
+      setCurrentView("checkout");
+      return;
+    }
+
+    if (
+      isPath("/my-orders", "/orders", "/customer/orders", "/customer/my-orders")
+    ) {
+      setCurrentView("orders");
+      return;
+    }
+
+    if (isPath("/profile", "/customer/profile")) {
+      setCurrentView("profile");
+      return;
+    }
+
+    if (normalizedPath.startsWith("/product/")) {
+      const productId = normalizedPath.split("/").pop();
+      if (productId) {
+        // If we don't have the product data yet, we might need a fetch here
+        // But the previous implementation assumed selectedProduct was set via prop
+        // We'll keep it simple for now or fetch if needed
+        setCurrentView("detail");
+      }
+      return;
+    }
+
+    if (isPath("/all-products", "/customer/all-products")) {
+      setCurrentView("allProducts");
+      return;
+    }
+
+    // Default landing state
+    setCurrentView("products");
+  }, [normalizedPath]);
+
   // Fetch cart from API
   const fetchCart = async () => {
     try {
       const token = localStorage.getItem("accessToken");
       if (!token) return;
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${import.meta.env.VITE_API_BASE_URL}/carts/cart/`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "ngrok-skip-browser-warning": "true",
-          },
-        }
       );
 
       if (response.ok) {
@@ -117,12 +173,8 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
 
         const mappedItems = Array.isArray(cartItemsArray)
           ? cartItemsArray.map((item: any) => {
-              // Fallback logic for price: try price -> item price -> retail_pricing -> mrp
-              const price =
-                parseFloat(item.inventory.price || 0) ||
-                parseFloat(item.price || 0) ||
-                parseFloat(item.inventory.retail_pricing || 0) ||
-                parseFloat(item.inventory.mrp || 0);
+              // Use exact price from inventory API response
+              const price = parseFloat(item.inventory.price || 0);
 
               return {
                 id: String(item.inventory.id),
@@ -151,17 +203,14 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
     setCustomerData(customer);
     setIsAuthenticated(true);
     localStorage.setItem("customer_user", JSON.stringify(customer));
-    setCurrentView("products");
+    navigate("/shop");
     // Fetch cart after login
     fetchCart();
   };
 
   const handleLogout = () => {
-    setCustomerData(null);
-    setIsAuthenticated(false);
-    setCartItems([]);
     localStorage.removeItem("customer_user");
-    setCurrentView("products");
+    onBackToEntry();
   };
 
   const handleAddToCart = async (product: any, quantity: number = 1) => {
@@ -170,10 +219,10 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
         description: "You need to be logged in to shop",
         action: {
           label: "Login",
-          onClick: () => setCurrentView("auth"),
+          onClick: () => navigate("/login"),
         },
       });
-      setCurrentView("auth");
+      navigate("/login");
       return;
     }
 
@@ -184,20 +233,18 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
         return;
       }
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${import.meta.env.VITE_API_BASE_URL}/carts/cart/add/`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-            "ngrok-skip-browser-warning": "true",
           },
           body: JSON.stringify({
             inventory_id: parseInt(product.id, 10),
             quantity: quantity,
           }),
-        }
+        },
       );
 
       if (response.ok) {
@@ -206,10 +253,48 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
         });
         await fetchCart();
       } else {
-        const error = await response.json();
-        toast.error("Failed to add to cart", {
-          description: error.detail || "Please try again",
-        });
+        let errorMessage = "Failed to add to cart";
+        try {
+          const errorText = await response.text();
+          try {
+            const errorData = JSON.parse(errorText);
+            if (typeof errorData === "string") {
+              errorMessage = errorData;
+            } else if (Array.isArray(errorData)) {
+              errorMessage = errorData.join(", ");
+            } else if (typeof errorData === "object" && errorData) {
+              if (errorData.detail) errorMessage = errorData.detail;
+              else if (errorData.message) errorMessage = errorData.message;
+              else if (errorData.error) errorMessage = String(errorData.error);
+              else if (
+                errorData.non_field_errors &&
+                Array.isArray(errorData.non_field_errors)
+              ) {
+                errorMessage = errorData.non_field_errors.join(", ");
+              } else {
+                const fieldErrors = Object.entries(errorData)
+                  .filter(([key]) => key !== "status" && key !== "code")
+                  .map(([field, errors]) => {
+                    const errorStr = Array.isArray(errors)
+                      ? errors.join(", ")
+                      : String(errors);
+                    const fieldName =
+                      field.charAt(0).toUpperCase() +
+                      field.slice(1).replace(/_/g, " ");
+                    return `${fieldName}: ${errorStr}`;
+                  });
+                if (fieldErrors.length > 0)
+                  errorMessage = fieldErrors.join("\n");
+              }
+            }
+          } catch {
+            if (errorText && errorText.length < 500) errorMessage = errorText;
+          }
+        } catch (e) {
+          console.error("Error parsing response:", e);
+        }
+
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error("Error adding to cart:", error);
@@ -250,17 +335,13 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
         return;
       }
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${import.meta.env.VITE_API_BASE_URL}/carts/cart/${
           cartItem.cartItemId
         }/remove/`,
         {
           method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "ngrok-skip-browser-warning": "true",
-          },
-        }
+        },
       );
 
       if (response.ok) {
@@ -269,8 +350,48 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
         setShowConfirmDialog(false);
         setConfirmConfig(null);
       } else {
-        const error = await response.json().catch(() => ({}));
-        toast.error(error.message || "Failed to remove item");
+        let errorMessage = "Failed to remove item";
+        try {
+          const errorText = await response.text();
+          try {
+            const errorData = JSON.parse(errorText);
+            if (typeof errorData === "string") {
+              errorMessage = errorData;
+            } else if (Array.isArray(errorData)) {
+              errorMessage = errorData.join(", ");
+            } else if (typeof errorData === "object" && errorData) {
+              if (errorData.detail) errorMessage = errorData.detail;
+              else if (errorData.message) errorMessage = errorData.message;
+              else if (errorData.error) errorMessage = String(errorData.error);
+              else if (
+                errorData.non_field_errors &&
+                Array.isArray(errorData.non_field_errors)
+              ) {
+                errorMessage = errorData.non_field_errors.join(", ");
+              } else {
+                const fieldErrors = Object.entries(errorData)
+                  .filter(([key]) => key !== "status" && key !== "code")
+                  .map(([field, errors]) => {
+                    const errorStr = Array.isArray(errors)
+                      ? errors.join(", ")
+                      : String(errors);
+                    const fieldName =
+                      field.charAt(0).toUpperCase() +
+                      field.slice(1).replace(/_/g, " ");
+                    return `${fieldName}: ${errorStr}`;
+                  });
+                if (fieldErrors.length > 0)
+                  errorMessage = fieldErrors.join("\n");
+              }
+            }
+          } catch {
+            if (errorText && errorText.length < 500) errorMessage = errorText;
+          }
+        } catch (e) {
+          console.error("Error parsing response:", e);
+        }
+
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error("Error removing from cart:", error);
@@ -280,7 +401,7 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
 
   const handleUpdateQuantity = async (
     productId: string,
-    newQuantity: number
+    newQuantity: number,
   ) => {
     if (newQuantity <= 0) {
       confirmRemoveFromCart(productId);
@@ -294,7 +415,7 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
       const cartItem = cartItems.find((item) => item.id === productId);
       if (!cartItem?.cartItemId) return;
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${import.meta.env.VITE_API_BASE_URL}/carts/cart/${
           cartItem.cartItemId
         }/update/`,
@@ -302,20 +423,59 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-            "ngrok-skip-browser-warning": "true",
           },
           body: JSON.stringify({
             quantity: newQuantity,
           }),
-        }
+        },
       );
 
       if (response.ok) {
         // Refresh cart from API
         await fetchCart();
       } else {
-        toast.error("Failed to update quantity");
+        let errorMessage = "Failed to update quantity";
+        try {
+          const errorText = await response.text();
+          try {
+            const errorData = JSON.parse(errorText);
+            if (typeof errorData === "string") {
+              errorMessage = errorData;
+            } else if (Array.isArray(errorData)) {
+              errorMessage = errorData.join(", ");
+            } else if (typeof errorData === "object" && errorData) {
+              if (errorData.detail) errorMessage = errorData.detail;
+              else if (errorData.message) errorMessage = errorData.message;
+              else if (errorData.error) errorMessage = String(errorData.error);
+              else if (
+                errorData.non_field_errors &&
+                Array.isArray(errorData.non_field_errors)
+              ) {
+                errorMessage = errorData.non_field_errors.join(", ");
+              } else {
+                const fieldErrors = Object.entries(errorData)
+                  .filter(([key]) => key !== "status" && key !== "code")
+                  .map(([field, errors]) => {
+                    const errorStr = Array.isArray(errors)
+                      ? errors.join(", ")
+                      : String(errors);
+                    const fieldName =
+                      field.charAt(0).toUpperCase() +
+                      field.slice(1).replace(/_/g, " ");
+                    return `${fieldName}: ${errorStr}`;
+                  });
+                if (fieldErrors.length > 0)
+                  errorMessage = fieldErrors.join("\n");
+              }
+            }
+          } catch {
+            if (errorText && errorText.length < 500) errorMessage = errorText;
+          }
+        } catch (e) {
+          console.error("Error parsing response:", e);
+        }
+
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error("Error updating quantity:", error);
@@ -329,19 +489,19 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
         description: "You need to be logged in to complete your purchase",
         action: {
           label: "Login",
-          onClick: () => setCurrentView("auth"),
+          onClick: () => navigate("/login"),
         },
       });
-      setCurrentView("auth");
+      navigate("/login");
       return;
     }
-    setCurrentView("checkout");
+    navigate("/checkout");
     setCartOpen(false);
   };
 
   const handleOrderComplete = () => {
     setCartItems([]);
-    setCurrentView("orders");
+    navigate("/my-orders");
   };
 
   const handleViewOrders = () => {
@@ -350,13 +510,13 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
         description: "You need to be logged in to see order history",
         action: {
           label: "Login",
-          onClick: () => setCurrentView("auth"),
+          onClick: () => navigate("/login"),
         },
       });
-      setCurrentView("auth");
+      navigate("/login");
       return;
     }
-    setCurrentView("orders");
+    navigate("/my-orders");
     setShowMobileMenu(false);
   };
 
@@ -366,20 +526,20 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
         description: "You need to be logged in to access your profile",
         action: {
           label: "Login",
-          onClick: () => setCurrentView("auth"),
+          onClick: () => navigate("/login"),
         },
       });
-      setCurrentView("auth");
+      navigate("/login");
       return;
     }
-    setCurrentView("profile");
+    navigate("/profile");
     setShowMobileMenu(false);
   };
 
   const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
-    0
+    0,
   );
 
   return (
@@ -436,7 +596,7 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center space-x-1">
               <button
-                onClick={() => setCurrentView("products")}
+                onClick={() => navigate("/shop")}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all text-sm ${
                   currentView === "products"
                     ? "bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/30"
@@ -474,7 +634,6 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
               )}
             </nav>
 
-            {/* Right Actions */}
             <div className="flex items-center space-x-3">
               {/* Cart Button */}
               <button
@@ -485,10 +644,10 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
                         "You need to be logged in to access your cart",
                       action: {
                         label: "Login",
-                        onClick: () => setCurrentView("auth"),
+                        onClick: () => navigate("/login"),
                       },
                     });
-                    setCurrentView("auth");
+                    navigate("/login");
                     return;
                   }
                   setCartOpen(true);
@@ -525,14 +684,14 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
               ) : (
                 <div className="hidden md:flex items-center space-x-2">
                   <button
-                    onClick={() => setCurrentView("auth")}
+                    onClick={() => navigate("/login")}
                     className="flex items-center space-x-2 px-4 py-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-all text-sm"
                   >
                     <LogIn className="w-4 h-4" />
                     <span>Login</span>
                   </button>
                   <button
-                    onClick={() => setCurrentView("auth")}
+                    onClick={() => navigate("/register")}
                     className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:shadow-lg hover:shadow-amber-500/30 rounded-lg transition-all text-sm"
                   >
                     <UserPlus className="w-4 h-4" />
@@ -557,7 +716,7 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
               <div className="space-y-2">
                 <button
                   onClick={() => {
-                    setCurrentView("products");
+                    navigate("/shop");
                     setShowMobileMenu(false);
                   }}
                   className={`w-full text-left px-4 py-2 rounded-lg text-sm ${
@@ -612,7 +771,7 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
                   <>
                     <button
                       onClick={() => {
-                        setCurrentView("auth");
+                        navigate("/login");
                         setShowMobileMenu(false);
                       }}
                       className="w-full text-left px-4 py-2 rounded-lg text-amber-600 hover:bg-amber-50 text-sm"
@@ -621,7 +780,7 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
                     </button>
                     <button
                       onClick={() => {
-                        setCurrentView("auth");
+                        navigate("/register");
                         setShowMobileMenu(false);
                       }}
                       className="w-full text-left px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white text-sm"
@@ -648,7 +807,8 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
             >
               <CustomerAuthEnhanced
                 onLogin={handleLogin}
-                onBackToEntry={() => setCurrentView("products")}
+                onBackToEntry={() => navigate("/shop")}
+                initialMode={authRouteMode}
               />
             </motion.div>
           )}
@@ -664,10 +824,10 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
                 onAddToCart={handleAddToCart}
                 onViewProduct={(product) => {
                   setSelectedProduct(product);
-                  setCurrentView("detail");
+                  navigate(`/product/${product.id}`);
                 }}
-                onViewAllProducts={() => setCurrentView("allProducts")}
-                onOpenCart={() => setCurrentView("cart")}
+                onViewAllProducts={() => navigate("/all-products")}
+                onOpenCart={() => navigate("/cart")}
               />
             </motion.div>
           )}
@@ -684,7 +844,7 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
                 onUpdateQuantity={handleUpdateQuantity}
                 onRemoveItem={handleRemoveFromCart}
                 onCheckout={handleCheckout}
-                onContinueShopping={() => setCurrentView("products")}
+                onContinueShopping={() => navigate("/shop")}
               />
             </motion.div>
           )}
@@ -700,7 +860,7 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
                 cartItems={cartItems}
                 customerData={customerData}
                 onOrderComplete={handleOrderComplete}
-                onBack={() => setCurrentView("cart")}
+                onBack={() => navigate("/cart")}
               />
             </motion.div>
           )}
@@ -714,7 +874,7 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
             >
               <CustomerOrdersDashboard
                 customerData={customerData}
-                onNavigateToCustomerPanel={() => setCurrentView("products")}
+                onNavigateToCustomerPanel={() => navigate("/shop")}
               />
             </motion.div>
           )}
@@ -732,7 +892,7 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
                   setCustomerData(updatedData);
                   localStorage.setItem(
                     "customer_user",
-                    JSON.stringify(updatedData)
+                    JSON.stringify(updatedData),
                   );
                 }}
               />
@@ -749,7 +909,7 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
               <ProductDetailPage
                 product={selectedProduct}
                 onAddToCart={handleAddToCart}
-                onBack={() => setCurrentView("products")}
+                onBack={() => navigate("/shop")}
               />
             </motion.div>
           )}
@@ -762,11 +922,11 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
               exit={{ opacity: 0, y: -20 }}
             >
               <AllProductsPage
-                onBack={() => setCurrentView("products")}
+                onBack={() => navigate("/shop")}
                 onAddToCart={handleAddToCart}
                 onViewProduct={(product) => {
                   setSelectedProduct(product);
-                  setCurrentView("detail");
+                  navigate(`/product/${product.id}`);
                 }}
               />
             </motion.div>
@@ -846,7 +1006,7 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
                       whileTap={{ scale: 0.95 }}
                       onClick={() => {
                         setCartOpen(false);
-                        setCurrentView("products");
+                        navigate("/shop");
                       }}
                       className="bg-gradient-to-r from-amber-500 to-orange-600 text-white px-6 py-3 rounded-xl shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 transition-all inline-flex items-center gap-2 font-light"
                     >
@@ -919,7 +1079,7 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
                                 onClick={() =>
                                   handleUpdateQuantity(
                                     item.id,
-                                    item.quantity - 1
+                                    item.quantity - 1,
                                   )
                                 }
                                 className="w-8 h-8 rounded-md hover:bg-slate-700/50 transition-colors flex items-center justify-center text-slate-400 hover:text-amber-400"
@@ -935,7 +1095,7 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
                                 onClick={() =>
                                   handleUpdateQuantity(
                                     item.id,
-                                    item.quantity + 1
+                                    item.quantity + 1,
                                   )
                                 }
                                 className="w-8 h-8 rounded-md hover:bg-slate-700/50 transition-colors flex items-center justify-center text-slate-400 hover:text-amber-400"

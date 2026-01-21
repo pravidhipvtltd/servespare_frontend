@@ -69,7 +69,7 @@ export interface SubscriptionsResponse {
  */
 export const getSubscriptions = async (
   page: number = 1,
-  pageSize: number = 20
+  pageSize: number = 20,
 ): Promise<SubscriptionsResponse> => {
   try {
     const url = `${API_BASE_URL}/subscriptions/?page=${page}&page_size=${pageSize}`;
@@ -108,7 +108,7 @@ export const getActiveSubscriptions = async (): Promise<Subscription[]> => {
  * @param tenantId - Tenant ID to filter by
  */
 export const getSubscriptionByTenant = async (
-  tenantId: number | string
+  tenantId: number | string,
 ): Promise<Subscription | null> => {
   try {
     const data = await getSubscriptions(1, 1000);
@@ -116,7 +116,7 @@ export const getSubscriptionByTenant = async (
 
     // Find active subscription for this tenant
     const subscription = data.results.find(
-      (sub) => sub.is_active === true && sub.tenant === tenantIdNum
+      (sub) => sub.is_active === true && sub.tenant === tenantIdNum,
     );
 
     return subscription || null;
@@ -131,7 +131,7 @@ export const getSubscriptionByTenant = async (
  * @param email - Tenant email to filter by
  */
 export const getSubscriptionByEmail = async (
-  email: string
+  email: string,
 ): Promise<Subscription | null> => {
   try {
     const data = await getSubscriptions(1, 1000);
@@ -140,7 +140,7 @@ export const getSubscriptionByEmail = async (
     const subscription = data.results.find(
       (sub) =>
         sub.is_active === true &&
-        sub.tenant_detail?.email?.toLowerCase() === email.toLowerCase()
+        sub.tenant_detail?.email?.toLowerCase() === email.toLowerCase(),
     );
 
     return subscription || null;
@@ -155,7 +155,7 @@ export const getSubscriptionByEmail = async (
  * @param subscriptionId - Subscription ID
  */
 export const getSubscriptionById = async (
-  subscriptionId: number
+  subscriptionId: number,
 ): Promise<Subscription> => {
   try {
     const url = `${API_BASE_URL}/subscriptions/${subscriptionId}/`;
@@ -199,7 +199,7 @@ export const createSubscription = async (subscriptionData: {
       throw new Error(
         `Failed to create subscription: ${
           response.statusText
-        }. ${JSON.stringify(errorData)}`
+        }. ${JSON.stringify(errorData)}`,
       );
     }
 
@@ -222,7 +222,7 @@ export const updateSubscription = async (
     subscription_plan: number;
     finish_date: string;
     is_active: boolean;
-  }>
+  }>,
 ): Promise<Subscription> => {
   try {
     const url = `${API_BASE_URL}/subscriptions/${subscriptionId}/`;
@@ -237,7 +237,7 @@ export const updateSubscription = async (
       throw new Error(
         `Failed to update subscription: ${
           response.statusText
-        }. ${JSON.stringify(errorData)}`
+        }. ${JSON.stringify(errorData)}`,
       );
     }
 
@@ -254,7 +254,7 @@ export const updateSubscription = async (
  * @param
  */
 export const deleteSubscription = async (
-  subscriptionId: number
+  subscriptionId: number,
 ): Promise<void> => {
   try {
     const url = `${API_BASE_URL}/subscriptions/${subscriptionId}/`;
@@ -289,7 +289,7 @@ export const getSubscriptionPlans = async (): Promise<
 
     if (!response.ok) {
       throw new Error(
-        `Failed to fetch subscription plans: ${response.statusText}`
+        `Failed to fetch subscription plans: ${response.statusText}`,
       );
     }
 
@@ -308,7 +308,7 @@ export const getSubscriptionPlans = async (): Promise<
  */
 export const renewSubscription = async (
   subscriptionId: number,
-  months: number
+  months: number,
 ): Promise<Subscription> => {
   try {
     // Get current subscription
@@ -337,7 +337,7 @@ export const renewSubscription = async (
  */
 export const changeSubscriptionPlan = async (
   subscriptionId: number,
-  newPlanId: number
+  newPlanId: number,
 ): Promise<Subscription> => {
   try {
     return await updateSubscription(subscriptionId, {
@@ -356,7 +356,7 @@ export const changeSubscriptionPlan = async (
  */
 export const getCurrentUserSubscription = async (
   workspaceId?: string | number,
-  email?: string
+  email?: string,
 ): Promise<Subscription | null> => {
   try {
     const data = await getSubscriptions(1, 1000);
@@ -375,7 +375,7 @@ export const getCurrentUserSubscription = async (
       }
       // Try string match
       const matchStr = activeSubs.find(
-        (s) => String(s.tenant) === String(workspaceId)
+        (s) => String(s.tenant) === String(workspaceId),
       );
       if (matchStr) return matchStr;
     }
@@ -383,14 +383,14 @@ export const getCurrentUserSubscription = async (
     // Strategy 2: Match by email
     if (email) {
       const matchEmail = activeSubs.find(
-        (s) => s.tenant_detail?.email?.toLowerCase() === email.toLowerCase()
+        (s) => s.tenant_detail?.email?.toLowerCase() === email.toLowerCase(),
       );
       if (matchEmail) return matchEmail;
     }
 
     // Strategy 3: Return latest active subscription
     const sorted = [...activeSubs].sort(
-      (a, b) => new Date(b.created).getTime() - new Date(a.created).getTime()
+      (a, b) => new Date(b.created).getTime() - new Date(a.created).getTime(),
     );
     return sorted[0];
   } catch (error) {
@@ -441,7 +441,7 @@ export interface TenantsResponse {
  */
 export const getTenants = async (
   page: number = 1,
-  pageSize: number = 20
+  pageSize: number = 20,
 ): Promise<TenantsResponse> => {
   try {
     const url = `${
@@ -482,7 +482,7 @@ export const getActiveTenants = async (): Promise<TenantResponse[]> => {
  * @param tenantId - Tenant ID
  */
 export const getTenantById = async (
-  tenantId: string | number
+  tenantId: string | number,
 ): Promise<TenantResponse> => {
   try {
     const url = `${import.meta.env.VITE_API_BASE_URL}/tenant/${tenantId}/`;
@@ -504,7 +504,7 @@ export const getTenantById = async (
 };
 
 export const createTenant = async (
-  tenantData: CreateTenantPayload
+  tenantData: CreateTenantPayload,
 ): Promise<TenantResponse> => {
   try {
     const url = `${import.meta.env.VITE_API_BASE_URL}/tenant/`;
@@ -528,8 +528,8 @@ export const createTenant = async (
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
         `Failed to create tenant: ${response.statusText}. ${JSON.stringify(
-          errorData
-        )}`
+          errorData,
+        )}`,
       );
     }
 
@@ -542,14 +542,12 @@ export const createTenant = async (
 };
 
 /**
- * Delete a tenant/admin account
- * @param tenantId - Tenant ID to delete
+ * Delete a tenant/admin account user
+ * @param adminId - Admin/User ID to delete
  */
-export const deleteTenant = async (
-  tenantId: string | number
-): Promise<void> => {
+export const deleteTenant = async (adminId: string | number): Promise<void> => {
   try {
-    const url = `${import.meta.env.VITE_API_BASE_URL}/tenant/${tenantId}/`;
+    const url = `${import.meta.env.VITE_API_BASE_URL}/users/${adminId}/`;
     const response = await fetch(url, {
       method: "DELETE",
       headers: getHeaders(),
@@ -559,8 +557,8 @@ export const deleteTenant = async (
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
         `Failed to delete tenant: ${response.statusText}. ${JSON.stringify(
-          errorData
-        )}`
+          errorData,
+        )}`,
       );
     }
   } catch (error) {

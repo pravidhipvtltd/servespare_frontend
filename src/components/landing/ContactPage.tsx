@@ -130,7 +130,7 @@ const ContactSection: React.FC = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    phone: "",
+    phone: "+977",
     company: "",
     message: "",
   });
@@ -167,7 +167,13 @@ const ContactSection: React.FC = () => {
       }
 
       setSubmitted(true);
-      setFormData({ name: "", email: "", phone: "", company: "", message: "" });
+      setFormData({
+        name: "",
+        email: "",
+        phone: "+977",
+        company: "",
+        message: "",
+      });
       setTimeout(() => {
         setSubmitted(false);
       }, 5000);
@@ -261,7 +267,7 @@ const ContactSection: React.FC = () => {
                     setFormData({ ...formData, phone: e.target.value })
                   }
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                  placeholder={t("contact.phone.placeholder")}
+                  placeholder="+977"
                 />
               </div>
 
