@@ -18,6 +18,9 @@ import {
   CreditCard,
   Lock,
   LogOut,
+  Eye,
+  EyeOff,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -56,6 +59,24 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
     customerData?.profileImage || "",
   );
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [lastPasswordChange, setLastPasswordChange] = useState<string | null>(
+    localStorage.getItem(`last_password_change_${customerData?.id}`) || null,
+  );
+  const [passwordErrors, setPasswordErrors] = useState<{
+    old_password?: string;
+    new_password?: string;
+    new_password_confirm?: string;
+    general?: string;
+  }>({});
+  const [passwordData, setPasswordData] = useState({
+    old_password: "",
+    new_password: "",
+    new_password_confirm: "",
+  });
 
   // Fetch customer status from API
   useEffect(() => {
@@ -413,6 +434,177 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
     setFormData({ ...formData, profileImage: "" });
     setImageFile(null);
     toast.info("Profile image removed");
+  };
+
+  const formatLastChanged = (dateString: string | null) => {
+    if (!dateString) return "Last changed 30 days ago"; // Default fallback
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return "Just now";
+    if (diffInSeconds < 3600)
+      return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+    if (diffInSeconds < 86400)
+      return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    if (diffInSeconds < 2592000)
+      return `${Math.floor(diffInSeconds / 86400)} days ago`;
+    return `on ${date.toLocaleDateString()}`;
+  };
+
+  const handlePasswordChangeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordErrors({});
+
+    if (passwordData.new_password !== passwordData.new_password_confirm) {
+      setPasswordErrors({
+        new_password_confirm: "New passwords do not match",
+      });
+      toast.error("New passwords do not match");
+      return;
+    }
+
+    if (!passwordData.old_password || !passwordData.new_password) {
+      const newErrors: any = {};
+      if (!passwordData.old_password)
+        newErrors.old_password = "Current password is required";
+      if (!passwordData.new_password)
+        newErrors.new_password = "New password is required";
+      setPasswordErrors(newErrors);
+      toast.error("Please fill in all password fields");
+      return;
+    }
+
+    try {
+      const token =
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("auth_token");
+
+      if (!token) {
+        toast.error("Session expired. Please log in again.");
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/users/change_password/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
+          },
+          body: JSON.stringify(passwordData),
+        },
+      );
+
+      if (response.ok) {
+        toast.success("Password changed successfully!");
+        const now = new Date().toISOString();
+        setLastPasswordChange(now);
+        localStorage.setItem(`last_password_change_${customerData?.id}`, now);
+        setIsChangingPassword(false);
+        setPasswordData({
+          old_password: "",
+          new_password: "",
+          new_password_confirm: "",
+        });
+        setPasswordErrors({});
+      } else {
+        const errorData = await response.json();
+
+        // Map backend errors to fields
+        const fieldErrors: any = {};
+        if (errorData.old_password)
+          fieldErrors.old_password = Array.isArray(errorData.old_password)
+            ? errorData.old_password[0]
+            : errorData.old_password;
+        if (errorData.new_password)
+          fieldErrors.new_password = Array.isArray(errorData.new_password)
+            ? errorData.new_password[0]
+            : errorData.new_password;
+        if (errorData.new_password_confirm)
+          fieldErrors.new_password_confirm = Array.isArray(
+            errorData.new_password_confirm,
+          )
+            ? errorData.new_password_confirm[0]
+            : errorData.new_password_confirm;
+        if (errorData.non_field_errors)
+          fieldErrors.general = errorData.non_field_errors[0];
+
+        setPasswordErrors(fieldErrors);
+
+        const errorMessage =
+          errorData.detail ||
+          errorData.message ||
+          errorData.non_field_errors?.[0] ||
+          "Failed to change password";
+        toast.error(errorMessage);
+      }
+    } catch (error) {
+      console.error("Error changing password:", error);
+      toast.error("An error occurred while changing password");
+    }
+  };
+
+  const handleToggle2FA = async () => {
+    try {
+      const token =
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("auth_token");
+      const userId = customerData?.id || localStorage.getItem("user_id");
+
+      if (!token || !userId) {
+        toast.error("User authentication failed");
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/users/${userId}/toggle_two_factor/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
+          },
+          body: JSON.stringify({
+            two_factor_enabled: !customerData?.two_factor_enabled,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success(
+          customerData?.two_factor_enabled
+            ? "Two-factor authentication disabled"
+            : "Two-factor authentication enabled",
+        );
+        onUpdate({
+          ...customerData,
+          two_factor_enabled: !customerData?.two_factor_enabled,
+        });
+
+        // Update local storage user data
+        const userStr = localStorage.getItem("user");
+        if (userStr) {
+          try {
+            const userObj = JSON.parse(userStr);
+            userObj.two_factor_enabled = !customerData?.two_factor_enabled;
+            localStorage.setItem("user", JSON.stringify(userObj));
+          } catch (e) {
+            console.error("Error updating local user storage", e);
+          }
+        }
+      } else {
+        toast.error(data.message || "Failed to update 2FA status");
+      }
+    } catch (error) {
+      console.error("Error toggling 2FA:", error);
+      toast.error("An error occurred. Please try again.");
+    }
   };
 
   const stats = [
@@ -853,42 +1045,266 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
                   <div className="space-y-6">
                     {/* Change Password */}
                     <div className="p-6 border-2 border-gray-200 rounded-xl">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                            <Lock className="w-5 h-5 text-amber-600" />
+                      {!isChangingPassword ? (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                              <Lock className="w-5 h-5 text-amber-600" />
+                            </div>
+                            <div>
+                              <p className="text-gray-900">Password</p>
+                              <p className="text-sm text-gray-600">
+                                {formatLastChanged(lastPasswordChange)}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-gray-900">Password</p>
-                            <p className="text-sm text-gray-600">
-                              Last changed 30 days ago
-                            </p>
-                          </div>
+                          <button
+                            onClick={() => setIsChangingPassword(true)}
+                            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all"
+                          >
+                            Change
+                          </button>
                         </div>
-                        <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all">
-                          Change
-                        </button>
-                      </div>
+                      ) : (
+                        <form
+                          onSubmit={handlePasswordChangeSubmit}
+                          className="space-y-4"
+                        >
+                          <div className="flex items-center space-x-3 mb-4">
+                            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                              <Lock className="w-5 h-5 text-amber-600" />
+                            </div>
+                            <h3 className="text-lg font-medium text-gray-900">
+                              Change Password
+                            </h3>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm text-gray-700 mb-1">
+                              Current Password
+                            </label>
+                            <div className="relative">
+                              <input
+                                type={showOldPassword ? "text" : "password"}
+                                value={passwordData.old_password}
+                                onChange={(e) => {
+                                  setPasswordData({
+                                    ...passwordData,
+                                    old_password: e.target.value,
+                                  });
+                                  if (passwordErrors.old_password) {
+                                    setPasswordErrors({
+                                      ...passwordErrors,
+                                      old_password: "",
+                                    });
+                                  }
+                                }}
+                                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none pr-10 ${
+                                  passwordErrors.old_password
+                                    ? "border-red-500"
+                                    : "border-gray-300"
+                                }`}
+                                placeholder="••••••••"
+                                required
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setShowOldPassword(!showOldPassword)
+                                }
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                              >
+                                {showOldPassword ? (
+                                  <EyeOff className="w-4 h-4" />
+                                ) : (
+                                  <Eye className="w-4 h-4" />
+                                )}
+                              </button>
+                            </div>
+                            {passwordErrors.old_password && (
+                              <p className="mt-1 text-xs text-red-500 flex items-center">
+                                <AlertCircle className="w-3 h-3 mr-1" />
+                                {passwordErrors.old_password}
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="block text-sm text-gray-700 mb-1">
+                              New Password
+                            </label>
+                            <div className="relative">
+                              <input
+                                type={showNewPassword ? "text" : "password"}
+                                value={passwordData.new_password}
+                                onChange={(e) => {
+                                  setPasswordData({
+                                    ...passwordData,
+                                    new_password: e.target.value,
+                                  });
+                                  if (passwordErrors.new_password) {
+                                    setPasswordErrors({
+                                      ...passwordErrors,
+                                      new_password: "",
+                                    });
+                                  }
+                                }}
+                                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none pr-10 ${
+                                  passwordErrors.new_password
+                                    ? "border-red-500"
+                                    : "border-gray-300"
+                                }`}
+                                placeholder="••••••••"
+                                required
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setShowNewPassword(!showNewPassword)
+                                }
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                              >
+                                {showNewPassword ? (
+                                  <EyeOff className="w-4 h-4" />
+                                ) : (
+                                  <Eye className="w-4 h-4" />
+                                )}
+                              </button>
+                            </div>
+                            {passwordErrors.new_password && (
+                              <p className="mt-1 text-xs text-red-500 flex items-center">
+                                <AlertCircle className="w-3 h-3 mr-1" />
+                                {passwordErrors.new_password}
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="block text-sm text-gray-700 mb-1">
+                              Confirm New Password
+                            </label>
+                            <div className="relative">
+                              <input
+                                type={showConfirmPassword ? "text" : "password"}
+                                value={passwordData.new_password_confirm}
+                                onChange={(e) => {
+                                  setPasswordData({
+                                    ...passwordData,
+                                    new_password_confirm: e.target.value,
+                                  });
+                                  if (passwordErrors.new_password_confirm) {
+                                    setPasswordErrors({
+                                      ...passwordErrors,
+                                      new_password_confirm: "",
+                                    });
+                                  }
+                                }}
+                                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none pr-10 ${
+                                  passwordErrors.new_password_confirm
+                                    ? "border-red-500"
+                                    : "border-gray-300"
+                                }`}
+                                placeholder="••••••••"
+                                required
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setShowConfirmPassword(!showConfirmPassword)
+                                }
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                              >
+                                {showConfirmPassword ? (
+                                  <EyeOff className="w-4 h-4" />
+                                ) : (
+                                  <Eye className="w-4 h-4" />
+                                )}
+                              </button>
+                            </div>
+                            {passwordErrors.new_password_confirm && (
+                              <p className="mt-1 text-xs text-red-500 flex items-center">
+                                <AlertCircle className="w-3 h-3 mr-1" />
+                                {passwordErrors.new_password_confirm}
+                              </p>
+                            )}
+                          </div>
+
+                          {passwordErrors.general && (
+                            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                              <p className="text-sm text-red-600 flex items-center">
+                                <AlertCircle className="w-4 h-4 mr-2" />
+                                {passwordErrors.general}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="flex space-x-3 pt-2">
+                            <button
+                              type="submit"
+                              className="flex-1 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all font-medium"
+                            >
+                              Update Password
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsChangingPassword(false);
+                                setPasswordData({
+                                  old_password: "",
+                                  new_password: "",
+                                  new_password_confirm: "",
+                                });
+                              }}
+                              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-medium"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </form>
+                      )}
                     </div>
 
                     {/* Two-Factor Authentication */}
-                    <div className="p-6 border-2 border-gray-200 rounded-xl">
-                      <div className="flex items-center justify-between">
+                    <div className="p-6 border-2 border-gray-200 rounded-xl transition-all duration-300 hover:border-green-200">
+                      <div className="flex items-center justify-between flex-wrap gap-4">
                         <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                            <Shield className="w-5 h-5 text-green-600" />
+                          <div
+                            className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors duration-300 ${
+                              customerData?.two_factor_enabled
+                                ? "bg-green-100"
+                                : "bg-gray-100"
+                            }`}
+                          >
+                            <Shield
+                              className={`w-6 h-6 transition-colors duration-300 ${
+                                customerData?.two_factor_enabled
+                                  ? "text-green-600"
+                                  : "text-gray-400"
+                              }`}
+                            />
                           </div>
                           <div>
-                            <p className="text-gray-900">
+                            <p className="font-semibold text-gray-900">
                               Two-Factor Authentication
                             </p>
                             <p className="text-sm text-gray-600">
-                              Add an extra layer of security
+                              {customerData?.two_factor_enabled
+                                ? "Your account is secured with 2FA"
+                                : "Add an extra layer of security to your account"}
                             </p>
                           </div>
                         </div>
-                        <button className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all">
-                          Enable
+                        <button
+                          onClick={handleToggle2FA}
+                          className={`px-6 py-2 rounded-xl font-medium transition-all duration-300 shadow-sm hover:shadow-md active:scale-95 ${
+                            customerData?.two_factor_enabled
+                              ? "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
+                              : "bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:opacity-90"
+                          }`}
+                        >
+                          {customerData?.two_factor_enabled
+                            ? "Disable 2FA"
+                            : "Enable 2FA"}
                         </button>
                       </div>
                     </div>

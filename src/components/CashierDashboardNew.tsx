@@ -334,6 +334,7 @@ export const CashierDashboardNew: React.FC = () => {
     loadData();
     loadShiftData();
     loadCashTransactions();
+    fetchBankAccounts();
 
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -342,6 +343,48 @@ export const CashierDashboardNew: React.FC = () => {
 
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (currentShift?.id) {
+      loadCashTransactions();
+    }
+  }, [currentShift?.id]);
+
+  const fetchBankAccounts = async () => {
+    try {
+      const token =
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("auth_token");
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/cash-and-bank/bank-accounts/`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        },
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const results = data.results || data;
+        const mapped = (results || []).map((it: any) => ({
+          id: String(it.id),
+          accountType:
+            it.account_type === "bank_account" ? "bank" : it.account_type,
+          accountName: it.account_name || "",
+          bankName: it.bank_name || "",
+          currentBalance: parseFloat(it.current_balance) || 0,
+          isActive: it.is_active ?? true,
+          workspaceId: it.tenant || it.workspace,
+        }));
+        setBankAccounts(mapped.filter((a: any) => a.isActive));
+        saveToStorage("bankAccounts", mapped);
+      }
+    } catch (error) {
+      console.error("Error fetching bank accounts:", error);
+    }
+  };
 
   const loadData = () => {
     // Load products
@@ -384,12 +427,6 @@ export const CashierDashboardNew: React.FC = () => {
       averageOrderValue: avgOrderValue,
     });
 
-    // Load bank accounts
-    const accounts = getFromStorage("bankAccounts", []).filter(
-      (a: any) => a.workspaceId === currentUser?.workspaceId && a.isActive,
-    );
-    setBankAccounts(accounts);
-
     // Add dummy purchase orders if none exist
     const allPOs = getFromStorage("purchase_orders", []).filter(
       (po: any) => po.workspaceId === currentUser?.workspaceId,
@@ -429,18 +466,69 @@ export const CashierDashboardNew: React.FC = () => {
     }
   };
 
-  const loadCashTransactions = () => {
-    const transactions: CashInOutTransaction[] = getFromStorage(
-      "cash_in_out_transactions",
-      [],
-    );
-    setCashTransactions(
-      transactions.filter(
-        (t) =>
-          t.cashierId === currentUser?.id &&
-          (currentShift ? t.shiftId === currentShift.id : true),
-      ),
-    );
+  const loadCashTransactions = async () => {
+    if (!currentShift?.id) {
+      setCashTransactions([]);
+      return;
+    }
+
+    try {
+      const token =
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("auth_token");
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/cash-and-bank/shifts/${
+          currentShift.id
+        }/transactions/`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        },
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const mapped: CashInOutTransaction[] = (data || []).map((t: any) => ({
+          id: String(t.id),
+          type: t.transaction_type,
+          amount: parseFloat(t.amount) || 0,
+          reason: t.description || "",
+          date: t.transaction_date || t.created,
+          cashierId: String(t.performed_by),
+          cashierName: t.performed_by_name || "Cashier",
+          shiftId: String(t.shift),
+        }));
+        setCashTransactions(mapped);
+      } else {
+        const transactions: CashInOutTransaction[] = getFromStorage(
+          "cash_in_out_transactions",
+          [],
+        );
+        setCashTransactions(
+          transactions.filter(
+            (t) =>
+              t.cashierId === currentUser?.id &&
+              (currentShift ? t.shiftId === currentShift.id : true),
+          ),
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      const transactions: CashInOutTransaction[] = getFromStorage(
+        "cash_in_out_transactions",
+        [],
+      );
+      setCashTransactions(
+        transactions.filter(
+          (t) =>
+            t.cashierId === currentUser?.id &&
+            (currentShift ? t.shiftId === currentShift.id : true),
+        ),
+      );
+    }
   };
 
   // Shift Management Functions
@@ -915,7 +1003,7 @@ export const CashierDashboardNew: React.FC = () => {
   };
 
   // Cash In/Out Functions
-  const handleCashIn = () => {
+  const handleCashIn = async () => {
     if (!currentShift) {
       showError("Please start a shift first!", "Shift Required", "warning");
       return;
@@ -926,40 +1014,80 @@ export const CashierDashboardNew: React.FC = () => {
       return;
     }
 
-    const transaction: CashInOutTransaction = {
-      id: `cashin_${Date.now()}`,
-      type: "cash_in",
-      amount: cashInAmount,
-      reason: cashInReason,
-      date: new Date().toISOString(),
-      cashierId: currentUser?.id || "",
-      cashierName: currentUser?.name || "",
-      shiftId: currentShift.id,
-    };
+    const token =
+      localStorage.getItem("accessToken") || localStorage.getItem("auth_token");
 
-    const allTransactions = getFromStorage("cash_in_out_transactions", []);
-    allTransactions.push(transaction);
-    saveToStorage("cash_in_out_transactions", allTransactions);
+    try {
+      const payload = {
+        amount: Number(cashInAmount),
+        description: cashInReason,
+      };
 
-    // Update shift
-    const updatedShift = {
-      ...currentShift,
-      cashIn: currentShift.cashIn + cashInAmount,
-    };
-    const shifts = allShifts.map((s) =>
-      s.id === currentShift.id ? updatedShift : s,
-    );
-    saveToStorage("cashier_shifts", shifts);
-    setCurrentShift(updatedShift);
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/cash-and-bank/shifts/${
+          currentShift.id
+        }/cash_in/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(payload),
+        },
+      );
 
-    setCashInAmount(0);
-    setCashInReason("");
-    setShowCashIn(false);
-    loadCashTransactions();
-    showSuccess("Cash In recorded successfully!", "Cash In Recorded");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || errorData.detail || "Failed to record Cash In",
+        );
+      }
+
+      const data = await response.json();
+
+      const transaction: CashInOutTransaction = {
+        id: data.id?.toString() || `cashin_${Date.now()}`,
+        type: "cash_in",
+        amount: cashInAmount,
+        reason: cashInReason,
+        date: new Date().toISOString(),
+        cashierId: currentUser?.id || "",
+        cashierName: currentUser?.name || "",
+        shiftId: currentShift.id,
+      };
+
+      const allTransactions = getFromStorage("cash_in_out_transactions", []);
+      allTransactions.push(transaction);
+      saveToStorage("cash_in_out_transactions", allTransactions);
+
+      // Update shift
+      const updatedShift = {
+        ...currentShift,
+        cashIn: currentShift.cashIn + cashInAmount,
+      };
+      const shifts = allShifts.map((s) =>
+        s.id === currentShift.id ? updatedShift : s,
+      );
+      saveToStorage("cashier_shifts", shifts);
+      setCurrentShift(updatedShift);
+
+      setCashInAmount(0);
+      setCashInReason("");
+      setShowCashIn(false);
+      loadCashTransactions();
+      showSuccess("Cash In recorded successfully!", "Cash In Recorded");
+    } catch (error: any) {
+      showError(
+        error?.message || "Unable to record cash in. Please try again.",
+        "Cash In Failed",
+        "error",
+      );
+    }
   };
 
-  const handleCashOut = () => {
+  const handleCashOut = async () => {
     if (!currentShift) {
       showError("Please start a shift first!", "Shift Required", "warning");
       return;
@@ -970,40 +1098,80 @@ export const CashierDashboardNew: React.FC = () => {
       return;
     }
 
-    const transaction: CashInOutTransaction = {
-      id: `cashout_${Date.now()}`,
-      type: "cash_out",
-      amount: cashOutAmount,
-      reason: cashOutReason,
-      date: new Date().toISOString(),
-      cashierId: currentUser?.id || "",
-      cashierName: currentUser?.name || "",
-      shiftId: currentShift.id,
-    };
+    const token =
+      localStorage.getItem("accessToken") || localStorage.getItem("auth_token");
 
-    const allTransactions = getFromStorage("cash_in_out_transactions", []);
-    allTransactions.push(transaction);
-    saveToStorage("cash_in_out_transactions", allTransactions);
+    try {
+      const payload = {
+        amount: Number(cashOutAmount),
+        description: cashOutReason,
+      };
 
-    // Update shift
-    const updatedShift = {
-      ...currentShift,
-      cashOut: currentShift.cashOut + cashOutAmount,
-    };
-    const shifts = allShifts.map((s) =>
-      s.id === currentShift.id ? updatedShift : s,
-    );
-    saveToStorage("cashier_shifts", shifts);
-    setCurrentShift(updatedShift);
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/cash-and-bank/shifts/${
+          currentShift.id
+        }/cash_out/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(payload),
+        },
+      );
 
-    setCashOutAmount(0);
-    setCashOutReason("");
-    setShowCashOut(false);
-    loadCashTransactions();
-    showSuccess("Cash Out recorded successfully!", "Cash Out Recorded");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || errorData.detail || "Failed to record Cash Out",
+        );
+      }
+
+      const data = await response.json();
+
+      const transaction: CashInOutTransaction = {
+        id: data.id?.toString() || `cashout_${Date.now()}`,
+        type: "cash_out",
+        amount: cashOutAmount,
+        reason: cashOutReason,
+        date: new Date().toISOString(),
+        cashierId: currentUser?.id || "",
+        cashierName: currentUser?.name || "",
+        shiftId: currentShift.id,
+      };
+
+      const allTransactions = getFromStorage("cash_in_out_transactions", []);
+      allTransactions.push(transaction);
+      saveToStorage("cash_in_out_transactions", allTransactions);
+
+      // Update shift
+      const updatedShift = {
+        ...currentShift,
+        cashOut: currentShift.cashOut + cashOutAmount,
+      };
+      const shifts = allShifts.map((s) =>
+        s.id === currentShift.id ? updatedShift : s,
+      );
+      saveToStorage("cashier_shifts", shifts);
+      setCurrentShift(updatedShift);
+
+      setCashOutAmount(0);
+      setCashOutReason("");
+      setShowCashOut(false);
+      loadCashTransactions();
+      showSuccess("Cash Out recorded successfully!", "Cash Out Recorded");
+    } catch (error: any) {
+      showError(
+        error?.message || "Unable to record cash out. Please try again.",
+        "Cash Out Failed",
+        "error",
+      );
+    }
   };
 
-  const handleTransferToBank = () => {
+  const handleTransferToBank = async () => {
     if (!currentShift) {
       showError("Please start a shift first!", "Shift Required", "warning");
       return;
@@ -1018,54 +1186,89 @@ export const CashierDashboardNew: React.FC = () => {
       return;
     }
 
-    // Record cash out transaction
-    const transaction: CashInOutTransaction = {
-      id: `bank_transfer_${Date.now()}`,
-      type: "cash_out",
-      amount: transferBankAmount,
-      reason: `Bank transfer to ${
-        bankAccounts.find((b) => b.id === selectedTransferBank)?.accountName
-      }`,
-      date: new Date().toISOString(),
-      cashierId: currentUser?.id || "",
-      cashierName: currentUser?.name || "",
-      shiftId: currentShift.id,
-    };
+    const token =
+      localStorage.getItem("accessToken") || localStorage.getItem("auth_token");
 
-    const allTransactions = getFromStorage("cash_in_out_transactions", []);
-    allTransactions.push(transaction);
-    saveToStorage("cash_in_out_transactions", allTransactions);
+    try {
+      const selectedBank = bankAccounts.find(
+        (b) => b.id === selectedTransferBank,
+      );
+      const payload = {
+        tenant: Number(currentUser?.workspaceId || 0),
+        branch: Number(currentShift.branchId || 0),
+        bank_account: Number(selectedTransferBank),
+        amount: String(transferBankAmount),
+        description: `Bank transfer to ${
+          selectedBank?.bankName || selectedBank?.accountName || "Bank"
+        }`,
+      };
 
-    // Update bank account balance
-    const accounts = getFromStorage("bankAccounts", []);
-    const updatedAccounts = accounts.map((a: any) => {
-      if (a.id === selectedTransferBank) {
-        return {
-          ...a,
-          currentBalance: (a.currentBalance || 0) + transferBankAmount,
-          totalReceived: (a.totalReceived || 0) + transferBankAmount,
-        };
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/cash-and-bank/bank-transfers/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message ||
+            errorData.detail ||
+            "Failed to process bank transfer",
+        );
       }
-      return a;
-    });
-    saveToStorage("bankAccounts", updatedAccounts);
 
-    // Update shift
-    const updatedShift = {
-      ...currentShift,
-      cashOut: currentShift.cashOut + transferBankAmount,
-    };
-    const shifts = allShifts.map((s) =>
-      s.id === currentShift.id ? updatedShift : s,
-    );
-    saveToStorage("cashier_shifts", shifts);
-    setCurrentShift(updatedShift);
+      // Record cash out transaction locally
+      const transaction: CashInOutTransaction = {
+        id: `bank_transfer_${Date.now()}`,
+        type: "cash_out",
+        amount: transferBankAmount,
+        reason: `Bank transfer to ${
+          selectedBank?.bankName || selectedBank?.accountName || "Bank"
+        }`,
+        date: new Date().toISOString(),
+        cashierId: currentUser?.id || "",
+        cashierName: currentUser?.name || "",
+        shiftId: currentShift.id,
+      };
 
-    setTransferBankAmount(0);
-    setSelectedTransferBank("");
-    setShowTransferToBank(false);
-    loadCashTransactions();
-    showSuccess("Cash transferred to bank successfully!", "Transfer Complete");
+      const allTransactions = getFromStorage("cash_in_out_transactions", []);
+      allTransactions.push(transaction);
+      saveToStorage("cash_in_out_transactions", allTransactions);
+
+      // Update shift
+      const updatedShift = {
+        ...currentShift,
+        cashOut: currentShift.cashOut + transferBankAmount,
+      };
+      const shifts = allShifts.map((s) =>
+        s.id === currentShift.id ? updatedShift : s,
+      );
+      saveToStorage("cashier_shifts", shifts);
+      setCurrentShift(updatedShift);
+
+      setTransferBankAmount(0);
+      setSelectedTransferBank("");
+      setShowTransferToBank(false);
+      loadCashTransactions();
+      showSuccess(
+        "Cash transferred to bank successfully!",
+        "Transfer Complete",
+      );
+    } catch (error: any) {
+      showError(
+        error?.message || "Unable to process bank transfer. Please try again.",
+        "Transfer Failed",
+        "error",
+      );
+    }
   };
 
   const handleAddToCart = (product: Product) => {
@@ -4028,8 +4231,7 @@ export const CashierDashboardNew: React.FC = () => {
                     <option value="">Select Bank Account</option>
                     {bankAccounts.map((acc) => (
                       <option key={acc.id} value={acc.id}>
-                        {acc.accountName} -{" "}
-                        {acc.bankName || acc.accountType.toUpperCase()}
+                        {acc.bankName || acc.accountName}
                       </option>
                     ))}
                   </select>
