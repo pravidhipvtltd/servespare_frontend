@@ -123,6 +123,45 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     "description" | "specifications" | "reviews"
   >("description");
 
+  // Check if product is in wishlist on mount
+  React.useEffect(() => {
+    const checkWishlistStatus = async () => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        if (!token) return;
+
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/carts/favorites/`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "ngrok-skip-browser-warning": "true",
+            },
+          },
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const favorites = data.results || data;
+          const favorite = favorites.find(
+            (fav: any) =>
+              String(fav.inventory?.id || fav.inventory_id) ===
+              String(product.id),
+          );
+
+          if (favorite) {
+            setIsWishlisted(true);
+            setFavoriteId(String(favorite.id));
+          }
+        }
+      } catch (error) {
+        console.error("Error checking wishlist status:", error);
+      }
+    };
+
+    checkWishlistStatus();
+  }, [product.id]);
+
   const images = [product.image];
 
   const handleShare = () => {
@@ -217,11 +256,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           const data = await response.json();
           console.log("Favorite added, API response:", data);
           setIsWishlisted(true);
-          
-          const favId = data.id || data.favorite_id;
+
+          const favId = data.data?.id || data.id || data.favorite_id;
           console.log("Storing favorite ID:", favId);
-          setFavoriteId(favId);
-          toast.success("Added to wishlist");
+          setFavoriteId(String(favId));
+          toast.success(data.message || "Added to wishlist");
         } else {
           const error = await response.json().catch(() => ({}));
           toast.error(error.detail || "Failed to add to wishlist");

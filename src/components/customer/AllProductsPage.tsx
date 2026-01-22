@@ -86,6 +86,10 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
+  const [wishlistedItems, setWishlistedItems] = useState<Record<string, string>>(
+    {},
+  );
+  const [loadingWishlist, setLoadingWishlist] = useState<string | null>(null);
 
   const handleAddToCart = async (product: Product, quantity: number) => {
     setAddingToCart(product.id);
@@ -175,6 +179,120 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
 
     fetchProducts();
   }, [currentPage]);
+
+  // Fetch user's wishlist
+  useEffect(() => {
+    const fetchWishlist = async () => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        if (!token) return;
+
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/carts/favorites/`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "ngrok-skip-browser-warning": "true",
+            },
+          },
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const favorites = data.results || data;
+          const wishlistMap: Record<string, string> = {};
+
+          favorites.forEach((fav: any) => {
+            const inventoryId = String(fav.inventory?.id || fav.inventory_id);
+            wishlistMap[inventoryId] = String(fav.id);
+          });
+
+          setWishlistedItems(wishlistMap);
+        }
+      } catch (error) {
+        console.error("Error fetching wishlist:", error);
+      }
+    };
+
+    fetchWishlist();
+  }, []);
+
+  const handleWishlistToggle = async (product: Product, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      toast.error("Please login to add items to wishlist");
+      return;
+    }
+
+    setLoadingWishlist(product.id);
+
+    try {
+      const favoriteId = wishlistedItems[product.id];
+
+      if (favoriteId) {
+        // Remove from wishlist
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/carts/favorites/${favoriteId}/`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "ngrok-skip-browser-warning": "true",
+            },
+          },
+        );
+
+        if (response.ok) {
+          setWishlistedItems((prev) => {
+            const newState = { ...prev };
+            delete newState[product.id];
+            return newState;
+          });
+          toast.success("Removed from wishlist");
+        } else {
+          const error = await response.json().catch(() => ({}));
+          toast.error(error.detail || "Failed to remove from wishlist");
+        }
+      } else {
+        // Add to wishlist
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/carts/favorites/add/`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+              "ngrok-skip-browser-warning": "true",
+            },
+            body: JSON.stringify({
+              inventory_id: parseInt(product.id, 10),
+            }),
+          },
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          // Based on your response: data.data.id contains the favorite record id
+          const newFavoriteId = String(data.data?.id || data.id);
+          setWishlistedItems((prev) => ({
+            ...prev,
+            [product.id]: newFavoriteId,
+          }));
+          toast.success(data.message || "Added to wishlist");
+        } else {
+          const error = await response.json().catch(() => ({}));
+          toast.error(error.detail || "Failed to add to wishlist");
+        }
+      }
+    } catch (error) {
+      console.error("Error toggling wishlist:", error);
+      toast.error("Failed to update wishlist");
+    } finally {
+      setLoadingWishlist(null);
+    }
+  };
 
   const filteredProducts = useMemo(() => {
     let filtered = products.filter((product) => {
@@ -466,6 +584,9 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
                     hoveredProduct={hoveredProduct}
                     setHoveredProduct={setHoveredProduct}
                     addingToCart={addingToCart}
+                    isWishlisted={!!wishlistedItems[product.id]}
+                    loadingWishlist={loadingWishlist === product.id}
+                    onWishlistToggle={handleWishlistToggle}
                   />
                 ))}
               </div>
@@ -479,6 +600,9 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
                     onAddToCart={handleAddToCart}
                     onViewProduct={onViewProduct}
                     addingToCart={addingToCart}
+                    isWishlisted={!!wishlistedItems[product.id]}
+                    loadingWishlist={loadingWishlist === product.id}
+                    onWishlistToggle={handleWishlistToggle}
                   />
                 ))}
               </div>
@@ -677,6 +801,9 @@ const ProductCard: React.FC<{
   hoveredProduct: string | null;
   setHoveredProduct: (id: string | null) => void;
   addingToCart: string | null;
+  isWishlisted: boolean;
+  loadingWishlist: boolean;
+  onWishlistToggle: (product: Product, e: React.MouseEvent) => void;
 }> = ({
   product,
   index,
@@ -685,6 +812,9 @@ const ProductCard: React.FC<{
   hoveredProduct,
   setHoveredProduct,
   addingToCart,
+  isWishlisted,
+  loadingWishlist,
+  onWishlistToggle,
 }) => {
   return (
     <motion.div
@@ -702,6 +832,25 @@ const ProductCard: React.FC<{
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
         />
+
+        {/* Wishlist Button */}
+        <div className="absolute top-4 right-4 z-10">
+          <button
+            onClick={(e) => onWishlistToggle(product, e)}
+            disabled={loadingWishlist}
+            className={`p-2 rounded-full shadow-lg transition-all duration-300 ${
+              isWishlisted
+                ? "bg-red-50 text-red-500"
+                : "bg-white/80 text-gray-400 hover:text-red-500 hover:bg-white"
+            } ${loadingWishlist ? "opacity-50 cursor-wait" : ""}`}
+          >
+            <Heart
+              className={`w-5 h-5 transition-colors ${
+                isWishlisted ? "fill-red-500" : ""
+              }`}
+            />
+          </button>
+        </div>
 
         {/* Badge */}
         {product.badge && (
@@ -722,7 +871,7 @@ const ProductCard: React.FC<{
 
         {/* Discount */}
         {product.originalPrice && product.originalPrice > product.price && (
-          <div className="absolute top-4 right-4 bg-amber-500 text-white px-3 py-1 rounded-full text-xs shadow-lg">
+          <div className="absolute top-16 right-4 bg-amber-500 text-white px-3 py-1 rounded-full text-xs shadow-lg">
             -
             {Math.round(
               ((product.originalPrice - product.price) /
@@ -828,7 +977,19 @@ const ProductListItem: React.FC<{
   onAddToCart: (product: Product, quantity: number) => void;
   onViewProduct: (product: Product) => void;
   addingToCart: string | null;
-}> = ({ product, index, onAddToCart, onViewProduct, addingToCart }) => {
+  isWishlisted: boolean;
+  loadingWishlist: boolean;
+  onWishlistToggle: (product: Product, e: React.MouseEvent) => void;
+}> = ({
+  product,
+  index,
+  onAddToCart,
+  onViewProduct,
+  addingToCart,
+  isWishlisted,
+  loadingWishlist,
+  onWishlistToggle,
+}) => {
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
@@ -844,6 +1005,26 @@ const ProductListItem: React.FC<{
             alt={product.name}
             className="w-full h-full object-cover"
           />
+
+          {/* Wishlist Button */}
+          <div className="absolute top-2 right-2">
+            <button
+              onClick={(e) => onWishlistToggle(product, e)}
+              disabled={loadingWishlist}
+              className={`p-1.5 rounded-full shadow-md transition-all ${
+                isWishlisted
+                  ? "bg-red-50 text-red-500"
+                  : "bg-white/80 text-gray-400 hover:text-red-500 hover:bg-white"
+              } ${loadingWishlist ? "opacity-50 cursor-wait" : ""}`}
+            >
+              <Heart
+                className={`w-4 h-4 transition-colors ${
+                  isWishlisted ? "fill-red-500" : ""
+                }`}
+              />
+            </button>
+          </div>
+
           {product.badge && (
             <div className="absolute top-3 left-3">
               <span
@@ -860,7 +1041,7 @@ const ProductListItem: React.FC<{
             </div>
           )}
           {product.originalPrice && product.originalPrice > product.price && (
-            <div className="absolute top-3 right-3 bg-amber-500 text-white px-3 py-1 rounded-full text-xs shadow-lg">
+            <div className="absolute top-10 right-2 bg-amber-500 text-white px-3 py-1 rounded-full text-xs shadow-lg">
               -
               {Math.round(
                 ((product.originalPrice - product.price) /

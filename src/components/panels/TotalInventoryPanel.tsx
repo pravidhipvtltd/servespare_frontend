@@ -95,10 +95,10 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
     name: "",
     category: "local",
     vehicleType: "two_wheeler",
-    quantity: 0,
-    minStockLevel: 0,
-    price: 0,
-    mrp: 0,
+    quantity: "",
+    minStockLevel: "",
+    price: "",
+    mrp: "",
     partyId: "",
     partNumber: "",
     hsnCode: "",
@@ -109,9 +109,9 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
     bikeName: "",
     bikeModel: "",
     bikeType: "",
-    retailPrice: 0,
-    wholesalePrice: 0,
-    distributorPrice: 0,
+    retailPrice: "",
+    wholesalePrice: "",
+    distributorPrice: "",
   });
 
   useEffect(() => {
@@ -388,10 +388,10 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
         name: "",
         category: "local",
         vehicleType: "two_wheeler",
-        quantity: 0,
-        minStockLevel: 0,
-        price: 0,
-        mrp: 0,
+        quantity: "0",
+        minStockLevel: "0",
+        price: "0",
+        mrp: "0",
         partyId: "",
         partNumber: "",
         hsnCode: "",
@@ -402,9 +402,9 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
         bikeName: "",
         bikeModel: "",
         bikeType: "",
-        retailPrice: 0,
-        wholesalePrice: 0,
-        distributorPrice: 0,
+        retailPrice: "",
+        wholesalePrice: "",
+        distributorPrice: "",
       });
     }
     setSidebarOpen(true);
@@ -417,10 +417,10 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
       name: "",
       category: "local",
       vehicleType: "two_wheeler",
-      quantity: 0,
-      minStockLevel: 0,
-      price: 0,
-      mrp: 0,
+      quantity: "0",
+      minStockLevel: "0",
+      price: "0",
+      mrp: "0",
       partyId: "",
       partNumber: "",
       hsnCode: "",
@@ -431,9 +431,9 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
       bikeName: "",
       bikeModel: "",
       bikeType: "",
-      retailPrice: 0,
-      wholesalePrice: 0,
-      distributorPrice: 0,
+      retailPrice: "",
+      wholesalePrice: "",
+      distributorPrice: "",
     });
   };
 
@@ -472,27 +472,42 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
         formDataPayload.append("part_number", formData.partNumber);
       if (formData.hsnCode)
         formDataPayload.append("hsn_code", formData.hsnCode);
-      formDataPayload.append("quantity", (formData.quantity || 0).toString());
+      formDataPayload.append("quantity", (formData.quantity === "" ? 0 : formData.quantity || 0).toString());
       formDataPayload.append(
         "min_stock_level",
-        (formData.minStockLevel || 0).toString(),
+        (formData.minStockLevel === "" ? 0 : formData.minStockLevel || 0).toString(),
       );
-      formDataPayload.append("price", (formData.price || 0).toString());
-      formDataPayload.append("mrp", (formData.mrp || 0).toString());
-      if (formData.distributorPrice)
+      formDataPayload.append(
+        "price",
+        (formData.price === "" ? 0 : formData.price || 0).toString(),
+      );
+      formDataPayload.append(
+        "mrp",
+        (formData.mrp === "" ? 0 : formData.mrp || 0).toString(),
+      );
+      if (formData.distributorPrice !== undefined)
         formDataPayload.append(
           "distributor_price",
-          formData.distributorPrice.toString(),
+          (formData.distributorPrice === ""
+            ? 0
+            : formData.distributorPrice || 0
+          ).toString(),
         );
-      if (formData.wholesalePrice)
+      if (formData.wholesalePrice !== undefined)
         formDataPayload.append(
           "wholesale_price",
-          formData.wholesalePrice.toString(),
+          (formData.wholesalePrice === ""
+            ? 0
+            : formData.wholesalePrice || 0
+          ).toString(),
         );
-      if (formData.retailPrice)
+      if (formData.retailPrice !== undefined)
         formDataPayload.append(
           "retail_pricing",
-          formData.retailPrice.toString(),
+          (formData.retailPrice === ""
+            ? 0
+            : formData.retailPrice || 0
+          ).toString(),
         );
       if (formData.location)
         formDataPayload.append("storage_location", formData.location);
@@ -1489,15 +1504,16 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                     </label>
                     <input
                       type="number"
-                      value={formData.quantity || 0}
+                      value={formData.quantity}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          quantity: parseInt(e.target.value) || 0,
+                          quantity: e.target.value === "" ? "" : parseInt(e.target.value),
                         })
                       }
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
                       min="0"
+                      step="1"
                       required
                     />
                   </div>
@@ -1508,15 +1524,16 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                     </label>
                     <input
                       type="number"
-                      value={formData.minStockLevel || 0}
+                      value={formData.minStockLevel}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          minStockLevel: parseInt(e.target.value) || 0,
+                          minStockLevel: e.target.value === "" ? "" : parseInt(e.target.value),
                         })
                       }
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
                       min="0"
+                      step="1"
                       required
                     />
                   </div>
@@ -1530,16 +1547,19 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                     </label>
                     <input
                       type="number"
-                      value={formData.price || 0}
+                      value={formData.price === "" ? "" : formData.price}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          price: parseFloat(e.target.value) || 0,
+                          price:
+                            e.target.value === ""
+                              ? ""
+                              : parseFloat(e.target.value),
                         })
                       }
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
                       min="0"
-                      step="0.01"
+                      step="1"
                       required
                     />
                   </div>
@@ -1550,16 +1570,19 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                     </label>
                     <input
                       type="number"
-                      value={formData.mrp || 0}
+                      value={formData.mrp === "" ? "" : formData.mrp}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          mrp: parseFloat(e.target.value) || 0,
+                          mrp:
+                            e.target.value === ""
+                              ? ""
+                              : parseFloat(e.target.value),
                         })
                       }
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
                       min="0"
-                      step="0.01"
+                      step="1"
                       required
                     />
                   </div>
@@ -1761,17 +1784,24 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                       </label>
                       <input
                         type="number"
-                        value={formData.retailPrice || 0}
+                        value={
+                          formData.retailPrice === ""
+                            ? ""
+                            : formData.retailPrice
+                        }
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            retailPrice: parseFloat(e.target.value) || 0,
+                            retailPrice:
+                              e.target.value === ""
+                                ? ""
+                                : parseFloat(e.target.value),
                           })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
                         min="0"
-                        step="0.01"
-                        placeholder="0.00"
+                        step="1"
+                        placeholder="0"
                       />
                       <p className="text-xs text-gray-400 mt-1">
                         Walk-in customers
@@ -1784,17 +1814,24 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                       </label>
                       <input
                         type="number"
-                        value={formData.wholesalePrice || 0}
+                        value={
+                          formData.wholesalePrice === ""
+                            ? ""
+                            : formData.wholesalePrice
+                        }
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            wholesalePrice: parseFloat(e.target.value) || 0,
+                            wholesalePrice:
+                              e.target.value === ""
+                                ? ""
+                                : parseFloat(e.target.value),
                           })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
                         min="0"
-                        step="0.01"
-                        placeholder="0.00"
+                        step="1"
+                        placeholder="0"
                       />
                       <p className="text-xs text-gray-400 mt-1">Bulk orders</p>
                     </div>
@@ -1805,17 +1842,24 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                       </label>
                       <input
                         type="number"
-                        value={formData.distributorPrice || 0}
+                        value={
+                          formData.distributorPrice === ""
+                            ? ""
+                            : formData.distributorPrice
+                        }
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            distributorPrice: parseFloat(e.target.value) || 0,
+                            distributorPrice:
+                              e.target.value === ""
+                                ? ""
+                                : parseFloat(e.target.value),
                           })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
                         min="0"
-                        step="0.01"
-                        placeholder="0.00"
+                        step="1"
+                        placeholder="0"
                       />
                       <p className="text-xs text-gray-400 mt-1">Distributors</p>
                     </div>

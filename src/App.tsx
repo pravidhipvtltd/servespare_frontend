@@ -368,44 +368,44 @@ const AppContent: React.FC = () => {
   }
 
   // Show onboarding flow for admins
-  if (currentUser.role === "admin" && onboardingStep !== "none") {
-    switch (onboardingStep) {
-      case "verification":
-        return (
-          <BusinessVerification
-            adminEmail={currentUser.email}
-            onComplete={handleBusinessVerificationComplete}
-            onCancel={handleOnboardingCancel}
-          />
-        );
-      case "package":
-        return (
-          <PackageSelection
-            adminEmail={currentUser.email}
-            onPackageSelected={handlePackageSelected}
-            onCancel={handleOnboardingCancel}
-          />
-        );
-      case "confirmation":
-        return (
-          <PackageConfirmation
-            selectedPackage={selectedPackage}
-            adminEmail={currentUser.email}
-            onConfirm={handlePackageConfirmed}
-            onBack={() => setOnboardingStep("package")}
-          />
-        );
-      case "payment":
-        return (
-          <PaymentProcessing
-            selectedPackage={selectedPackage}
-            adminEmail={currentUser.email}
-            onPaymentComplete={handlePaymentComplete}
-            onBack={() => setOnboardingStep("confirmation")}
-          />
-        );
-    }
-  }
+  // if (currentUser.role === "admin" && onboardingStep !== "none") {
+  //   switch (onboardingStep) {
+  //     case "verification":
+  //       return (
+  //         <BusinessVerification
+  //           adminEmail={currentUser.email}
+  //           onComplete={handleBusinessVerificationComplete}
+  //           onCancel={handleOnboardingCancel}
+  //         />
+  //       );
+  //     case "package":
+  //       return (
+  //         <PackageSelection
+  //           adminEmail={currentUser.email}
+  //           onPackageSelected={handlePackageSelected}
+  //           onCancel={handleOnboardingCancel}
+  //         />
+  //       );
+  //     case "confirmation":
+  //       return (
+  //         <PackageConfirmation
+  //           selectedPackage={selectedPackage}
+  //           adminEmail={currentUser.email}
+  //           onConfirm={handlePackageConfirmed}
+  //           onBack={() => setOnboardingStep("package")}
+  //         />
+  //       );
+  //     case "payment":
+  //       return (
+  //         <PaymentProcessing
+  //           selectedPackage={selectedPackage}
+  //           adminEmail={currentUser.email}
+  //           onPaymentComplete={handlePaymentComplete}
+  //           onBack={() => setOnboardingStep("confirmation")}
+  //         />
+  //       );
+  //   }
+  // }
 
   return (
     <>
