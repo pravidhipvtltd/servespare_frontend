@@ -64,6 +64,17 @@ interface PartyTransaction {
   notes?: string;
 }
 
+interface District {
+  id: string;
+  name: string;
+}
+
+interface Province {
+  id: string;
+  name: string;
+  districts: District[];
+}
+
 const PARTY_TYPE_LABELS: Record<PartyType, string> = {
   customer: "Customer",
   supplier: "Supplier",
@@ -127,6 +138,9 @@ export const PartiesPanel: React.FC = () => {
     isBulk: boolean;
   }>({ isOpen: false, partyId: null, partyName: "", isBulk: false });
   const [currentBranchId, setCurrentBranchId] = useState<number>(0);
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [isLoadingRegions, setIsLoadingRegions] = useState(false);
 
   const [formData, setFormData] = useState<Partial<BackendParty>>({
     name: "",
@@ -167,6 +181,43 @@ export const PartiesPanel: React.FC = () => {
     };
     fetchBranchId();
   }, [currentUser]);
+
+  useEffect(() => {
+    const fetchRegions = async () => {
+      setIsLoadingRegions(true);
+      try {
+        const token =
+          localStorage.getItem("accessToken") ||
+          localStorage.getItem("auth_token");
+
+        if (!token) {
+          console.warn("No access token found for regions fetch");
+          setIsLoadingRegions(false);
+          return;
+        }
+
+        const url = `${import.meta.env.VITE_API_BASE_URL}/sales/orders/province_districts/`;
+        const response = await fetch(url, {
+          headers: {
+            "ngrok-skip-browser-warning": "true",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setProvinces(data.provinces || []);
+        } else {
+          console.error("Failed to fetch regions:", response.statusText);
+        }
+      } catch (error) {
+        console.error("Failed to fetch regions:", error);
+      } finally {
+        setIsLoadingRegions(false);
+      }
+    };
+    fetchRegions();
+  }, []);
 
   useEffect(() => {
     loadParties();
@@ -307,6 +358,8 @@ export const PartiesPanel: React.FC = () => {
         ...party,
         logo: party.logo || "",
       });
+      // Set district from party data if available
+      setSelectedDistrict("");
     } else {
       setEditingParty(null);
       setFormData({
@@ -328,6 +381,7 @@ export const PartiesPanel: React.FC = () => {
         isActive: true,
         logo: "",
       });
+      setSelectedDistrict("");
     }
     setSidebarOpen(true);
     setViewingSidebar(false);
@@ -1020,10 +1074,53 @@ export const PartiesPanel: React.FC = () => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm text-slate-400 mb-2">
+                          Province *
+                        </label>
+                        <select
+                          value={formData.state || ""}
+                          onChange={(e) => {
+                            setFormData({ ...formData, state: e.target.value });
+                            setSelectedDistrict("");
+                          }}
+                          className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                          disabled={isLoadingRegions}
+                        >
+                          <option value="">Select Province</option>
+                          {provinces.map((prov) => (
+                            <option key={prov.id} value={prov.name}>
+                              {prov.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm text-slate-400 mb-2">
+                          District *
+                        </label>
+                        <select
+                          value={selectedDistrict}
+                          onChange={(e) => setSelectedDistrict(e.target.value)}
+                          className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                          disabled={!formData.state || isLoadingRegions}
+                        >
+                          <option value="">Select District</option>
+                          {provinces
+                            .find((p) => p.name === formData.state)
+                            ?.districts.map((dist) => (
+                              <option key={dist.id} value={dist.name}>
+                                {dist.name}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    </div>
                     <div>
                       <label className="block text-sm text-slate-400 mb-2">
-                        City
+                        City/Town *
                       </label>
                       <input
                         type="text"
@@ -1032,21 +1129,7 @@ export const PartiesPanel: React.FC = () => {
                           setFormData({ ...formData, city: e.target.value })
                         }
                         className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                        placeholder="City"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-slate-400 mb-2">
-                        State/Province
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.state}
-                        onChange={(e) =>
-                          setFormData({ ...formData, state: e.target.value })
-                        }
-                        className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                        placeholder="State/Province"
+                        placeholder="Enter city or town"
                       />
                     </div>
                   </div>

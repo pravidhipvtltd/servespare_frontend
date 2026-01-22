@@ -20,7 +20,6 @@ import { SuperAdminDashboardRefined } from "./components/SuperAdminDashboardRefi
 import { AdminDashboard as AdminDashboardWorldClass } from "./components/AdminDashboardWorldClass";
 import { InventoryManagerDashboardNew } from "./components/InventoryManagerDashboardNew";
 import { CashierDashboardNew } from "./components/CashierDashboardNew";
-import { ProfileCompletion } from "./components/ProfileCompletion";
 import { ForcePasswordChangeModal } from "./components/modals/ForcePasswordChangeModal";
 import { OfflineStatusBar } from "./components/OfflineStatusBar";
 import "./utils/debugHelpers";
@@ -50,8 +49,6 @@ const AppContent: React.FC = () => {
   const [adminAccountForPasswordChange, setAdminAccountForPasswordChange] =
     React.useState<any>(null);
   const [isTestMode, setIsTestMode] = React.useState(false);
-  const [needsProfileCompletion, setNeedsProfileCompletion] =
-    React.useState(false);
 
   // Check if current path is payment upgrade
   const currentPath = window.location.pathname;
@@ -116,15 +113,6 @@ const AppContent: React.FC = () => {
       setAdminAccountForPasswordChange(tempAdminAccount);
       setShowPasswordChangeModal(true);
       return; // Don't proceed to KYC yet
-    }
-  }, [currentUser]);
-
-  // Check if profile completion is needed
-  React.useEffect(() => {
-    if (currentUser) {
-      const needsCompletion =
-        localStorage.getItem("needsProfileCompletion") === "true";
-      setNeedsProfileCompletion(needsCompletion);
     }
   }, [currentUser]);
 
@@ -261,64 +249,6 @@ const AppContent: React.FC = () => {
       </>
     );
   }
-
-  // Show profile completion if needed
-  if (needsProfileCompletion) {
-    return (
-      <ProfileCompletion
-        userEmail={currentUser.email}
-        onComplete={() => {
-          localStorage.removeItem("needsProfileCompletion");
-          setNeedsProfileCompletion(false);
-          window.location.reload();
-        }}
-        onSkip={() => {
-          localStorage.removeItem("needsProfileCompletion");
-          setNeedsProfileCompletion(false);
-        }}
-      />
-    );
-  }
-
-  // Show onboarding flow for admins
-  // if (currentUser.role === "admin" && onboardingStep !== "none") {
-  //   switch (onboardingStep) {
-  //     case "verification":
-  //       return (
-  //         <BusinessVerification
-  //           adminEmail={currentUser.email}
-  //           onComplete={handleBusinessVerificationComplete}
-  //           onCancel={handleOnboardingCancel}
-  //         />
-  //       );
-  //     case "package":
-  //       return (
-  //         <PackageSelection
-  //           adminEmail={currentUser.email}
-  //           onPackageSelected={handlePackageSelected}
-  //           onCancel={handleOnboardingCancel}
-  //         />
-  //       );
-  //     case "confirmation":
-  //       return (
-  //         <PackageConfirmation
-  //           selectedPackage={selectedPackage}
-  //           adminEmail={currentUser.email}
-  //           onConfirm={handlePackageConfirmed}
-  //           onBack={() => setOnboardingStep("package")}
-  //         />
-  //       );
-  //     case "payment":
-  //       return (
-  //         <PaymentProcessing
-  //           selectedPackage={selectedPackage}
-  //           adminEmail={currentUser.email}
-  //           onPaymentComplete={handlePaymentComplete}
-  //           onBack={() => setOnboardingStep("confirmation")}
-  //         />
-  //       );
-  //   }
-  // }
 
   return (
     <>
