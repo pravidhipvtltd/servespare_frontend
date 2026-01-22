@@ -21,13 +21,8 @@ import { AdminDashboard as AdminDashboardWorldClass } from "./components/AdminDa
 import { InventoryManagerDashboardNew } from "./components/InventoryManagerDashboardNew";
 import { CashierDashboardNew } from "./components/CashierDashboardNew";
 import { ProfileCompletion } from "./components/ProfileCompletion";
-import { BusinessVerification } from "./components/onboarding/BusinessVerification";
-import { PackageSelection } from "./components/onboarding/PackageSelection";
-import { PackageConfirmation } from "./components/onboarding/PackageConfirmation";
-import { PaymentProcessing } from "./components/onboarding/PaymentProcessing";
 import { ForcePasswordChangeModal } from "./components/modals/ForcePasswordChangeModal";
 import { OfflineStatusBar } from "./components/OfflineStatusBar";
-import { KYCFormModal } from "./components/modals/KYCFormModal";
 import "./utils/debugHelpers";
 
 export default function App() {
@@ -50,43 +45,17 @@ const AppContent: React.FC = () => {
   const { currentUser, isLoading, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [needsProfileCompletion, setNeedsProfileCompletion] =
-    React.useState(false);
   const [showPasswordChangeModal, setShowPasswordChangeModal] =
     React.useState(false);
-  const [showKYCModal, setShowKYCModal] = React.useState(false);
   const [adminAccountForPasswordChange, setAdminAccountForPasswordChange] =
     React.useState<any>(null);
   const [isTestMode, setIsTestMode] = React.useState(false);
-
-  // Onboarding states for admin
-  const [onboardingStep, setOnboardingStep] = React.useState<
-    "none" | "verification" | "package" | "confirmation" | "payment"
-  >("none");
-  const [selectedPackage, setSelectedPackage] = React.useState<any>(null);
+  const [needsProfileCompletion, setNeedsProfileCompletion] =
+    React.useState(false);
 
   // Check if current path is payment upgrade
   const currentPath = window.location.pathname;
   const isPaymentUpgradePage = currentPath === "/payment-upgrade";
-
-  // Restore selected package from localStorage if available
-  React.useEffect(() => {
-    const savedPackageId = localStorage.getItem("selected_package");
-    const paymentData = localStorage.getItem("payment_data");
-    if (savedPackageId && paymentData && !selectedPackage) {
-      try {
-        const payment = JSON.parse(paymentData);
-        setSelectedPackage({
-          id: payment.packageId,
-          name: payment.packageName,
-          price: payment.amount,
-          currency: payment.currency,
-        });
-      } catch (error) {
-        // Silent error
-      }
-    }
-  }, [selectedPackage]);
 
   // Check if in test mode
   React.useEffect(() => {
@@ -148,17 +117,6 @@ const AppContent: React.FC = () => {
       setShowPasswordChangeModal(true);
       return; // Don't proceed to KYC yet
     }
-
-    // Priority 2: Force KYC if password was changed but KYC not completed
-    if (
-      !mustChangePassword &&
-      isFirstLogin &&
-      !kycCompleted &&
-      currentUser.role === "admin"
-    ) {
-      setShowKYCModal(true);
-      return;
-    }
   }, [currentUser]);
 
   // Check if profile completion is needed
@@ -169,51 +127,6 @@ const AppContent: React.FC = () => {
       setNeedsProfileCompletion(needsCompletion);
     }
   }, [currentUser]);
-
-  React.useEffect(() => {
-    if (currentUser && currentUser.role === "admin") {
-      const isVerified = localStorage.getItem("business_verified") === "true";
-      const hasPackage = localStorage.getItem("package_active") === "true";
-      const selectedPkg = localStorage.getItem("selected_package");
-
-      // First check: Business verification
-      if (!isVerified) {
-        setOnboardingStep("verification");
-        return;
-      }
-
-      // Second check: Package selection
-      // if (!hasPackage && !selectedPkg) {
-      //   setOnboardingStep("package");
-      //   return;
-      // }
-
-      // All requirements met
-      setOnboardingStep("none");
-    }
-  }, [currentUser]);
-
-  const handleBusinessVerificationComplete = (data: any) => {
-    // Proceed to package selection
-    setOnboardingStep("package");
-  };
-
-  const handlePackageSelected = (pkg: any) => {
-    setSelectedPackage(pkg);
-    setOnboardingStep("confirmation");
-  };
-
-  const handlePackageConfirmed = () => {
-    setOnboardingStep("payment");
-  };
-
-  const handlePaymentComplete = () => {
-    window.location.reload();
-  };
-
-  const handleOnboardingCancel = () => {
-    logout();
-  };
 
   // Role-based dashboard routing helper
   const getDashboardRoute = (role: string) => {
@@ -576,19 +489,6 @@ const AppContent: React.FC = () => {
         />
       )}
 
-      {showKYCModal && currentUser && (
-        <KYCFormModal
-          userId={localStorage.getItem("user_id") || currentUser.id}
-          userEmail={currentUser.email}
-          userName={currentUser.name}
-          tenantId={localStorage.getItem("tenant_id") || ""}
-          onComplete={() => {
-            setShowKYCModal(false);
-            // Reload to refresh the app state
-            window.location.reload();
-          }}
-        />
-      )}
       {/* Offline Status Bar */}
       <OfflineStatusBar />
       {/* Toaster */}
