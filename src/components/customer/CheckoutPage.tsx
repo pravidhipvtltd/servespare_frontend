@@ -27,6 +27,17 @@ interface CheckoutPageProps {
   onBack: () => void;
 }
 
+interface District {
+  id: string;
+  name: string;
+}
+
+interface Province {
+  id: string;
+  name: string;
+  districts: District[];
+}
+
 type PaymentMethod = "cash" | "card" | "bank_transfer";
 
 export const CheckoutPage: React.FC<CheckoutPageProps> = ({
@@ -47,6 +58,67 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // New states for dynamic location
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [deliveryDistrict, setDeliveryDistrict] = useState("");
+  const [isLoadingRegions, setIsLoadingRegions] = useState(false);
+
+  React.useEffect(() => {
+    const fetchRegions = async () => {
+      setIsLoadingRegions(true);
+      try {
+        const token =
+          localStorage.getItem("accessToken") ||
+          localStorage.getItem("auth_token");
+
+        if (!token) {
+          console.warn("No access token found for regions fetch");
+          setIsLoadingRegions(false);
+          return;
+        }
+
+        const url = `${import.meta.env.VITE_API_BASE_URL}/sales/orders/province_districts/`;
+        console.log("Fetching regions from:", url);
+
+        const response = await fetch(url, {
+          headers: {
+            "ngrok-skip-browser-warning": "true",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        console.log("Response status:", response.status);
+        const responseText = await response.text();
+        console.log("Response body:", responseText);
+
+        if (response.ok) {
+          try {
+            const data = JSON.parse(responseText);
+            setProvinces(data.provinces || []);
+          } catch (e) {
+            console.error("Failed to parse response:", e);
+          }
+        } else {
+          console.error(
+            "Failed to fetch regions:",
+            response.status,
+            responseText,
+          );
+        }
+      } catch (error) {
+        console.error("Failed to fetch regions:", error);
+      } finally {
+        setIsLoadingRegions(false);
+      }
+    };
+    fetchRegions();
+  }, []);
+
+  const handleProvinceChange = (provinceName: string) => {
+    setDeliveryState(provinceName);
+    setDeliveryDistrict(""); // Reset district when province changes
+  };
+
   const subtotal = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0,
@@ -56,8 +128,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   const total = subtotal + shipping + tax;
 
   const handlePlaceOrder = async () => {
-    if (!deliveryAddress || !phone) {
-      toast.error("Please fill in all delivery details");
+    if (
+      !deliveryAddress ||
+      !phone ||
+      !deliveryState ||
+      !deliveryDistrict ||
+      !city
+    ) {
+      toast.error("Please fill in all required delivery details");
       return;
     }
 
@@ -70,9 +148,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
     setIsProcessing(true);
 
     try {
-      const token = localStorage.getItem("accessToken");
+      const token =
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("auth_token");
+
       if (!token) {
         toast.error("Please log in to place an order");
+        setIsProcessing(false);
         return;
       }
 
@@ -81,6 +163,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         delivery_address: deliveryAddress,
         delivery_city: city,
         delivery_state: deliveryState,
+        delivery_district: deliveryDistrict,
         delivery_pincode: zipCode,
         notes: notes,
       };
@@ -302,54 +385,81 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                     />
                   </div>
 
-                  {/* City & State & Zip */}
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm text-gray-700 mb-2">
-                        State *
-                      </label>
-                      <select
-                        value={deliveryState}
-                        onChange={(e) => setDeliveryState(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      >
-                        <option value="Province 1">Province 1</option>
-                        <option value="Province 2">Province 2</option>
-                        <option value="Province 3">Province 3</option>
-                        <option value="Gandaki">Gandaki</option>
-                        <option value="Province 5">Province 5</option>
-                        <option value="Karnali">Karnali</option>
-                        <option value="Sudurpashchim">Sudurpashchim</option>
-                      </select>
+                  {/* Province & District & City */}
+                  <div className="space-y-4">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {/* Province */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Province *
+                        </label>
+                        <select
+                          value={deliveryState}
+                          onChange={(e) => handleProvinceChange(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          disabled={isLoadingRegions}
+                        >
+                          <option value="">Select Province</option>
+                          {provinces.map((prov) => (
+                            <option key={prov.id} value={prov.name}>
+                              {prov.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* District */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          District *
+                        </label>
+                        <select
+                          value={deliveryDistrict}
+                          onChange={(e) => setDeliveryDistrict(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          disabled={!deliveryState || isLoadingRegions}
+                        >
+                          <option value="">Select District</option>
+                          {provinces
+                            .find((p) => p.name === deliveryState)
+                            ?.districts.map((dist) => (
+                              <option key={dist.id} value={dist.name}>
+                                {dist.name}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm text-gray-700 mb-2">
-                        <Building className="w-4 h-4 inline mr-2" />
-                        City *
-                      </label>
-                      <select
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      >
-                        <option value="Pokhara">Pokhara</option>
-                        <option value="Lalitpur">Lalitpur</option>
-                        <option value="Bhaktapur">Bhaktapur</option>
-                        <option value="Pokhara">Pokhara</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-700 mb-2">
-                        Zip Code
-                      </label>
-                      <input
-                        type="text"
-                        value={zipCode}
-                        onChange={(e) => setZipCode(e.target.value)}
-                        placeholder="44600"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      />
+
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {/* City */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <Building className="w-4 h-4 inline mr-2" />
+                          City/Town *
+                        </label>
+                        <input
+                          type="text"
+                          value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                          placeholder="Enter your city"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        />
+                      </div>
+
+                      {/* Zip Code */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Zip Code
+                        </label>
+                        <input
+                          type="text"
+                          value={zipCode}
+                          onChange={(e) => setZipCode(e.target.value)}
+                          placeholder="44600"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -370,7 +480,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
                 <button
                   onClick={() => {
-                    if (!deliveryAddress || !phone) {
+                    if (
+                      !deliveryAddress ||
+                      !phone ||
+                      !deliveryState ||
+                      !deliveryDistrict ||
+                      !city
+                    ) {
                       toast.error("Please fill in all required fields");
                       return;
                     }

@@ -44,7 +44,6 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
 import { getFromStorage, saveToStorage } from "../utils/mockData";
-import { PendingVerificationsPanel } from "./panels/PendingVerificationsPanel";
 import { PendingApprovalsTab } from "./superadmin/PendingApprovalsTab";
 import { AuditLogDetailed } from "./AuditLogDetailed";
 import { SystemSettingsFixed } from "./SystemSettingsFixed";
@@ -172,12 +171,6 @@ const menuItems: MenuItem[] = [
     panel: "cheques",
   },
   {
-    id: "pending_verifications",
-    label: "Pending Verifications",
-    icon: UserCheck,
-    panel: "pending_verifications",
-  },
-  {
     id: "access_control",
     label: "Access Control",
     icon: Key,
@@ -258,7 +251,6 @@ export const SuperAdminDashboardRefined: React.FC = () => {
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [pendingVerificationsCount, setPendingVerificationsCount] = useState(0);
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
   const [adminAccounts, setAdminAccounts] = useState<AdminAccount[]>([]);
 
@@ -273,12 +265,6 @@ export const SuperAdminDashboardRefined: React.FC = () => {
   }, []);
 
   const loadData = async () => {
-  
-    const pendingUsers = JSON.parse(
-      localStorage.getItem("pending_user_verifications") || "[]",
-    );
-    setPendingVerificationsCount(pendingUsers.length);
-
     const pendingRegistrations = JSON.parse(
       localStorage.getItem("pending_registrations") || "[]",
     );
@@ -290,7 +276,6 @@ export const SuperAdminDashboardRefined: React.FC = () => {
     try {
       const data = await getSubscriptions(1, 1000);
 
-     
       const mappedAccounts: AdminAccount[] = data.results
         .filter((item: any) => item.is_active === true)
         .map((item: any) => {
@@ -374,8 +359,6 @@ export const SuperAdminDashboardRefined: React.FC = () => {
         );
       case "cheques":
         return <ChequeManagementPanel />;
-      case "pending_verifications":
-        return <PendingVerificationsPanel />;
       case "access_control":
         return <AccessControlPanel />;
       case "branches":
