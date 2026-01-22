@@ -204,9 +204,17 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
               <input
                 type="tel"
                 value={profileData.phone}
-                onChange={(e) =>
-                  setProfileData({ ...profileData, phone: e.target.value })
-                }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value.startsWith("+977")) {
+                    if (value.length <= 14) {
+                      setProfileData({ ...profileData, phone: value });
+                    }
+                  } else if (value.length <= 10) {
+                    setProfileData({ ...profileData, phone: value });
+                  }
+                }}
+                maxLength={14}
                 className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
                 placeholder="+977"
                 required

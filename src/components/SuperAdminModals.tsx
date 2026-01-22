@@ -102,7 +102,17 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, workspaces, 
             <input
               type="tel"
               value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value.startsWith("+977")) {
+                  if (value.length <= 14) {
+                    setFormData({ ...formData, phone: value });
+                  }
+                } else if (value.length <= 10) {
+                  setFormData({ ...formData, phone: value });
+                }
+              }}
+              maxLength={14}
               placeholder="+977-XXXXXXXXXX"
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -426,7 +436,17 @@ export const EditBranchModal: React.FC<EditBranchModalProps> = ({ workspace, onC
             <input
               type="tel"
               value={formData.contactPhone}
-              onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value.startsWith("+977")) {
+                  if (value.length <= 14) {
+                    setFormData({ ...formData, contactPhone: value });
+                  }
+                } else if (value.length <= 10) {
+                  setFormData({ ...formData, contactPhone: value });
+                }
+              }}
+              maxLength={14}
               placeholder="+977-XXXXXXXXXX"
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
             />

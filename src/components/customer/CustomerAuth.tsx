@@ -461,12 +461,17 @@ export const CustomerAuth: React.FC<CustomerAuthProps> = ({
                       <input
                         type="tel"
                         value={signupData.phone}
-                        onChange={(e) =>
-                          setSignupData({
-                            ...signupData,
-                            phone: e.target.value,
-                          })
-                        }
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value.startsWith("+977")) {
+                            if (value.length <= 14) {
+                              setSignupData({ ...signupData, phone: value });
+                            }
+                          } else if (value.length <= 10) {
+                            setSignupData({ ...signupData, phone: value });
+                          }
+                        }}
+                        maxLength={14}
                         placeholder="+977"
                         className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
                       />

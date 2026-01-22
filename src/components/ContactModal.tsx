@@ -60,9 +60,22 @@ export const ContactModal: React.FC<ContactModalProps> = ({
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
+    const { name, value } = e.target;
+
+    if (name === "phone") {
+      if (value.startsWith("+977")) {
+        if (value.length <= 14) {
+          setFormData({ ...formData, [name]: value });
+        }
+      } else if (value.length <= 10) {
+        setFormData({ ...formData, [name]: value });
+      }
+      return;
+    }
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
   };
 
