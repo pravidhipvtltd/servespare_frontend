@@ -273,7 +273,7 @@ export const SuperAdminDashboardRefined: React.FC = () => {
   }, []);
 
   const loadData = async () => {
-    // Load pending verifications count
+  
     const pendingUsers = JSON.parse(
       localStorage.getItem("pending_user_verifications") || "[]",
     );
@@ -290,7 +290,7 @@ export const SuperAdminDashboardRefined: React.FC = () => {
     try {
       const data = await getSubscriptions(1, 1000);
 
-      // Map API response to AdminAccount type - filter only active subscriptions
+     
       const mappedAccounts: AdminAccount[] = data.results
         .filter((item: any) => item.is_active === true)
         .map((item: any) => {
