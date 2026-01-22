@@ -77,7 +77,7 @@ export const ForcePasswordChangeModal: React.FC<ForcePasswordChangeModalProps> =
       // Clear the password change flags
       localStorage.removeItem('requirePasswordChange');
       localStorage.removeItem('passwordChangeAdminId');
-      localStorage.removeItem('must_change_password'); // NEW: Clear backend flag
+      localStorage.removeItem('must_change_password'); 
       
       setSuccessMessage('✅ Password changed successfully!');
       

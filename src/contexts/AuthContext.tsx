@@ -118,6 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const refreshUser = () => {
     const userId = localStorage.getItem("user_id");
     const userEmail = localStorage.getItem("user_email");
+    const userName = localStorage.getItem("user_name");
     const userBranch = localStorage.getItem("user_branch");
     const userRole = localStorage.getItem("user_role") as any;
     const workspaceId =

@@ -15,6 +15,7 @@ import {
   AlertCircle,
   Crown,
   Sparkles,
+  Shield,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -156,7 +157,15 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
 
+  // Two-Factor Authentication State
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [loginOtp, setLoginOtp] = useState("");
+  const [pendingLoginData, setPendingLoginData] = useState<any>(null);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [otpError, setOtpError] = useState("");
+
   // Register form
+  const [registerGeneralError, setRegisterGeneralError] = useState("");
   const [registerData, setRegisterData] = useState({
     name: "",
     email: "",
@@ -441,11 +450,17 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
       const data = await response.json();
 
       if (response.ok) {
+        // Check for Two-Factor Authentication first
+        if (data.requires_otp) {
+          setPendingLoginData(data);
+          setShowOtpModal(true);
+          setIsLoading(false);
+          toast.info(data.message || "Two-Factor Authentication required.");
+          return;
+        }
+
         if (data.user.role !== "customer") {
-          setLoginError(
-            ` Username or Password donot match
-            }`,
-          );
+          setLoginError(`Username or Password do not match`);
           setIsLoading(false);
           return;
         }
@@ -516,6 +531,69 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
     }
   };
 
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsVerifyingOtp(true);
+    setOtpError("");
+
+    try {
+      if (!pendingLoginData?.temp_token) {
+        setOtpError("Session expired. Please login again.");
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/auth/verify_2fa_otp/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            temp_token: pendingLoginData.temp_token,
+            otp_code: loginOtp,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Verification successful - actual tokens should be in 'data'
+        // If data doesn't have tokens, maybe it's in data.tokens or similar.
+        // Usually, 2FA verification returns the full login response.
+        const loginData = data;
+
+        // Store tokens in localStorage
+        localStorage.setItem("accessToken", loginData.tokens.access);
+        localStorage.setItem("refreshToken", loginData.tokens.refresh);
+        localStorage.setItem("session_active", "true");
+
+        // Store user info
+        localStorage.setItem("user", JSON.stringify(loginData.user));
+        localStorage.setItem("customer_user", JSON.stringify(loginData.user));
+        localStorage.setItem("user_role", loginData.user.role);
+
+        toast.success("Verification successful! Welcome back.");
+
+        // Clean up
+        setShowOtpModal(false);
+        setPendingLoginData(null);
+        setLoginOtp("");
+
+        // Refresh page
+        window.location.reload();
+      } else {
+        setOtpError(data.message || data.detail || "Invalid verification code");
+      }
+    } catch (error) {
+      console.error("OTP verification error:", error);
+      setOtpError("Network error. Please try again.");
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -578,6 +656,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
     setIsLoading(true);
 
     try {
+      setRegisterGeneralError("");
       const payload = {
         username: registerData.username,
         email: registerData.email,
@@ -629,6 +708,10 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
             Array.isArray(errorData.non_field_errors)
           ) {
             errorMessage = errorData.non_field_errors.join(", ");
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (errorData.detail) {
+            errorMessage = errorData.detail;
           } else {
             // Check for field-specific errors
             const fieldErrors = Object.entries(errorData)
@@ -645,30 +728,34 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
 
             if (fieldErrors.length > 0) {
               errorMessage = fieldErrors.join("\n");
-            } else if (errorData.message) {
-              errorMessage = errorData.message;
-            } else if (errorData.detail) {
-              errorMessage = errorData.detail;
             }
           }
         }
-        setRegisterError(errorMessage);
+        setRegisterGeneralError(errorMessage);
 
         // Also map to field-specific errors if any for form feedback
         const apiErrors: any = {};
         if (typeof data === "object") {
           Object.keys(data).forEach((key) => {
-            if (key in registerData || key === "non_field_errors") {
+            if (
+              key in registerData ||
+              key === "non_field_errors" ||
+              key === "username" ||
+              key === "email" ||
+              key === "phone"
+            ) {
               apiErrors[key] = Array.isArray(data[key])
-                ? data[key].join(", ")
+                ? data[key][0]
                 : data[key];
             }
           });
         }
-        setErrors(apiErrors);
+        setRegisterErrors((prev) => ({ ...prev, ...apiErrors }));
       }
     } catch (error) {
+      console.error("Registration error:", error);
       toast.error("Network error. Please check your connection.");
+      setRegisterGeneralError("Network error. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -1182,6 +1269,18 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
                   )}
                 </div>
 
+                {/* Registration Error Message */}
+                {registerGeneralError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
+                    <div className="text-sm text-red-600 flex items-start">
+                      <AlertCircle className="w-4 h-4 mr-2 mt-0.5 shrink-0" />
+                      <div className="whitespace-pre-wrap">
+                        {registerGeneralError}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Submit Button */}
                 <motion.button
                   whileHover={{ scale: 1.02 }}
@@ -1449,6 +1548,84 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
                     )}
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Two-Factor Authentication Modal */}
+        {showOtpModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowOtpModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-8">
+                <div className="text-center mb-8">
+                  <div className="w-20 h-20 bg-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <Shield className="w-10 h-10 text-purple-600" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    Two-Factor Authentication
+                  </h2>
+                  <p className="text-gray-600 mt-2">
+                    Enter the 6-digit verification code sent to your registered
+                    email address.
+                  </p>
+                </div>
+
+                <form onSubmit={handleVerifyOtp} className="space-y-6">
+                  <div>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={loginOtp}
+                      onChange={(e) =>
+                        setLoginOtp(e.target.value.replace(/\D/g, ""))
+                      }
+                      className="w-full px-4 py-4 text-center text-3xl tracking-[0.5em] font-bold border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 outline-none transition-all placeholder:tracking-normal placeholder:text-gray-200"
+                      placeholder="000000"
+                      autoFocus
+                    />
+                    {otpError && (
+                      <p className="mt-2 text-sm text-red-500 text-center">
+                        {otpError}
+                      </p>
+                    )}
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isVerifyingOtp || loginOtp.length !== 6}
+                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-2xl font-bold text-lg hover:shadow-lg hover:shadow-purple-200 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isVerifyingOtp ? (
+                      <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Lock className="w-5 h-5" />
+                        Verify & Login
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowOtpModal(false)}
+                    className="w-full text-gray-500 font-medium hover:text-gray-700 transition-colors py-2"
+                  >
+                    Back to Login
+                  </button>
+                </form>
               </div>
             </motion.div>
           </motion.div>
