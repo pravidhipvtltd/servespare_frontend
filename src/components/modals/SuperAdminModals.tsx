@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Copy,
   CheckCircle,
+  Check,
 } from "lucide-react";
 import {
   AdminAccount,
@@ -39,8 +40,6 @@ export const CreateAdminUserModal: React.FC<{
   const [formData, setFormData] = useState({
     username: "",
     email: "",
-    password: "",
-    password_confirm: "",
     full_name: "",
     phone: "+977",
     location: "",
@@ -52,28 +51,24 @@ export const CreateAdminUserModal: React.FC<{
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true); // Start loading
-
-    // Validate passwords match
-    if (formData.password !== formData.password_confirm) {
-      setError("Passwords do not match");
-      setLoading(false);
-      return;
-    }
+    setLoading(true);
 
     // Validate required fields
-    if (!formData.username || !formData.email || !formData.password) {
+    if (!formData.username || !formData.email) {
       setError("Please fill in all required fields");
       setLoading(false);
       return;
     }
 
+    // Generate random password using utility
+    const randomPassword = generateSecurePassword();
+
     // Prepare payload
     const payload = {
       username: formData.username,
       email: formData.email,
-      password: formData.password,
-      password_confirm: formData.password_confirm,
+      password: randomPassword,
+      password_confirm: randomPassword,
       full_name: formData.full_name,
       phone: formData.phone,
       location: formData.location,
@@ -113,7 +108,8 @@ export const CreateAdminUserModal: React.FC<{
             <div>
               <h2 className="text-2xl font-bold">Create Admin Account</h2>
               <p className="text-blue-100 text-xs">
-                Step 2: Set up admin credentials
+                Step 2: Set up admin credentials (Password will be
+                auto-generated)
               </p>
             </div>
           </div>
@@ -184,38 +180,6 @@ export const CreateAdminUserModal: React.FC<{
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Password *
-              </label>
-              <input
-                type="password"
-                required
-                value={formData.password}
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter strong password"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Confirm Password *
-              </label>
-              <input
-                type="password"
-                required
-                value={formData.password_confirm}
-                onChange={(e) =>
-                  setFormData({ ...formData, password_confirm: e.target.value })
-                }
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Confirm password"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Phone
               </label>
               <input
@@ -242,6 +206,16 @@ export const CreateAdminUserModal: React.FC<{
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="City, Country"
               />
+            </div>
+
+            <div className="md:col-span-2 bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start space-x-3">
+              <div className="bg-blue-500 text-white p-1 rounded-full flex-shrink-0">
+                <Check className="w-3 h-3" />
+              </div>
+              <p className="text-sm text-blue-800">
+                A strong, random password will be auto-generated for this
+                account. You can view it and send it via email after creation.
+              </p>
             </div>
           </div>
 
@@ -562,8 +536,8 @@ export const ViewAdminModal: React.FC<{
                     admin.status === "active"
                       ? "bg-green-100 text-green-700"
                       : admin.status === "suspended"
-                      ? "bg-orange-100 text-orange-700"
-                      : "bg-gray-100 text-gray-700"
+                        ? "bg-orange-100 text-orange-700"
+                        : "bg-gray-100 text-gray-700"
                   }`}
                 >
                   {admin.status.toUpperCase()}
