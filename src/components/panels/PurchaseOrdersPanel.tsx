@@ -77,6 +77,9 @@ export const PurchaseOrdersPanel: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
   const [currentBranchId, setCurrentBranchId] = useState<number>(0);
+  const [selectedInvoiceFile, setSelectedInvoiceFile] = useState<File | null>(
+    null,
+  );
 
   const [formData, setFormData] = useState<Partial<PurchaseOrder>>({
     poNumber: "",
@@ -315,6 +318,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
   };
 
   const handleOpenSidebar = (po?: PurchaseOrder) => {
+    setSelectedInvoiceFile(null);
     if (po) {
       setEditingPO(po);
       setFormData(po);
@@ -343,6 +347,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
   const handleCloseSidebar = () => {
     setSidebarOpen(false);
     setEditingPO(null);
+    setSelectedInvoiceFile(null);
   };
 
   const handleViewPO = (po: PurchaseOrder) => {
@@ -532,21 +537,40 @@ export const PurchaseOrdersPanel: React.FC = () => {
         localStorage.getItem("auth_token");
 
       if (token) {
-        let response;
+        const formDataPayload = new FormData();
+        formDataPayload.append("po_number", formData.poNumber || "");
+        formDataPayload.append(
+          "status",
+          formData.status || (editingPO ? "draft" : "pending"),
+        );
+        formDataPayload.append(
+          "supplier",
+          formData.supplierId?.toString() || "",
+        );
+        formDataPayload.append("order_date", formData.orderDate || "");
+
+        if (formData.expectedDeliveryDate) {
+          formDataPayload.append(
+            "expected_delivery_date",
+            formData.expectedDeliveryDate,
+          );
+        }
+
+        if (selectedInvoiceFile) {
+          formDataPayload.append("purchase_invoice", selectedInvoiceFile);
+        }
+
+        formDataPayload.append("notes", formData.notes || "");
+        formDataPayload.append("terms_and_condition", formData.terms || "");
+        formDataPayload.append("branch", currentBranchId.toString());
 
         if (editingPO) {
-          const apiPayload = {
-            po_number: formData.poNumber,
-            status: formData.status || "draft",
-            supplier: parseInt(formData.supplierId),
-            order_date: formData.orderDate,
-            expected_delivery_date: formData.expectedDeliveryDate,
-            purchase_invoice: formData.invoiceFile || null,
-            notes: formData.notes || "",
-            terms_and_condition: formData.terms || "",
-            branch: currentBranchId,
-            is_active: true,
-            items: formData.items.map((item) => ({
+          formDataPayload.append("is_active", "true");
+        }
+
+        const items = (formData.items || []).map((item) => {
+          if (editingPO) {
+            return {
               item_name: item.itemName,
               part_number: item.partNumber,
               description: item.description,
@@ -554,58 +578,36 @@ export const PurchaseOrdersPanel: React.FC = () => {
               unit_price: item.unitPrice,
               tax_percent: item.taxPercent,
               discount: item.discount,
-            })),
-          };
+            };
+          } else {
+            return {
+              item_name: item.itemName,
+              part_number: item.partNumber,
+              quantity: item.orderedQuantity || 0,
+              unit_price: item.unitPrice || 0,
+              tax: item.taxPercent || 13,
+            };
+          }
+        });
 
-          response = await fetch(
-            `${
-              import.meta.env.VITE_API_BASE_URL
-            }/stock-management/purchase-orders/${editingPO.id}/`,
-            {
-              method: "PUT",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-                "ngrok-skip-browser-warning": "true",
-              },
-              body: JSON.stringify(apiPayload),
-            },
-          );
-        } else {
-          const apiPayload = {
-            po_number: formData.poNumber,
-            status: formData.status || "pending",
-            supplier: parseInt(formData.supplierId),
-            order_date: formData.orderDate,
-            expected_delivery_date: formData.expectedDeliveryDate,
-            notes: formData.notes || "",
-            branch: currentBranchId,
-            items: formData.items.map((item) => {
-              return {
-                item_name: item.itemName,
-                part_number: item.partNumber,
-                quantity: item.orderedQuantity || 0,
-                unit_price: item.unitPrice || 0,
-                tax: item.taxPercent || 13,
-              };
-            }),
-          };
+        
+        formDataPayload.append(
+          "items",
+          new Blob([JSON.stringify(items)], { type: "application/json" }),
+        );
 
-          response = await fetch(
-            `${
-              import.meta.env.VITE_API_BASE_URL
-            }/stock-management/purchase-orders/create-with-items/`,
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-                "ngrok-skip-browser-warning": "true",
-              },
-              body: JSON.stringify(apiPayload),
-            },
-          );
-        }
+        const url = editingPO
+          ? `${import.meta.env.VITE_API_BASE_URL}/stock-management/purchase-orders/${editingPO.id}/`
+          : `${import.meta.env.VITE_API_BASE_URL}/stock-management/purchase-orders/create-with-items/`;
+
+        const response = await fetch(url, {
+          method: editingPO ? "PUT" : "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "ngrok-skip-browser-warning": "true",
+          },
+          body: formDataPayload,
+        });
 
         if (response.ok) {
           loadPurchaseOrders();
@@ -781,7 +783,6 @@ export const PurchaseOrdersPanel: React.FC = () => {
             ).length;
             const failedCount = selectedOrders.length - successCount;
 
-            // Remove successfully deleted orders from local storage
             const allPOs = getFromStorage("purchaseOrders", []);
             const filtered = allPOs.filter(
               (po: PurchaseOrder) => !selectedOrders.includes(po.id),
@@ -847,6 +848,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.type === "application/pdf") {
+      setSelectedInvoiceFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData({
@@ -871,6 +873,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
 
     const file = e.dataTransfer.files[0];
     if (file && file.type === "application/pdf") {
+      setSelectedInvoiceFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData({
