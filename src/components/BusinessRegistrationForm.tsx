@@ -59,7 +59,7 @@ interface BusinessRegistrationFormProps {
 export const BusinessRegistrationForm: React.FC<
   BusinessRegistrationFormProps
 > = ({ onBack, onSuccess }) => {
-  const [step, setStep] = useState(1); // 1: Business Info, 2: Owner Info, 3: Package Selection, 4: Documents, 5: Credentials, 6: Payment
+  const [step, setStep] = useState(1); // 1: Business Info, 2: Owner Info, 3: Package Selection, 4: Credentials, 5: Payment
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
@@ -120,7 +120,7 @@ export const BusinessRegistrationForm: React.FC<
 
   const handleFileChange = (
     field: keyof RegistrationData,
-    file: File | null
+    file: File | null,
   ) => {
     setFormData((prev) => ({ ...prev, [field]: file }));
     setError(null);
@@ -330,18 +330,18 @@ export const BusinessRegistrationForm: React.FC<
 
       // Save to localStorage (pending_registrations)
       const existingRegistrations = JSON.parse(
-        localStorage.getItem("pending_registrations") || "[]"
+        localStorage.getItem("pending_registrations") || "[]",
       );
       existingRegistrations.push(pendingRegistration);
       localStorage.setItem(
         "pending_registrations",
-        JSON.stringify(existingRegistrations)
+        JSON.stringify(existingRegistrations),
       );
 
       // Debug logging
       console.log(
         "✅ New registration saved:",
-        pendingRegistration.businessInfo.name
+        pendingRegistration.businessInfo.name,
       );
       console.log("🏢 Tenant ID (PAN):", tenantId);
       console.log("📦 Package:", formData.selectedPackage);
@@ -539,9 +539,17 @@ Thank you for your patience!`);
                   <input
                     type="tel"
                     value={formData.businessPhone}
-                    onChange={(e) =>
-                      handleInputChange("businessPhone", e.target.value)
-                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value.startsWith("+977")) {
+                        if (value.length <= 14) {
+                          handleInputChange("businessPhone", value);
+                        }
+                      } else if (value.length <= 10) {
+                        handleInputChange("businessPhone", value);
+                      }
+                    }}
+                    maxLength={14}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="+977"
                   />
@@ -873,7 +881,7 @@ Thank you for your patience!`);
                             <Check className="w-4 h-4 text-green-600" />
                             {feature}
                           </li>
-                        )
+                        ),
                       )}
                     </ul>
                   </div>
@@ -905,7 +913,7 @@ Thank you for your patience!`);
                           selectedPackage: formData.selectedPackage,
                           packagePrice:
                             packages[formData.selectedPackage].price,
-                        })
+                        }),
                       );
 
                       // Initiate eSewa payment
@@ -922,7 +930,7 @@ Thank you for your patience!`);
                       } catch (error: any) {
                         setPaymentProcessing(false);
                         setError(
-                          error.message || "Failed to initiate eSewa payment"
+                          error.message || "Failed to initiate eSewa payment",
                         );
                       }
                     }}
@@ -961,7 +969,7 @@ Thank you for your patience!`);
                           selectedPackage: formData.selectedPackage,
                           packagePrice:
                             packages[formData.selectedPackage].price,
-                        })
+                        }),
                       );
 
                       // Initiate FonePay payment
@@ -978,7 +986,7 @@ Thank you for your patience!`);
                       } catch (error: any) {
                         setPaymentProcessing(false);
                         setError(
-                          error.message || "Failed to initiate FonePay payment"
+                          error.message || "Failed to initiate FonePay payment",
                         );
                       }
                     }}
@@ -1025,7 +1033,7 @@ Thank you for your patience!`);
                           const mockResult = mockPaymentSuccess(
                             "esewa",
                             registrationId,
-                            packages[formData.selectedPackage].price
+                            packages[formData.selectedPackage].price,
                           );
 
                           // Update form with mock payment data
@@ -1038,7 +1046,7 @@ Thank you for your patience!`);
                           }));
 
                           alert(
-                            `✅ MOCK PAYMENT SUCCESS\n\nPayment ID: ${mockResult.data.paymentId}\nAmount: NPR ${mockResult.data.amount}\n\nNow click "Submit Registration" to complete the process.`
+                            `✅ MOCK PAYMENT SUCCESS\n\nPayment ID: ${mockResult.data.paymentId}\nAmount: NPR ${mockResult.data.amount}\n\nNow click "Submit Registration" to complete the process.`,
                           );
                         }}
                         className="mt-3 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm"

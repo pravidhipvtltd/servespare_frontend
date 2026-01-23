@@ -51,13 +51,13 @@ interface BulkItem {
   bikeModel?: string;
   bikeType?: string;
   hsnCode?: string;
-  quantity: number;
-  minStockLevel: number;
-  price: number;
-  mrp: number;
-  retailPrice?: number;
-  wholesalePrice?: number;
-  distributorPrice?: number;
+  quantity: number | string;
+  minStockLevel: number | string;
+  price: number | string;
+  mrp: number | string;
+  retailPrice?: number | string;
+  wholesalePrice?: number | string;
+  distributorPrice?: number | string;
   partyName?: string;
   barcode?: string;
   location?: string;
@@ -102,13 +102,13 @@ export const BulkImportPanel: React.FC = () => {
       bikeModel: "",
       bikeType: "",
       hsnCode: "",
-      quantity: 0,
-      minStockLevel: 5,
-      price: 0,
-      mrp: 0,
-      retailPrice: 0,
-      wholesalePrice: 0,
-      distributorPrice: 0,
+      quantity: "",
+      minStockLevel: "",
+      price: "",
+      mrp: "",
+      retailPrice: "",
+      wholesalePrice: "",
+      distributorPrice: "",
       partyName: "",
       barcode: "",
       location: "Main Warehouse",
@@ -1289,12 +1289,12 @@ export const BulkImportPanel: React.FC = () => {
                           <td className="px-2 py-2">
                             <input
                               type="number"
-                              value={row.quantity}
+                              value={row.quantity === "" ? "" : row.quantity}
                               onChange={(e) =>
                                 updateQuickEntryRow(
                                   index,
                                   "quantity",
-                                  parseInt(e.target.value) || 0
+                                  e.target.value === "" ? "" : parseInt(e.target.value)
                                 )
                               }
                               className="w-20 border border-gray-300 rounded px-2 py-1 text-sm"
@@ -1304,12 +1304,12 @@ export const BulkImportPanel: React.FC = () => {
                           <td className="px-2 py-2">
                             <input
                               type="number"
-                              value={row.minStockLevel}
+                              value={row.minStockLevel === "" ? "" : row.minStockLevel}
                               onChange={(e) =>
                                 updateQuickEntryRow(
                                   index,
                                   "minStockLevel",
-                                  parseInt(e.target.value) || 0
+                                  e.target.value === "" ? "" : parseInt(e.target.value)
                                 )
                               }
                               className="w-20 border border-gray-300 rounded px-2 py-1 text-sm"
@@ -1319,12 +1319,12 @@ export const BulkImportPanel: React.FC = () => {
                           <td className="px-2 py-2">
                             <input
                               type="number"
-                              value={row.price}
+                              value={row.price === "" ? "" : row.price}
                               onChange={(e) =>
                                 updateQuickEntryRow(
                                   index,
                                   "price",
-                                  parseFloat(e.target.value) || 0
+                                  e.target.value === "" ? "" : parseFloat(e.target.value)
                                 )
                               }
                               className="w-24 border border-gray-300 rounded px-2 py-1 text-sm"
@@ -1335,12 +1335,12 @@ export const BulkImportPanel: React.FC = () => {
                           <td className="px-2 py-2">
                             <input
                               type="number"
-                              value={row.mrp}
+                              value={row.mrp === "" ? "" : row.mrp}
                               onChange={(e) =>
                                 updateQuickEntryRow(
                                   index,
                                   "mrp",
-                                  parseFloat(e.target.value) || 0
+                                  e.target.value === "" ? "" : parseFloat(e.target.value)
                                 )
                               }
                               className="w-24 border border-gray-300 rounded px-2 py-1 text-sm"

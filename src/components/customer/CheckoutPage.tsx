@@ -281,7 +281,17 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                     <input
                       type="tel"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value.startsWith("+977")) {
+                          if (value.length <= 14) {
+                            setPhone(value);
+                          }
+                        } else if (value.length <= 10) {
+                          setPhone(value);
+                        }
+                      }}
+                      maxLength={14}
                       placeholder="+977"
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />

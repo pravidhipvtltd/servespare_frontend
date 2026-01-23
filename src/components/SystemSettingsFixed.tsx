@@ -43,8 +43,8 @@ interface SystemSettings {
 
   // Business Settings
   currency: string;
-  taxRate: number;
-  lowStockThreshold: number;
+  taxRate: number | string;
+  lowStockThreshold: number | string;
   fiscalYearStart: string;
 
   // Notification Settings
@@ -54,8 +54,8 @@ interface SystemSettings {
   dailyReports: boolean;
 
   // Security Settings
-  passwordMinLength: number;
-  sessionTimeout: number;
+  passwordMinLength: number | string;
+  sessionTimeout: number | string;
   twoFactorAuth: boolean;
 
   // Billing Settings
@@ -66,7 +66,7 @@ interface SystemSettings {
   // System Settings
   autoBackup: boolean;
   backupFrequency: string;
-  dataRetention: number;
+  dataRetention: number | string;
 }
 
 export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({
@@ -325,9 +325,17 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({
                   <input
                     type="tel"
                     value={settings.companyPhone}
-                    onChange={(e) =>
-                      handleChange("companyPhone", e.target.value)
-                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value.startsWith("+977")) {
+                        if (value.length <= 14) {
+                          handleChange("companyPhone", value);
+                        }
+                      } else if (value.length <= 10) {
+                        handleChange("companyPhone", value);
+                      }
+                    }}
+                    maxLength={14}
                     className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
@@ -496,9 +504,9 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({
                   <Percent className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     type="number"
-                    value={settings.taxRate}
+                    value={settings.taxRate === "" ? "" : settings.taxRate}
                     onChange={(e) =>
-                      handleChange("taxRate", parseFloat(e.target.value))
+                      handleChange("taxRate", e.target.value === "" ? "" : parseFloat(e.target.value))
                     }
                     min="0"
                     max="100"
@@ -514,9 +522,9 @@ export const SystemSettingsFixed: React.FC<{ onUpdate: () => void }> = ({
                 </label>
                 <input
                   type="number"
-                  value={settings.lowStockThreshold}
+                  value={settings.lowStockThreshold === "" ? "" : settings.lowStockThreshold}
                   onChange={(e) =>
-                    handleChange("lowStockThreshold", parseInt(e.target.value))
+                    handleChange("lowStockThreshold", e.target.value === "" ? "" : parseInt(e.target.value))
                   }
                   min="1"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"

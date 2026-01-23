@@ -189,7 +189,17 @@ export const ProfessionalBillSystem: React.FC<ProfessionalBillSystemProps> = ({ 
                 <input
                   type="text"
                   value={contactNumber}
-                  onChange={(e) => setContactNumber(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value.startsWith("+977")) {
+                      if (value.length <= 14) {
+                        setContactNumber(value);
+                      }
+                    } else if (value.length <= 10) {
+                      setContactNumber(value);
+                    }
+                  }}
+                  maxLength={14}
                   placeholder="+977-XXXXXXXXXX"
                   className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />

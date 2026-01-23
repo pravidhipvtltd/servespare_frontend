@@ -289,7 +289,17 @@ export const BillingSystem: React.FC<BillingSystemProps> = ({
             <input
               type="tel"
               value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value.startsWith("+977")) {
+                  if (value.length <= 14) {
+                    setCustomerPhone(value);
+                  }
+                } else if (value.length <= 10) {
+                  setCustomerPhone(value);
+                }
+              }}
+              maxLength={14}
               placeholder="+977"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
             />

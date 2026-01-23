@@ -39,8 +39,8 @@ import { useCustomPopup } from "../../hooks/useCustomPopup";
 interface OrderItem {
   id: string;
   name: string;
-  quantity: number;
-  price: number;
+  quantity: number | string;
+  price: number | string;
   total: number;
   availableStock?: number;
 }
@@ -53,9 +53,9 @@ interface OrderFormData {
   partyAddress: string;
   items: OrderItem[];
   subtotal: number;
-  discount: number;
+  discount: number | string;
   discountType: "percentage" | "fixed";
-  tax: number;
+  tax: number | string;
   total: number;
   expectedDeliveryDate: string;
   paymentTerms: string;
@@ -169,17 +169,19 @@ export const OrderCreationPanel: React.FC = () => {
   };
 
   const calculateTotals = () => {
-    const subtotal = formData.items.reduce((sum, item) => sum + item.total, 0);
+    const subtotal = formData.items.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
 
     let discountAmount = 0;
+    const discountVal = Number(formData.discount) || 0;
     if (formData.discountType === "percentage") {
-      discountAmount = (subtotal * formData.discount) / 100;
+      discountAmount = (subtotal * discountVal) / 100;
     } else {
-      discountAmount = formData.discount;
+      discountAmount = discountVal;
     }
 
     const afterDiscount = subtotal - discountAmount;
-    const taxAmount = (afterDiscount * formData.tax) / 100;
+    const taxVal = Number(formData.tax) || 0;
+    const taxAmount = (afterDiscount * taxVal) / 100;
     const total = afterDiscount + taxAmount;
 
     setFormData((prev) => ({
@@ -246,16 +248,15 @@ export const OrderCreationPanel: React.FC = () => {
     setSearchQuery("");
   };
 
-  const handleUpdateQuantity = (itemId: string, quantity: number) => {
-    if (quantity < 1) return;
-
+  const handleUpdateQuantity = (itemId: string, quantity: number | string) => {
     const updatedItems = formData.items.map((item) => {
       if (item.id === itemId) {
+        const numQty = Number(quantity) || 0;
         // Check stock for sales orders
         if (
           formData.type === "sales" &&
           item.availableStock &&
-          quantity > item.availableStock
+          numQty > item.availableStock
         ) {
           popup.showError(
             `Only ${item.availableStock} units available in stock!`,
@@ -266,7 +267,7 @@ export const OrderCreationPanel: React.FC = () => {
         return {
           ...item,
           quantity,
-          total: quantity * item.price,
+          total: numQty * (Number(item.price) || 0),
         };
       }
       return item;
@@ -275,15 +276,13 @@ export const OrderCreationPanel: React.FC = () => {
     setFormData((prev) => ({ ...prev, items: updatedItems }));
   };
 
-  const handleUpdatePrice = (itemId: string, price: number) => {
-    if (price < 0) return;
-
+  const handleUpdatePrice = (itemId: string, price: number | string) => {
     const updatedItems = formData.items.map((item) => {
       if (item.id === itemId) {
         return {
           ...item,
           price,
-          total: item.quantity * price,
+          total: (Number(item.quantity) || 0) * (Number(price) || 0),
         };
       }
       return item;
@@ -764,11 +763,13 @@ export const OrderCreationPanel: React.FC = () => {
                           <input
                             type="number"
                             min="1"
-                            value={item.quantity}
+                            value={item.quantity === "" ? "" : item.quantity}
                             onChange={(e) =>
                               handleUpdateQuantity(
                                 item.id,
-                                parseInt(e.target.value) || 1
+                                e.target.value === ""
+                                  ? ""
+                                  : parseInt(e.target.value)
                               )
                             }
                             className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
@@ -782,11 +783,13 @@ export const OrderCreationPanel: React.FC = () => {
                             type="number"
                             min="0"
                             step="0.01"
-                            value={item.price}
+                            value={item.price === "" ? "" : item.price}
                             onChange={(e) =>
                               handleUpdatePrice(
                                 item.id,
-                                parseFloat(e.target.value) || 0
+                                e.target.value === ""
+                                  ? ""
+                                  : parseFloat(e.target.value)
                               )
                             }
                             className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
@@ -884,11 +887,14 @@ export const OrderCreationPanel: React.FC = () => {
                   <input
                     type="number"
                     min="0"
-                    value={formData.discount}
+                    value={formData.discount === "" ? "" : formData.discount}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        discount: parseFloat(e.target.value) || 0,
+                        discount:
+                          e.target.value === ""
+                            ? ""
+                            : parseFloat(e.target.value),
                       }))
                     }
                     className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
@@ -924,11 +930,12 @@ export const OrderCreationPanel: React.FC = () => {
                   type="number"
                   min="0"
                   max="100"
-                  value={formData.tax}
+                  value={formData.tax === "" ? "" : formData.tax}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      tax: parseFloat(e.target.value) || 0,
+                      tax:
+                        e.target.value === "" ? "" : parseFloat(e.target.value),
                     }))
                   }
                   className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
