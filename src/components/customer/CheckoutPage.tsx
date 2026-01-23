@@ -19,6 +19,7 @@ import {
   Lock,
 } from "lucide-react";
 import { toast } from "sonner";
+import { apiFetch } from "../../utils/apiClient";
 
 interface CheckoutPageProps {
   cartItems: any[];
@@ -67,43 +68,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
     const fetchRegions = async () => {
       setIsLoadingRegions(true);
       try {
-        const token =
-          localStorage.getItem("accessToken") ||
-          localStorage.getItem("auth_token");
-
-        if (!token) {
-          console.warn("No access token found for regions fetch");
-          setIsLoadingRegions(false);
-          return;
-        }
-
         const url = `${import.meta.env.VITE_API_BASE_URL}/sales/orders/province_districts/`;
-        console.log("Fetching regions from:", url);
-
-        const response = await fetch(url, {
-          headers: {
-            "ngrok-skip-browser-warning": "true",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        console.log("Response status:", response.status);
-        const responseText = await response.text();
-        console.log("Response body:", responseText);
+        const response = await apiFetch(url);
 
         if (response.ok) {
-          try {
-            const data = JSON.parse(responseText);
-            setProvinces(data.provinces || []);
-          } catch (e) {
-            console.error("Failed to parse response:", e);
-          }
+          const data = await response.json();
+          setProvinces(data.provinces || []);
         } else {
-          console.error(
-            "Failed to fetch regions:",
-            response.status,
-            responseText,
-          );
+          console.error("Failed to fetch regions:", response.status);
         }
       } catch (error) {
         console.error("Failed to fetch regions:", error);
@@ -148,16 +120,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
     setIsProcessing(true);
 
     try {
-      const token =
-        localStorage.getItem("accessToken") ||
-        localStorage.getItem("auth_token");
-
-      if (!token) {
-        toast.error("Please log in to place an order");
-        setIsProcessing(false);
-        return;
-      }
-
       const checkoutPayload = {
         payment_method: paymentMethod,
         delivery_address: deliveryAddress,
@@ -168,14 +130,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         notes: notes,
       };
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${import.meta.env.VITE_API_BASE_URL}/carts/cart/checkout/`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-            "ngrok-skip-browser-warning": "true",
           },
           body: JSON.stringify(checkoutPayload),
         },

@@ -55,6 +55,7 @@ const STATUS_ICONS: Record<PurchaseOrderStatus, React.ReactNode> = {
 };
 
 import { getBranches } from "../../api/branch.api";
+import { apiFetch } from "../../utils/apiClient";
 
 export const PurchaseOrdersPanel: React.FC = () => {
   const { currentUser } = useAuth();
@@ -142,15 +143,13 @@ export const PurchaseOrdersPanel: React.FC = () => {
         localStorage.getItem("accessToken") ||
         localStorage.getItem("auth_token");
       if (token) {
-        const response = await fetch(
+        const response = await apiFetch(
           `${
             import.meta.env.VITE_API_BASE_URL
           }/stock-management/purchase-orders/`,
           {
             headers: {
-              Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
-              "ngrok-skip-browser-warning": "true",
             },
           },
         );
@@ -222,15 +221,13 @@ export const PurchaseOrdersPanel: React.FC = () => {
         localStorage.getItem("accessToken") ||
         localStorage.getItem("auth_token");
       if (token) {
-        const response = await fetch(
+        const response = await apiFetch(
           `${
             import.meta.env.VITE_API_BASE_URL
           }/stock-management/parties/suppliers/`,
           {
             headers: {
-              Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
-              "ngrok-skip-browser-warning": "true",
             },
           },
         );
@@ -437,16 +434,12 @@ export const PurchaseOrdersPanel: React.FC = () => {
             localStorage.getItem("accessToken") ||
             localStorage.getItem("auth_token");
           if (token) {
-            const response = await fetch(
+            const response = await apiFetch(
               `${
                 import.meta.env.VITE_API_BASE_URL
               }/stock-management/purchase-order-items/${itemId}/`,
               {
                 method: "DELETE",
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  "ngrok-skip-browser-warning": "true",
-                },
               },
             );
 
@@ -590,7 +583,6 @@ export const PurchaseOrdersPanel: React.FC = () => {
           }
         });
 
-        
         formDataPayload.append(
           "items",
           new Blob([JSON.stringify(items)], { type: "application/json" }),
@@ -600,12 +592,8 @@ export const PurchaseOrdersPanel: React.FC = () => {
           ? `${import.meta.env.VITE_API_BASE_URL}/stock-management/purchase-orders/${editingPO.id}/`
           : `${import.meta.env.VITE_API_BASE_URL}/stock-management/purchase-orders/create-with-items/`;
 
-        const response = await fetch(url, {
+        const response = await apiFetch(url, {
           method: editingPO ? "PUT" : "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "ngrok-skip-browser-warning": "true",
-          },
           body: formDataPayload,
         });
 
@@ -677,16 +665,14 @@ export const PurchaseOrdersPanel: React.FC = () => {
             localStorage.getItem("auth_token");
 
           if (token) {
-            const response = await fetch(
+            const response = await apiFetch(
               `${
                 import.meta.env.VITE_API_BASE_URL
               }/stock-management/purchase-orders/${poId}/`,
               {
                 method: "DELETE",
                 headers: {
-                  Authorization: `Bearer ${token}`,
                   "Content-Type": "application/json",
-                  "ngrok-skip-browser-warning": "true",
                 },
               },
             );
@@ -762,16 +748,14 @@ export const PurchaseOrdersPanel: React.FC = () => {
 
           if (token) {
             const deletePromises = selectedOrders.map((poId) =>
-              fetch(
+              apiFetch(
                 `${
                   import.meta.env.VITE_API_BASE_URL
                 }/stock-management/purchase-orders/${poId}/`,
                 {
                   method: "DELETE",
                   headers: {
-                    Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
-                    "ngrok-skip-browser-warning": "true",
                   },
                 },
               ),

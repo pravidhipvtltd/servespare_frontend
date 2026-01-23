@@ -55,6 +55,7 @@ const WARRANTY_LABELS: Record<string, string> = {
 };
 
 import { getBranches } from "../../api/branch.api";
+import { apiFetch } from "../../utils/apiClient";
 
 export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
   filter,
@@ -95,10 +96,10 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
     name: "",
     category: "local",
     vehicleType: "two_wheeler",
-    quantity: "",
-    minStockLevel: "",
-    price: "",
-    mrp: "",
+    quantity: 0,
+    minStockLevel: 0,
+    price: 0,
+    mrp: 0,
     partyId: "",
     partNumber: "",
     hsnCode: "",
@@ -109,9 +110,9 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
     bikeName: "",
     bikeModel: "",
     bikeType: "",
-    retailPrice: "",
-    wholesalePrice: "",
-    distributorPrice: "",
+    retailPrice: 0,
+    wholesalePrice: 0,
+    distributorPrice: 0,
   });
 
   useEffect(() => {
@@ -179,114 +180,109 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
         localStorage.getItem("access_token") ||
         localStorage.getItem("token");
 
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      // Allow ngrok to bypass its browser warning for programmatic requests
-      headers["ngrok-skip-browser-warning"] = "true";
-
-      const res = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/stock-management/inventory/`,
-        { headers },
-      );
-      if (res.status === 401) {
-        throw new Error(
-          "Unauthorized: Authentication credentials were not provided.",
+      if (token) {
+        const res = await apiFetch(
+          `${import.meta.env.VITE_API_BASE_URL}/stock-management/inventory/`,
         );
-      }
-      if (!res.ok) throw new Error(`API responded with ${res.status}`);
-      const data = await res.json();
-      const results = data.results || data;
-      const mapped: InventoryItem[] = (results || []).map((it: any) => ({
-        id: String(it.id),
-        name: it.item_name || it.itemName || it.name || "",
-        category: (it.category || "local") as ItemCategory,
-        vehicleType: (it.vehicle_type || "two_wheeler") as VehicleType,
-        bikeName: it.vehicle_bike_details || it.bikeName || undefined,
-        bikeModel: it.model || it.bikeModel || undefined,
-        bikeType: it.type || it.bikeType || undefined,
-        quantity: parseFloat(it.quantity) || 0,
-        minStockLevel:
-          parseFloat(it.min_stock_level || it.minStockLevel || 0) || 0,
-        price: parseFloat(it.price || 0) || 0,
-        mrp: parseFloat(it.mrp || 0) || 0,
-        retailPrice: parseFloat(it.retail_pricing || it.retailPrice || 0) || 0,
-        wholesalePrice:
-          parseFloat(it.wholesale_price || it.wholesalePrice || 0) || 0,
-        distributorPrice:
-          parseFloat(it.distributor_price || it.distributorPrice || 0) || 0,
-        partyId: it.party || undefined,
-        partyName: it.party_detail?.party_name || it.partyName,
-        partNumber: it.part_number || it.partNumber || undefined,
-        barcode: it.barcode || undefined,
-        hsnCode: it.hsn_code || it.hsnCode || undefined,
-        location: it.storage_location || it.location || undefined,
-        warrantyPeriod: it.warranty_period || it.warrantyPeriod || undefined,
-        image: (() => {
-          if (Array.isArray(it.images) && it.images.length > 0) {
-            const primary = it.images.find((img: any) => img.is_primary);
-            if (primary) return primary.image;
-            return typeof it.images[0] === "string"
-              ? it.images[0]
-              : it.images[0].image;
-          }
-          return it.image || undefined;
-        })(),
-        // Prefer workspace ID from API if present, otherwise fallback to current user
-        workspaceId:
-          it.workspaceId ||
-          it.workspace ||
-          it.workspace_id ||
+        if (res.status === 401) {
+          throw new Error(
+            "Unauthorized: Authentication credentials were not provided.",
+          );
+        }
+        if (!res.ok) throw new Error(`API responded with ${res.status}`);
+        const data = await res.json();
+        const results = data.results || data;
+        const mapped: InventoryItem[] = (results || []).map((it: any) => ({
+          id: String(it.id),
+          name: it.item_name || it.itemName || it.name || "",
+          category: (it.category || "local") as ItemCategory,
+          vehicleType: (it.vehicle_type || "two_wheeler") as VehicleType,
+          bikeName: it.vehicle_bike_details || it.bikeName || undefined,
+          bikeModel: it.model || it.bikeModel || undefined,
+          bikeType: it.type || it.bikeType || undefined,
+          quantity: parseFloat(it.quantity) || 0,
+          minStockLevel:
+            parseFloat(it.min_stock_level || it.minStockLevel || 0) || 0,
+          price: parseFloat(it.price || 0) || 0,
+          mrp: parseFloat(it.mrp || 0) || 0,
+          retailPrice:
+            parseFloat(it.retail_pricing || it.retailPrice || 0) || 0,
+          wholesalePrice:
+            parseFloat(it.wholesale_price || it.wholesalePrice || 0) || 0,
+          distributorPrice:
+            parseFloat(it.distributor_price || it.distributorPrice || 0) || 0,
+          partyId: it.party || undefined,
+          partyName: it.party_detail?.party_name || it.partyName,
+          partNumber: it.part_number || it.partNumber || undefined,
+          barcode: it.barcode || undefined,
+          hsnCode: it.hsn_code || it.hsnCode || undefined,
+          location: it.storage_location || it.location || undefined,
+          warrantyPeriod: it.warranty_period || it.warrantyPeriod || undefined,
+          image: (() => {
+            if (Array.isArray(it.images) && it.images.length > 0) {
+              const primary = it.images.find((img: any) => img.is_primary);
+              if (primary) return primary.image;
+              return typeof it.images[0] === "string"
+                ? it.images[0]
+                : it.images[0].image;
+            }
+            return it.image || undefined;
+          })(),
+          // Prefer workspace ID from API if present, otherwise fallback to current user
+          workspaceId:
+            it.workspaceId ||
+            it.workspace ||
+            it.workspace_id ||
+            currentUser?.workspaceId,
+          branchId: it.branch || undefined,
+          createdAt: it.created || it.createdAt || new Date().toISOString(),
+          lastRestocked: it.modified || it.lastRestocked || undefined,
+        }));
+
+        console.log(
+          "TotalInventoryPanel: currentUser.workspaceId=",
           currentUser?.workspaceId,
-        branchId: it.branch || undefined,
-        createdAt: it.created || it.createdAt || new Date().toISOString(),
-        lastRestocked: it.modified || it.lastRestocked || undefined,
-      }));
+        );
 
-      console.log(
-        "TotalInventoryPanel: currentUser.workspaceId=",
-        currentUser?.workspaceId,
-      );
+        console.log("TotalInventoryPanel: token present=", !!token);
 
-      console.log("TotalInventoryPanel: token present=", !!token);
+        console.log("TotalInventoryPanel: mapped length=", mapped.length);
 
-      console.log("TotalInventoryPanel: mapped length=", mapped.length);
-
-      console.log(
-        "TotalInventoryPanel: sample mapped item=",
-        mapped[0] || null,
-      );
-      // eslint-disable-next-line no-console
-      console.log(
-        "TotalInventoryPanel: workspaceIds in mapped=",
-        mapped.map((m) => m.workspaceId),
-      );
-
-      const filteredByWorkspace = mapped.filter(
-        (i) => String(i.workspaceId) === String(currentUser?.workspaceId),
-      );
-
-      // Always update storage to ensure deletions are reflected
-      try {
-        saveToStorage("products", mapped);
-        saveToStorage("inventory", mapped);
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.warn("Failed to persist mapped inventory to storage:", e);
-      }
-
-      if (mapped.length > 0) {
+        console.log(
+          "TotalInventoryPanel: sample mapped item=",
+          mapped[0] || null,
+        );
         // eslint-disable-next-line no-console
         console.log(
-          "TotalInventoryPanel: Using API-mapped items (count=",
-          mapped.length,
-          ") and persisted to local storage",
+          "TotalInventoryPanel: workspaceIds in mapped=",
+          mapped.map((m) => m.workspaceId),
         );
 
-        setInventory(mapped);
-      } else {
-        setInventory(filteredByWorkspace);
+        const filteredByWorkspace = mapped.filter(
+          (i) => String(i.workspaceId) === String(currentUser?.workspaceId),
+        );
+
+        // Always update storage to ensure deletions are reflected
+        try {
+          saveToStorage("products", mapped);
+          saveToStorage("inventory", mapped);
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn("Failed to persist mapped inventory to storage:", e);
+        }
+
+        if (mapped.length > 0) {
+          // eslint-disable-next-line no-console
+          console.log(
+            "TotalInventoryPanel: Using API-mapped items (count=",
+            mapped.length,
+            ") and persisted to local storage",
+          );
+
+          setInventory(mapped);
+        } else {
+          setInventory(filteredByWorkspace);
+        }
       }
       return;
     } catch (err) {
@@ -313,53 +309,48 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
   const loadParties = async () => {
     try {
       const token = localStorage.getItem("accessToken");
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "true",
-      };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const response = await fetch(
-        `${
-          import.meta.env.VITE_API_BASE_URL
-        }/stock-management/parties/suppliers/`,
-        { headers },
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        let results: any[] = [];
-        if (Array.isArray(data)) {
-          results = data;
-        } else if (data.results && Array.isArray(data.results)) {
-          results = data.results;
-        }
-
-        const mappedParties: Party[] = results.map((party: any) => ({
-          id: party.id.toString(),
-          name: party.party_name,
-          type: "supplier",
-          contactPerson: party.contact_person || "",
-          phone: party.phone || "",
-          email: party.email || "",
-          address: party.address || "",
-          city: party.city || "",
-          paymentTerms: party.payment_terms || "cash",
-          openingBalance: parseFloat(party.opening_balance) || 0,
-          currentBalance: parseFloat(party.opening_balance) || 0,
-          isActive: party.is_active,
-          createdAt: party.created || new Date().toISOString(),
-          workspaceId: currentUser?.workspaceId,
-        }));
-        setParties(mappedParties);
-      } else {
-        // Fallback to local storage if API fails
-        const allParties = getFromStorage("parties", []);
-        setParties(
-          allParties.filter(
-            (p: Party) => p.workspaceId === currentUser?.workspaceId,
-          ),
+      if (token) {
+        const response = await apiFetch(
+          `${
+            import.meta.env.VITE_API_BASE_URL
+          }/stock-management/parties/suppliers/`,
         );
+
+        if (response.ok) {
+          const data = await response.json();
+          let results: any[] = [];
+          if (Array.isArray(data)) {
+            results = data;
+          } else if (data.results && Array.isArray(data.results)) {
+            results = data.results;
+          }
+
+          const mappedParties: Party[] = results.map((party: any) => ({
+            id: party.id.toString(),
+            name: party.party_name,
+            type: "supplier",
+            contactPerson: party.contact_person || "",
+            phone: party.phone || "",
+            email: party.email || "",
+            address: party.address || "",
+            city: party.city || "",
+            paymentTerms: party.payment_terms || "cash",
+            openingBalance: parseFloat(party.opening_balance) || 0,
+            currentBalance: parseFloat(party.opening_balance) || 0,
+            isActive: party.is_active,
+            createdAt: party.created || new Date().toISOString(),
+            workspaceId: currentUser?.workspaceId,
+          }));
+          setParties(mappedParties);
+        } else {
+          // Fallback to local storage if API fails
+          const allParties = getFromStorage("parties", []);
+          setParties(
+            allParties.filter(
+              (p: Party) => p.workspaceId === currentUser?.workspaceId,
+            ),
+          );
+        }
       }
     } catch (err) {
       console.error("Error loading parties:", err);
@@ -388,10 +379,10 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
         name: "",
         category: "local",
         vehicleType: "two_wheeler",
-        quantity: "0",
-        minStockLevel: "0",
-        price: "0",
-        mrp: "0",
+        quantity: 0,
+        minStockLevel: 0,
+        price: 0,
+        mrp: 0,
         partyId: "",
         partNumber: "",
         hsnCode: "",
@@ -402,9 +393,9 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
         bikeName: "",
         bikeModel: "",
         bikeType: "",
-        retailPrice: "",
-        wholesalePrice: "",
-        distributorPrice: "",
+        retailPrice: 0,
+        wholesalePrice: 0,
+        distributorPrice: 0,
       });
     }
     setSidebarOpen(true);
@@ -417,10 +408,10 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
       name: "",
       category: "local",
       vehicleType: "two_wheeler",
-      quantity: "0",
-      minStockLevel: "0",
-      price: "0",
-      mrp: "0",
+      quantity: 0,
+      minStockLevel: 0,
+      price: 0,
+      mrp: 0,
       partyId: "",
       partNumber: "",
       hsnCode: "",
@@ -431,9 +422,9 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
       bikeName: "",
       bikeModel: "",
       bikeType: "",
-      retailPrice: "",
-      wholesalePrice: "",
-      distributorPrice: "",
+      retailPrice: 0,
+      wholesalePrice: 0,
+      distributorPrice: 0,
     });
   };
 
@@ -472,42 +463,27 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
         formDataPayload.append("part_number", formData.partNumber);
       if (formData.hsnCode)
         formDataPayload.append("hsn_code", formData.hsnCode);
-      formDataPayload.append("quantity", (formData.quantity === "" ? 0 : formData.quantity || 0).toString());
+      formDataPayload.append("quantity", (formData.quantity || 0).toString());
       formDataPayload.append(
         "min_stock_level",
-        (formData.minStockLevel === "" ? 0 : formData.minStockLevel || 0).toString(),
+        (formData.minStockLevel || 0).toString(),
       );
-      formDataPayload.append(
-        "price",
-        (formData.price === "" ? 0 : formData.price || 0).toString(),
-      );
-      formDataPayload.append(
-        "mrp",
-        (formData.mrp === "" ? 0 : formData.mrp || 0).toString(),
-      );
-      if (formData.distributorPrice !== undefined)
+      formDataPayload.append("price", (formData.price || 0).toString());
+      formDataPayload.append("mrp", (formData.mrp || 0).toString());
+      if (formData.distributorPrice !== undefined && formData.distributorPrice !== 0)
         formDataPayload.append(
           "distributor_price",
-          (formData.distributorPrice === ""
-            ? 0
-            : formData.distributorPrice || 0
-          ).toString(),
+          formData.distributorPrice.toString(),
         );
-      if (formData.wholesalePrice !== undefined)
+      if (formData.wholesalePrice !== undefined && formData.wholesalePrice !== 0)
         formDataPayload.append(
           "wholesale_price",
-          (formData.wholesalePrice === ""
-            ? 0
-            : formData.wholesalePrice || 0
-          ).toString(),
+          formData.wholesalePrice.toString(),
         );
-      if (formData.retailPrice !== undefined)
+      if (formData.retailPrice !== undefined && formData.retailPrice !== 0)
         formDataPayload.append(
           "retail_pricing",
-          (formData.retailPrice === ""
-            ? 0
-            : formData.retailPrice || 0
-          ).toString(),
+          formData.retailPrice.toString(),
         );
       if (formData.location)
         formDataPayload.append("storage_location", formData.location);
@@ -540,22 +516,20 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
         const branchParam = editingItem.branchId
           ? `?branch=${editingItem.branchId}`
           : "";
-        response = await fetch(
+        response = await apiFetch(
           `${import.meta.env.VITE_API_BASE_URL}/stock-management/inventory/${
             editingItem.id
           }/`,
           {
             method: "PATCH",
-            headers,
             body: formDataPayload,
           },
         );
       } else {
-        response = await fetch(
+        response = await apiFetch(
           `${import.meta.env.VITE_API_BASE_URL}/stock-management/inventory/`,
           {
             method: "POST",
-            headers,
             body: formDataPayload,
           },
         );
@@ -567,7 +541,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
         console.error("Server API Error:", responseData);
         let errorMsg = responseData.detail || responseData.message;
 
-        // Extract field-specific errors if no generic message exists
+     
         if (!errorMsg && typeof responseData === "object") {
           const fieldErrors = Object.entries(responseData).map(
             ([field, messages]) => {
@@ -591,7 +565,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
 
       const savedId = responseData.id;
 
-      // Update local state or reload
+     
       loadInventory();
       handleCloseSidebar();
       popup.showSuccess(
@@ -613,48 +587,48 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
           localStorage.getItem("access_token") ||
           localStorage.getItem("token");
 
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
-        };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
+        if (token) {
+          // Find item to get correct branch ID to ensure API matches the query
+          const itemToDelete =
+            inventory.find((i) => i.id === itemId) ||
+            filteredInventory.find((i) => i.id === itemId);
+          const targetBranchId = itemToDelete?.branchId || currentBranchId;
 
-        // Find item to get correct branch ID to ensure API matches the query
-        const itemToDelete =
-          inventory.find((i) => i.id === itemId) ||
-          filteredInventory.find((i) => i.id === itemId);
-        const targetBranchId = itemToDelete?.branchId || currentBranchId;
+          try {
+            const apiUrl = `${
+              import.meta.env.VITE_API_BASE_URL
+            }/stock-management/inventory/${itemId}/`;
+            const res = await apiFetch(apiUrl, {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            });
 
-        try {
-          const apiUrl = `${
-            import.meta.env.VITE_API_BASE_URL
-          }/stock-management/inventory/${itemId}/`;
-          const res = await fetch(apiUrl, {
-            method: "DELETE",
-            headers,
-          });
-
-          if (
-            res.ok ||
-            res.status === 204 ||
-            res.status === 200 ||
-            res.status === 202
-          ) {
-            // Only update local state if server delete succeeds
-            setSelectedItems([]);
-            emitItemDeleted(itemId);
-            loadInventory();
-            popup.showSuccess("Item deleted successfully!");
-          } else {
-            // Handle error response
-            const errorData = await res.json().catch(() => ({}));
-            const errorMessage =
-              errorData.detail || errorData.message || "Failed to delete item";
-            throw new Error(errorMessage);
+            if (
+              res.ok ||
+              res.status === 204 ||
+              res.status === 200 ||
+              res.status === 202
+            ) {
+              // Only update local state if server delete succeeds
+              setSelectedItems([]);
+              emitItemDeleted(itemId);
+              loadInventory();
+              popup.showSuccess("Item deleted successfully!");
+            } else {
+              // Handle error response
+              const errorData = await res.json().catch(() => ({}));
+              const errorMessage =
+                errorData.detail ||
+                errorData.message ||
+                "Failed to delete item";
+              throw new Error(errorMessage);
+            }
+          } catch (err: any) {
+            console.error("Failed to delete inventory item:", err);
+            popup.showError("Delete Failed", err.message);
           }
-        } catch (err: any) {
-          console.error("Failed to delete inventory item:", err);
-          popup.showError("Delete Failed", err.message);
         }
       },
       {
@@ -1504,11 +1478,14 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                     </label>
                     <input
                       type="number"
-                      value={formData.quantity}
+                      value={formData.quantity || ""}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          quantity: e.target.value === "" ? "" : parseInt(e.target.value),
+                          quantity:
+                            e.target.value === ""
+                              ? 0
+                              : parseInt(e.target.value) || 0,
                         })
                       }
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
@@ -1524,11 +1501,14 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                     </label>
                     <input
                       type="number"
-                      value={formData.minStockLevel}
+                      value={formData.minStockLevel || ""}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          minStockLevel: e.target.value === "" ? "" : parseInt(e.target.value),
+                          minStockLevel:
+                            e.target.value === ""
+                              ? 0
+                              : parseInt(e.target.value) || 0,
                         })
                       }
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
@@ -1547,14 +1527,14 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                     </label>
                     <input
                       type="number"
-                      value={formData.price === "" ? "" : formData.price}
+                      value={formData.price || ""}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
                           price:
                             e.target.value === ""
-                              ? ""
-                              : parseFloat(e.target.value),
+                              ? 0
+                              : parseFloat(e.target.value) || 0,
                         })
                       }
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
@@ -1570,14 +1550,14 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                     </label>
                     <input
                       type="number"
-                      value={formData.mrp === "" ? "" : formData.mrp}
+                      value={formData.mrp || ""}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
                           mrp:
                             e.target.value === ""
-                              ? ""
-                              : parseFloat(e.target.value),
+                              ? 0
+                              : parseFloat(e.target.value) || 0,
                         })
                       }
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
@@ -1785,17 +1765,15 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                       <input
                         type="number"
                         value={
-                          formData.retailPrice === ""
-                            ? ""
-                            : formData.retailPrice
+                          formData.retailPrice || ""
                         }
                         onChange={(e) =>
                           setFormData({
                             ...formData,
                             retailPrice:
                               e.target.value === ""
-                                ? ""
-                                : parseFloat(e.target.value),
+                                ? 0
+                                : parseFloat(e.target.value) || 0,
                           })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
@@ -1815,17 +1793,15 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                       <input
                         type="number"
                         value={
-                          formData.wholesalePrice === ""
-                            ? ""
-                            : formData.wholesalePrice
+                          formData.wholesalePrice || ""
                         }
                         onChange={(e) =>
                           setFormData({
                             ...formData,
                             wholesalePrice:
                               e.target.value === ""
-                                ? ""
-                                : parseFloat(e.target.value),
+                                ? 0
+                                : parseFloat(e.target.value) || 0,
                           })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
@@ -1843,17 +1819,15 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                       <input
                         type="number"
                         value={
-                          formData.distributorPrice === ""
-                            ? ""
-                            : formData.distributorPrice
+                          formData.distributorPrice || ""
                         }
                         onChange={(e) =>
                           setFormData({
                             ...formData,
                             distributorPrice:
                               e.target.value === ""
-                                ? ""
-                                : parseFloat(e.target.value),
+                                ? 0
+                                : parseFloat(e.target.value) || 0,
                           })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"

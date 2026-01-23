@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot@1.1.2";
 import { VariantProps, cva } from "class-variance-authority@0.7.1";
-import { PanelLeftIcon } from "lucide-react@0.487.0";
+import { PanelLeftIcon, X } from "lucide-react@0.487.0";
 
 import { useIsMobile } from "./use-mobile";
 import { cn } from "./utils";
@@ -275,6 +275,38 @@ function SidebarTrigger({
     >
       <PanelLeftIcon />
       <span className="sr-only">Toggle Sidebar</span>
+    </Button>
+  );
+}
+
+function SidebarClose({
+  className,
+  onClick,
+  ...props
+}: React.ComponentProps<typeof Button>) {
+  const { toggleSidebar, isMobile, setOpenMobile, setOpen } = useSidebar();
+
+  const handleClose = (event: React.MouseEvent<HTMLButtonElement>) => {
+    onClick?.(event);
+    if (isMobile) {
+      setOpenMobile(false);
+    } else {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <Button
+      data-sidebar="close"
+      data-slot="sidebar-close"
+      variant="ghost"
+      size="icon"
+      className={cn("size-7", className)}
+      onClick={handleClose}
+      {...props}
+    >
+      <X className="size-4" />
+      <span className="sr-only">Close Sidebar</span>
     </Button>
   );
 }
@@ -700,6 +732,7 @@ function SidebarMenuSubButton({
 
 export {
   Sidebar,
+  SidebarClose,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,

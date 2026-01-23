@@ -866,6 +866,15 @@ export const AdminDashboard: React.FC = () => {
               </div>
             )}
 
+            {/* Close Sidebar Button */}
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="absolute top-2 right-2 w-7 h-7 bg-white/10 hover:bg-red-500/80 rounded-lg flex items-center justify-center transition-all hover:scale-110 z-20"
+              title="Close Sidebar"
+            >
+              <X className="w-4 h-4 text-white" />
+            </button>
+
             {/* Collapse Button */}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -1109,14 +1118,19 @@ export const AdminDashboard: React.FC = () => {
             <div className="relative px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
+                  {/* Menu button to open sidebar - more prominent when sidebar is closed */}
                   <button
                     onClick={() => setSidebarOpen(!sidebarOpen)}
-                    className="p-2 hover:bg-gray-100 rounded-xl transition-all hover:scale-110 shadow-sm"
+                    className={`p-2.5 rounded-xl transition-all hover:scale-110 shadow-sm ${
+                      sidebarOpen
+                        ? "hover:bg-gray-100"
+                        : "bg-gradient-to-br from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-lg"
+                    }`}
                   >
                     {sidebarOpen ? (
                       <X className="w-5 h-5 text-gray-700" />
                     ) : (
-                      <Menu className="w-5 h-5 text-gray-700" />
+                      <Menu className="w-5 h-5 text-white" />
                     )}
                   </button>
 

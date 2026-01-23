@@ -19,6 +19,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { Bill, CustomerOrder, InventoryItem, Order, Party } from "../../types";
 import { PopupContainer } from "../PopupContainer";
 import { useCustomPopup } from "../../hooks/useCustomPopup";
+import { apiFetch } from "../../utils/apiClient";
 
 type ReturnType = "sales" | "purchase";
 
@@ -76,7 +77,7 @@ export const ReturnPanel: React.FC = () => {
   >([]);
   const [isLoadingSalesReturns, setIsLoadingSalesReturns] = useState(false);
   const [salesReturnsError, setSalesReturnsError] = useState<string | null>(
-    null
+    null,
   );
   const [purchaseReturnsFromApi, setPurchaseReturnsFromApi] = useState<
     ReturnRecord[]
@@ -152,8 +153,8 @@ export const ReturnPanel: React.FC = () => {
         apiReturn?.order_status === "pending"
           ? "pending"
           : apiReturn?.order_status === "rejected"
-          ? "rejected"
-          : "completed",
+            ? "rejected"
+            : "completed",
       workspaceId: apiReturn?.tenant?.toString?.(),
       createdAt:
         apiReturn?.created ||
@@ -213,7 +214,7 @@ export const ReturnPanel: React.FC = () => {
   const loadLocalReturns = () => {
     const allReturns = getFromStorage("returns", []);
     const workspaceReturns = allReturns.filter(
-      (r: ReturnRecord) => r.workspaceId === currentUser?.workspaceId
+      (r: ReturnRecord) => r.workspaceId === currentUser?.workspaceId,
     );
     setReturns(workspaceReturns);
   };
@@ -223,24 +224,18 @@ export const ReturnPanel: React.FC = () => {
     setSalesReturnsError(null);
 
     try {
-      const token =
-        localStorage.getItem("accessToken") ||
-        localStorage.getItem("auth_token");
-
-      const response = await fetch(
+      const response = await apiFetch(
         `${import.meta.env.VITE_API_BASE_URL}/sales/orders/returned/`,
         {
           headers: {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-        }
+        },
       );
 
       if (!response.ok) {
         throw new Error(
-          `Failed to fetch returned sales orders (${response.status})`
+          `Failed to fetch returned sales orders (${response.status})`,
         );
       }
 
@@ -248,15 +243,15 @@ export const ReturnPanel: React.FC = () => {
       const results = Array.isArray(data?.results)
         ? data.results
         : Array.isArray(data)
-        ? data
-        : [];
+          ? data
+          : [];
 
       const mapped = results.map(mapApiReturnToRecord);
       setSalesReturnsFromApi(mapped);
     } catch (error: any) {
       console.error("Error fetching returned sales orders:", error);
       setSalesReturnsError(
-        error?.message || "Unable to load returned sales orders"
+        error?.message || "Unable to load returned sales orders",
       );
     } finally {
       setIsLoadingSalesReturns(false);
@@ -268,26 +263,20 @@ export const ReturnPanel: React.FC = () => {
     setPurchaseReturnsError(null);
 
     try {
-      const token =
-        localStorage.getItem("accessToken") ||
-        localStorage.getItem("auth_token");
-
-      const response = await fetch(
+      const response = await apiFetch(
         `${
           import.meta.env.VITE_API_BASE_URL
         }/stock-management/purchase-order-items/returned/`,
         {
           headers: {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-        }
+        },
       );
 
       if (!response.ok) {
         throw new Error(
-          `Failed to fetch returned purchase items (${response.status})`
+          `Failed to fetch returned purchase items (${response.status})`,
         );
       }
 
@@ -295,15 +284,15 @@ export const ReturnPanel: React.FC = () => {
       const results = Array.isArray(data?.results)
         ? data.results
         : Array.isArray(data)
-        ? data
-        : [];
+          ? data
+          : [];
 
       const mapped = results.map(mapPurchaseReturnToRecord);
       setPurchaseReturnsFromApi(mapped);
     } catch (error: any) {
       console.error("Error fetching returned purchase items:", error);
       setPurchaseReturnsError(
-        error?.message || "Unable to load returned purchase items"
+        error?.message || "Unable to load returned purchase items",
       );
     } finally {
       setIsLoadingPurchaseReturns(false);
@@ -313,7 +302,7 @@ export const ReturnPanel: React.FC = () => {
   const loadParties = () => {
     const allParties = getFromStorage("parties", []);
     const workspaceParties = allParties.filter(
-      (p: Party) => p.workspaceId === currentUser?.workspaceId
+      (p: Party) => p.workspaceId === currentUser?.workspaceId,
     );
     setParties(workspaceParties);
   };
@@ -321,7 +310,7 @@ export const ReturnPanel: React.FC = () => {
   const loadInventory = () => {
     const allInventory = getFromStorage("inventory", []);
     const workspaceInventory = allInventory.filter(
-      (i: InventoryItem) => i.workspaceId === currentUser?.workspaceId
+      (i: InventoryItem) => i.workspaceId === currentUser?.workspaceId,
     );
     setInventory(workspaceInventory);
   };
@@ -337,7 +326,7 @@ export const ReturnPanel: React.FC = () => {
         (b: Bill) =>
           b.workspaceId === currentUser?.workspaceId &&
           (b.billNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            b.id === searchQuery)
+            b.id === searchQuery),
       );
 
       if (bill) {
@@ -351,7 +340,7 @@ export const ReturnPanel: React.FC = () => {
             price: item.price,
             total: item.total,
             warrantyPeriod: "",
-          }))
+          })),
         );
         return;
       }
@@ -360,7 +349,7 @@ export const ReturnPanel: React.FC = () => {
         (o: CustomerOrder) =>
           o.workspaceId === currentUser?.workspaceId &&
           (o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            o.id === searchQuery)
+            o.id === searchQuery),
       );
 
       if (order) {
@@ -374,21 +363,21 @@ export const ReturnPanel: React.FC = () => {
             price: item.price,
             total: item.total,
             warrantyPeriod: "",
-          }))
+          })),
         );
         return;
       }
 
       popup.showError(
         "Order not found. Please check the order ID or bill number.",
-        "Not Found"
+        "Not Found",
       );
     } else {
       const item = inventory.find(
         (i: InventoryItem) =>
           i.id === searchQuery ||
           i.partNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          i.name?.toLowerCase().includes(searchQuery.toLowerCase())
+          i.name?.toLowerCase().includes(searchQuery.toLowerCase()),
       );
 
       if (item) {
@@ -419,7 +408,7 @@ export const ReturnPanel: React.FC = () => {
 
       popup.showError(
         "Product not found. Please check the product ID or name.",
-        "Not Found"
+        "Not Found",
       );
     }
   };
@@ -429,16 +418,16 @@ export const ReturnPanel: React.FC = () => {
       selectedItems.map((item) =>
         item.itemId === itemId
           ? { ...item, returnQuantity: Math.min(quantity, item.quantity) }
-          : item
-      )
+          : item,
+      ),
     );
   };
 
   const handleWarrantyChange = (itemId: string, warranty: string) => {
     setSelectedItems(
       selectedItems.map((item) =>
-        item.itemId === itemId ? { ...item, warrantyPeriod: warranty } : item
-      )
+        item.itemId === itemId ? { ...item, warrantyPeriod: warranty } : item,
+      ),
     );
   };
 
@@ -452,19 +441,19 @@ export const ReturnPanel: React.FC = () => {
   const calculateRefundAmount = () => {
     return selectedItems.reduce(
       (sum, item) => sum + item.returnQuantity * item.price,
-      0
+      0,
     );
   };
 
   const handleSubmitReturn = () => {
     const itemsToReturn = selectedItems.filter(
-      (item) => item.returnQuantity > 0
+      (item) => item.returnQuantity > 0,
     );
 
     if (itemsToReturn.length === 0) {
       popup.showError(
         "Please select at least one item to return with quantity > 0",
-        "No Items Selected"
+        "No Items Selected",
       );
       return;
     }
@@ -472,7 +461,7 @@ export const ReturnPanel: React.FC = () => {
     if (!returnReason.trim()) {
       popup.showError(
         "Please provide a reason for the return",
-        "Reason Required"
+        "Reason Required",
       );
       return;
     }
@@ -480,7 +469,7 @@ export const ReturnPanel: React.FC = () => {
     if (activeTab === "purchase" && !selectedParty) {
       popup.showError(
         "Please select a supplier party for purchase return",
-        "Party Required"
+        "Party Required",
       );
       return;
     }
@@ -517,7 +506,7 @@ export const ReturnPanel: React.FC = () => {
     const updatedInventory = [...inventory];
     itemsToReturn.forEach((returnItem) => {
       const inventoryIndex = updatedInventory.findIndex(
-        (i) => i.id === returnItem.itemId
+        (i) => i.id === returnItem.itemId,
       );
       if (inventoryIndex !== -1) {
         if (activeTab === "sales") {
@@ -544,7 +533,7 @@ export const ReturnPanel: React.FC = () => {
 
     popup.showSuccess(
       `Refund amount: Rs${returnRecord.refundAmount.toLocaleString()}`,
-      `Return ${returnRecord.returnNumber} Submitted!`
+      `Return ${returnRecord.returnNumber} Submitted!`,
     );
   };
 
@@ -570,7 +559,7 @@ export const ReturnPanel: React.FC = () => {
 
   const checkWarrantyStatus = (
     originalDate: string,
-    warrantyPeriod?: string
+    warrantyPeriod?: string,
   ) => {
     if (!warrantyPeriod)
       return { status: "none", message: "No warranty" } as const;
@@ -583,7 +572,7 @@ export const ReturnPanel: React.FC = () => {
     const now = new Date();
     const isValid = now <= expiryDate;
     const daysLeft = Math.ceil(
-      (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
     );
 
     return {
@@ -694,7 +683,7 @@ export const ReturnPanel: React.FC = () => {
                       (p) =>
                         p.type === "supplier" ||
                         p.type === "distributor" ||
-                        p.type === "wholesaler"
+                        p.type === "wholesaler",
                     )
                     .map((party) => (
                       <option key={party.id} value={party.id}>
@@ -739,7 +728,7 @@ export const ReturnPanel: React.FC = () => {
                             <Calendar className="w-4 h-4" />
                             <span>
                               {new Date(
-                                foundOrder.createdAt
+                                foundOrder.createdAt,
                               ).toLocaleDateString("en-US", {
                                 day: "2-digit",
                                 month: "short",
@@ -771,7 +760,7 @@ export const ReturnPanel: React.FC = () => {
                     const warranty = item.warrantyPeriod
                       ? checkWarrantyStatus(
                           foundOrder.createdAt,
-                          item.warrantyPeriod
+                          item.warrantyPeriod,
                         )
                       : null;
 
@@ -799,8 +788,8 @@ export const ReturnPanel: React.FC = () => {
                                 warranty.status === "valid"
                                   ? "bg-green-100 text-green-700"
                                   : warranty.status === "expired"
-                                  ? "bg-red-100 text-red-700"
-                                  : "bg-gray-100 text-gray-700"
+                                    ? "bg-red-100 text-red-700"
+                                    : "bg-gray-100 text-gray-700"
                               }`}
                             >
                               <Shield className="w-3 h-3" />
@@ -822,7 +811,7 @@ export const ReturnPanel: React.FC = () => {
                               onChange={(e) =>
                                 handleReturnQuantityChange(
                                   item.itemId,
-                                  parseInt(e.target.value) || 0
+                                  parseInt(e.target.value) || 0,
                                 )
                               }
                               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -839,7 +828,7 @@ export const ReturnPanel: React.FC = () => {
                                 onChange={(e) =>
                                   handleWarrantyChange(
                                     item.itemId,
-                                    e.target.value
+                                    e.target.value,
                                   )
                                 }
                                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -867,7 +856,7 @@ export const ReturnPanel: React.FC = () => {
                                     if (customWarranty) {
                                       handleWarrantyChange(
                                         item.itemId,
-                                        customWarranty
+                                        customWarranty,
                                       );
                                     }
                                   }}
@@ -986,7 +975,7 @@ export const ReturnPanel: React.FC = () => {
                       .sort(
                         (a, b) =>
                           new Date(b.createdAt).getTime() -
-                          new Date(a.createdAt).getTime()
+                          new Date(a.createdAt).getTime(),
                       )
                       .map((returnRecord) => (
                         <div
@@ -1004,8 +993,8 @@ export const ReturnPanel: React.FC = () => {
                                     returnRecord.status === "completed"
                                       ? "bg-green-100 text-green-700"
                                       : returnRecord.status === "pending"
-                                      ? "bg-yellow-100 text-yellow-700"
-                                      : "bg-red-100 text-red-700"
+                                        ? "bg-yellow-100 text-yellow-700"
+                                        : "bg-red-100 text-red-700"
                                   }`}
                                 >
                                   {returnRecord.status}
@@ -1042,7 +1031,7 @@ export const ReturnPanel: React.FC = () => {
                               </p>
                               <p className="text-xs text-gray-500">
                                 {new Date(
-                                  returnRecord.returnDate
+                                  returnRecord.returnDate,
                                 ).toLocaleDateString("en-US", {
                                   day: "2-digit",
                                   month: "short",
@@ -1102,7 +1091,7 @@ export const ReturnPanel: React.FC = () => {
                             <span>
                               Original Date:{" "}
                               {new Date(
-                                returnRecord.originalDate
+                                returnRecord.originalDate,
                               ).toLocaleDateString()}
                             </span>
                             <span>
@@ -1110,9 +1099,9 @@ export const ReturnPanel: React.FC = () => {
                               {Math.ceil(
                                 (new Date(returnRecord.returnDate).getTime() -
                                   new Date(
-                                    returnRecord.originalDate
+                                    returnRecord.originalDate,
                                   ).getTime()) /
-                                  (1000 * 60 * 60 * 24)
+                                  (1000 * 60 * 60 * 24),
                               )}
                             </span>
                           </div>

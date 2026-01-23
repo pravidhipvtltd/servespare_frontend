@@ -24,6 +24,7 @@ import { PartyType, CustomerType, PaymentTerms } from "../../types";
 import { getBranches } from "../../api/branch.api";
 import { Pagination } from "../common/Pagination";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { apiFetch } from "../../utils/apiClient";
 interface BackendParty {
   id: string;
   tenantId: string;
@@ -186,23 +187,8 @@ export const PartiesPanel: React.FC = () => {
     const fetchRegions = async () => {
       setIsLoadingRegions(true);
       try {
-        const token =
-          localStorage.getItem("accessToken") ||
-          localStorage.getItem("auth_token");
-
-        if (!token) {
-          console.warn("No access token found for regions fetch");
-          setIsLoadingRegions(false);
-          return;
-        }
-
         const url = `${import.meta.env.VITE_API_BASE_URL}/sales/orders/province_districts/`;
-        const response = await fetch(url, {
-          headers: {
-            "ngrok-skip-browser-warning": "true",
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await apiFetch(url);
 
         if (response.ok) {
           const data = await response.json();
@@ -228,15 +214,12 @@ export const PartiesPanel: React.FC = () => {
     setError(null);
 
     try {
-      const accessToken = localStorage.getItem("accessToken");
       const endpoint =
         activeTab === "suppliers" ? "parties/suppliers/" : "parties/customers/";
-      const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
+      const response = await apiFetch(`${API_BASE_URL}/${endpoint}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
-          Authorization: `Bearer ${accessToken}`,
         },
       });
 
@@ -436,15 +419,12 @@ export const PartiesPanel: React.FC = () => {
 
       if (editingParty) {
         // Update existing party
-        const accessToken = localStorage.getItem("accessToken");
-        const response = await fetch(
+        const response = await apiFetch(
           `${API_BASE_URL}/parties/${editingParty.id}/`,
           {
             method: "PATCH",
             headers: {
               "Content-Type": "application/json",
-              "ngrok-skip-browser-warning": "true",
-              Authorization: `Bearer ${accessToken}`,
             },
             body: JSON.stringify(apiData),
           },
@@ -459,13 +439,10 @@ export const PartiesPanel: React.FC = () => {
         loadParties();
       } else {
         // Create new party
-        const accessToken = localStorage.getItem("accessToken");
-        const response = await fetch(`${API_BASE_URL}/parties/`, {
+        const response = await apiFetch(`${API_BASE_URL}/parties/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
-            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify(apiData),
         });
@@ -508,13 +485,10 @@ export const PartiesPanel: React.FC = () => {
     });
 
     try {
-      const accessToken = localStorage.getItem("accessToken");
-      const response = await fetch(`${API_BASE_URL}/parties/${partyId}/`, {
+      const response = await apiFetch(`${API_BASE_URL}/parties/${partyId}/`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
-          Authorization: `Bearer ${accessToken}`,
         },
       });
 
@@ -564,14 +538,11 @@ export const PartiesPanel: React.FC = () => {
 
     try {
       // Delete each selected party
-      const accessToken = localStorage.getItem("accessToken");
       const deletePromises = selectedParties.map((partyId) =>
-        fetch(`${API_BASE_URL}/parties/${partyId}/`, {
+        apiFetch(`${API_BASE_URL}/parties/${partyId}/`, {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
-            Authorization: `Bearer ${accessToken}`,
           },
         }),
       );
@@ -622,17 +593,17 @@ export const PartiesPanel: React.FC = () => {
   const totalPages = Math.ceil(filteredParties.length / itemsPerPage);
 
   return (
-    <div className="h-full flex flex-col bg-[#0a0e1a]">
+    <div className="h-full flex flex-col bg-gray-50">
       {/* Header */}
-      <div className="flex-none bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 border-b border-slate-600 p-6">
+      <div className="flex-none bg-white border-b border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/20 rounded-lg">
-              <Building2 className="h-6 w-6 text-blue-400" />
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Building2 className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-xl text-white">Parties Management</h2>
-              <p className="text-sm text-slate-400">
+              <h2 className="text-xl text-gray-900">Parties Management</h2>
+              <p className="text-sm text-gray-600">
                 Manage your customers and suppliers
               </p>
             </div>
@@ -656,7 +627,7 @@ export const PartiesPanel: React.FC = () => {
             className={`px-6 py-2 rounded-lg transition-all ${
               activeTab === "suppliers"
                 ? "bg-blue-500 text-white"
-                : "bg-slate-700/50 text-slate-300 hover:bg-slate-700"
+                : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
             }`}
           >
             <div className="flex items-center gap-2">
@@ -672,7 +643,7 @@ export const PartiesPanel: React.FC = () => {
             className={`px-6 py-2 rounded-lg transition-all ${
               activeTab === "customers"
                 ? "bg-blue-500 text-white"
-                : "bg-slate-700/50 text-slate-300 hover:bg-slate-700"
+                : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
             }`}
           >
             <div className="flex items-center gap-2">
@@ -685,13 +656,13 @@ export const PartiesPanel: React.FC = () => {
         {/* Filters */}
         <div className="flex gap-3 items-center">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
               placeholder={`Search ${activeTab}...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+              className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -701,7 +672,7 @@ export const PartiesPanel: React.FC = () => {
               onChange={(e) =>
                 setSelectedCustomerType(e.target.value as CustomerType | "all")
               }
-              className="px-4 py-2 bg-slate-800/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+              className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All Customer Types</option>
               <option value="retail">Retail Customer</option>
@@ -715,22 +686,22 @@ export const PartiesPanel: React.FC = () => {
 
         {/* Bulk Actions */}
         {selectedParties.length > 0 && (
-          <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg flex items-center justify-between">
-            <span className="text-blue-400">
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+            <span className="text-blue-700">
               {selectedParties.length} part
               {selectedParties.length > 1 ? "ies" : "y"} selected
             </span>
             <div className="flex gap-2">
               <button
                 onClick={handleBulkDelete}
-                className="px-3 py-1 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 flex items-center gap-2"
+                className="px-3 py-1 bg-red-50 text-red-600 border border-red-200 rounded hover:bg-red-100 flex items-center gap-2"
               >
                 <Trash2 className="h-4 w-4" />
                 Delete Selected
               </button>
               <button
                 onClick={() => setSelectedParties([])}
-                className="px-3 py-1 bg-slate-700 text-white rounded hover:bg-slate-600"
+                className="px-3 py-1 bg-white text-gray-700 border border-gray-300 rounded hover:bg-gray-50"
               >
                 Clear Selection
               </button>
@@ -740,7 +711,7 @@ export const PartiesPanel: React.FC = () => {
 
         {/* Error Display */}
         {error && (
-          <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center gap-2 text-red-400">
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
             <AlertCircle className="h-4 w-4" />
             <span>{error}</span>
             <button onClick={() => setError(null)} className="ml-auto">
@@ -756,7 +727,7 @@ export const PartiesPanel: React.FC = () => {
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-              <p className="text-slate-400">Loading parties...</p>
+              <p className="text-gray-600">Loading parties...</p>
             </div>
           </div>
         ) : (
@@ -764,12 +735,14 @@ export const PartiesPanel: React.FC = () => {
             {paginatedParties.map((party) => (
               <div
                 key={party.id}
-                className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 hover:border-blue-500/50 transition-all"
+                className="bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-400 hover:shadow-md transition-all"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-white font-medium">{party.name}</h3>
+                      <h3 className="text-gray-900 font-medium">
+                        {party.name}
+                      </h3>
                       {!party.isActive && (
                         <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded">
                           Inactive
@@ -813,35 +786,35 @@ export const PartiesPanel: React.FC = () => {
 
                 <div className="space-y-2 mb-3 text-sm">
                   {party.contactPerson && (
-                    <div className="text-slate-400">
+                    <div className="text-gray-600">
                       Contact:{" "}
-                      <span className="text-slate-300">
+                      <span className="text-gray-900">
                         {party.contactPerson}
                       </span>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 text-slate-400">
+                  <div className="flex items-center gap-2 text-gray-600">
                     <Phone className="h-3 w-3" />
-                    <span className="text-slate-300">{party.phone}</span>
+                    <span className="text-gray-900">{party.phone}</span>
                   </div>
                   {party.email && (
-                    <div className="flex items-center gap-2 text-slate-400">
+                    <div className="flex items-center gap-2 text-gray-600">
                       <Mail className="h-3 w-3" />
-                      <span className="text-slate-300">{party.email}</span>
+                      <span className="text-gray-900">{party.email}</span>
                     </div>
                   )}
                   {party.address && (
-                    <div className="flex items-center gap-2 text-slate-400">
+                    <div className="flex items-center gap-2 text-gray-600">
                       <MapPin className="h-3 w-3" />
-                      <span className="text-slate-300">{party.address}</span>
+                      <span className="text-gray-900">{party.address}</span>
                     </div>
                   )}
                 </div>
 
-                <div className="pt-3 border-t border-slate-700 mb-3">
+                <div className="pt-3 border-t border-gray-200 mb-3">
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
-                      <div className="text-slate-400">Balance</div>
+                      <div className="text-gray-600">Balance</div>
                       <div
                         className={`font-medium ${
                           party.currentBalance >= 0
@@ -853,8 +826,8 @@ export const PartiesPanel: React.FC = () => {
                       </div>
                     </div>
                     <div>
-                      <div className="text-slate-400">Credit Limit</div>
-                      <div className="text-slate-300">
+                      <div className="text-gray-600">Credit Limit</div>
+                      <div className="text-gray-900">
                         NPR {party.creditLimit.toLocaleString()}
                       </div>
                     </div>
@@ -864,21 +837,21 @@ export const PartiesPanel: React.FC = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleViewParty(party)}
-                    className="flex-1 px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/30 flex items-center justify-center gap-2 text-sm"
+                    className="flex-1 px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 flex items-center justify-center gap-2 text-sm"
                   >
                     <Eye className="h-3 w-3" />
                     View
                   </button>
                   <button
                     onClick={() => handleOpenSidebar(party)}
-                    className="flex-1 px-3 py-1.5 bg-slate-700 text-white rounded hover:bg-slate-600 flex items-center justify-center gap-2 text-sm"
+                    className="flex-1 px-3 py-1.5 bg-gray-100 text-gray-700 border border-gray-300 rounded hover:bg-gray-200 flex items-center justify-center gap-2 text-sm"
                   >
                     <Edit className="h-3 w-3" />
                     Edit
                   </button>
                   <button
                     onClick={() => handleDelete(party.id, party.name)}
-                    className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30"
+                    className="px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded hover:bg-red-100"
                   >
                     <Trash2 className="h-3 w-3" />
                   </button>
@@ -901,11 +874,9 @@ export const PartiesPanel: React.FC = () => {
 
         {filteredParties.length === 0 && !isLoading && (
           <div className="text-center py-12">
-            <Building2 className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-lg text-slate-400 mb-2">
-              No {activeTab} found
-            </h3>
-            <p className="text-sm text-slate-500">
+            <Building2 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg text-gray-700 mb-2">No {activeTab} found</h3>
+            <p className="text-sm text-gray-600">
               Try adjusting your search or add a new{" "}
               {activeTab === "suppliers" ? "supplier" : "customer"}
             </p>
@@ -916,14 +887,14 @@ export const PartiesPanel: React.FC = () => {
       {/* Add/Edit Party Sidebar */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex justify-end">
-          <div className="w-full max-w-2xl bg-slate-800 shadow-2xl overflow-y-auto">
-            <div className="p-6 border-b border-slate-700 flex items-center justify-between sticky top-0 bg-slate-800 z-10">
-              <h3 className="text-xl text-white">
+          <div className="w-full max-w-2xl bg-white shadow-2xl overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
+              <h3 className="text-xl text-gray-900">
                 {editingParty ? "Edit Party" : "Add New Party"}
               </h3>
               <button
                 onClick={handleCloseSidebar}
-                className="text-slate-400 hover:text-white"
+                className="text-gray-400 hover:text-gray-900"
               >
                 <X className="h-6 w-6" />
               </button>
@@ -932,14 +903,14 @@ export const PartiesPanel: React.FC = () => {
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
               {/* Basic Information */}
               <div>
-                <h4 className="text-white mb-4 flex items-center gap-2">
-                  <Building2 className="h-5 w-5 text-blue-400" />
+                <h4 className="text-gray-900 mb-4 flex items-center gap-2 font-medium">
+                  <Building2 className="h-5 w-5 text-blue-600" />
                   Basic Information
                 </h4>
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-slate-400 mb-2">
+                      <label className="block text-sm text-gray-700 mb-2">
                         Party Type *
                       </label>
                       <select
@@ -952,7 +923,7 @@ export const PartiesPanel: React.FC = () => {
                             type: e.target.value as PartyType,
                           })
                         }
-                        className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                        className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                       >
                         <option value="supplier">Supplier</option>
                         <option value="customer">Customer</option>
@@ -960,7 +931,7 @@ export const PartiesPanel: React.FC = () => {
                     </div>
                     {formData.type === "customer" && (
                       <div>
-                        <label className="block text-sm text-slate-400 mb-2">
+                        <label className="block text-sm text-gray-700 mb-2">
                           Customer Type *
                         </label>
                         <select
@@ -972,7 +943,7 @@ export const PartiesPanel: React.FC = () => {
                               customerType: e.target.value as CustomerType,
                             })
                           }
-                          className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                          className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="retail">Retail Customer</option>
                           <option value="retailer">Retailer</option>
@@ -985,7 +956,7 @@ export const PartiesPanel: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm text-slate-400 mb-2">
+                    <label className="block text-sm text-gray-700 mb-2">
                       Party Name *
                     </label>
                     <input
@@ -995,13 +966,13 @@ export const PartiesPanel: React.FC = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, name: e.target.value })
                       }
-                      className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Enter party name"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm text-slate-400 mb-2">
+                    <label className="block text-sm text-gray-700 mb-2">
                       Contact Person
                     </label>
                     <input
@@ -1013,7 +984,7 @@ export const PartiesPanel: React.FC = () => {
                           contactPerson: e.target.value,
                         })
                       }
-                      className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Enter contact person name"
                     />
                   </div>
@@ -1022,14 +993,14 @@ export const PartiesPanel: React.FC = () => {
 
               {/* Contact Information */}
               <div>
-                <h4 className="text-white mb-4 flex items-center gap-2">
-                  <Phone className="h-5 w-5 text-blue-400" />
+                <h4 className="text-gray-900 mb-4 flex items-center gap-2 font-medium">
+                  <Phone className="h-5 w-5 text-blue-600" />
                   Contact Information
                 </h4>
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-slate-400 mb-2">
+                      <label className="block text-sm text-gray-700 mb-2">
                         Phone *
                       </label>
                       <input
@@ -1039,12 +1010,12 @@ export const PartiesPanel: React.FC = () => {
                         onChange={(e) =>
                           setFormData({ ...formData, phone: e.target.value })
                         }
-                        className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                        className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="+977 9800000000"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm text-slate-400 mb-2">
+                      <label className="block text-sm text-gray-700 mb-2">
                         Email
                       </label>
                       <input
@@ -1053,14 +1024,14 @@ export const PartiesPanel: React.FC = () => {
                         onChange={(e) =>
                           setFormData({ ...formData, email: e.target.value })
                         }
-                        className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                        className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="email@example.com"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm text-slate-400 mb-2">
+                    <label className="block text-sm text-gray-700 mb-2">
                       Address
                     </label>
                     <input
@@ -1069,7 +1040,7 @@ export const PartiesPanel: React.FC = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, address: e.target.value })
                       }
-                      className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Street address"
                     />
                   </div>
@@ -1077,7 +1048,7 @@ export const PartiesPanel: React.FC = () => {
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm text-slate-400 mb-2">
+                        <label className="block text-sm text-gray-700 mb-2">
                           Province *
                         </label>
                         <select
@@ -1086,7 +1057,7 @@ export const PartiesPanel: React.FC = () => {
                             setFormData({ ...formData, state: e.target.value });
                             setSelectedDistrict("");
                           }}
-                          className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                          className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           disabled={isLoadingRegions}
                         >
                           <option value="">Select Province</option>
@@ -1098,13 +1069,13 @@ export const PartiesPanel: React.FC = () => {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm text-slate-400 mb-2">
+                        <label className="block text-sm text-gray-700 mb-2">
                           District *
                         </label>
                         <select
                           value={selectedDistrict}
                           onChange={(e) => setSelectedDistrict(e.target.value)}
-                          className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                          className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           disabled={!formData.state || isLoadingRegions}
                         >
                           <option value="">Select District</option>
@@ -1119,7 +1090,7 @@ export const PartiesPanel: React.FC = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm text-slate-400 mb-2">
+                      <label className="block text-sm text-gray-700 mb-2">
                         City/Town *
                       </label>
                       <input
@@ -1128,7 +1099,7 @@ export const PartiesPanel: React.FC = () => {
                         onChange={(e) =>
                           setFormData({ ...formData, city: e.target.value })
                         }
-                        className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                        className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Enter city or town"
                       />
                     </div>
@@ -1138,14 +1109,14 @@ export const PartiesPanel: React.FC = () => {
 
               {/* Financial Information */}
               <div>
-                <h4 className="text-white mb-4 flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-blue-400" />
+                <h4 className="text-gray-900 mb-4 flex items-center gap-2 font-medium">
+                  <FileText className="h-5 w-5 text-blue-600" />
                   Financial Information
                 </h4>
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-slate-400 mb-2">
+                      <label className="block text-sm text-gray-700 mb-2">
                         GST Number
                       </label>
                       <input
@@ -1157,12 +1128,12 @@ export const PartiesPanel: React.FC = () => {
                             gstNumber: e.target.value,
                           })
                         }
-                        className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                        className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="GST number"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm text-slate-400 mb-2">
+                      <label className="block text-sm text-gray-700 mb-2">
                         PAN Number
                       </label>
                       <input
@@ -1174,14 +1145,14 @@ export const PartiesPanel: React.FC = () => {
                             panNumber: e.target.value,
                           })
                         }
-                        className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                        className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="PAN number"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm text-slate-400 mb-2">
+                    <label className="block text-sm text-gray-700 mb-2">
                       Payment Terms
                     </label>
                     <select
@@ -1192,7 +1163,7 @@ export const PartiesPanel: React.FC = () => {
                           paymentTerms: e.target.value as PaymentTerms,
                         })
                       }
-                      className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="cash">Cash</option>
                       <option value="credit_7">7 Days Credit</option>
@@ -1204,7 +1175,7 @@ export const PartiesPanel: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-slate-400 mb-2">
+                      <label className="block text-sm text-gray-700 mb-2">
                         Credit Limit (NPR)
                       </label>
                       <input
@@ -1217,12 +1188,12 @@ export const PartiesPanel: React.FC = () => {
                             creditLimit: parseFloat(e.target.value) || 0,
                           })
                         }
-                        className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                        className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="0"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm text-slate-400 mb-2">
+                      <label className="block text-sm text-gray-700 mb-2">
                         Opening Balance (NPR)
                       </label>
                       <input
@@ -1234,7 +1205,7 @@ export const PartiesPanel: React.FC = () => {
                             openingBalance: parseFloat(e.target.value) || 0,
                           })
                         }
-                        className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                        className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="0"
                       />
                     </div>
@@ -1242,11 +1213,11 @@ export const PartiesPanel: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-slate-700">
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
                 <button
                   type="button"
                   onClick={handleCloseSidebar}
-                  className="flex-1 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600"
+                  className="flex-1 px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
                   disabled={isLoading}
                 >
                   Cancel
@@ -1271,12 +1242,12 @@ export const PartiesPanel: React.FC = () => {
       {/* View Party Sidebar */}
       {viewingSidebar && viewingParty && (
         <div className="fixed inset-0 bg-black/50 z-50 flex justify-end">
-          <div className="w-full max-w-2xl bg-slate-800 shadow-2xl overflow-y-auto">
-            <div className="p-6 border-b border-slate-700 flex items-center justify-between sticky top-0 bg-slate-800 z-10">
-              <h3 className="text-xl text-white">{viewingParty.name}</h3>
+          <div className="w-full max-w-2xl bg-white shadow-2xl overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
+              <h3 className="text-xl text-gray-900">{viewingParty.name}</h3>
               <button
                 onClick={handleCloseSidebar}
-                className="text-slate-400 hover:text-white"
+                className="text-gray-400 hover:text-gray-900"
               >
                 <X className="h-6 w-6" />
               </button>
@@ -1284,34 +1255,34 @@ export const PartiesPanel: React.FC = () => {
 
             <div className="p-6 space-y-6">
               {/* Party Details */}
-              <div className="bg-slate-900 rounded-lg p-4">
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <div className="text-slate-400 mb-1">Type</div>
-                    <div className="text-white">
+                    <div className="text-gray-600 mb-1">Type</div>
+                    <div className="text-gray-900">
                       {PARTY_TYPE_LABELS[viewingParty.type]}
                     </div>
                   </div>
                   {viewingParty.customerType && (
                     <div>
-                      <div className="text-slate-400 mb-1">Customer Type</div>
-                      <div className="text-white">
+                      <div className="text-gray-600 mb-1">Customer Type</div>
+                      <div className="text-gray-900">
                         {CUSTOMER_TYPE_LABELS[viewingParty.customerType]}
                       </div>
                     </div>
                   )}
                   <div>
-                    <div className="text-slate-400 mb-1">Phone</div>
-                    <div className="text-white">{viewingParty.phone}</div>
+                    <div className="text-gray-600 mb-1">Phone</div>
+                    <div className="text-gray-900">{viewingParty.phone}</div>
                   </div>
                   {viewingParty.email && (
                     <div>
-                      <div className="text-slate-400 mb-1">Email</div>
-                      <div className="text-white">{viewingParty.email}</div>
+                      <div className="text-gray-600 mb-1">Email</div>
+                      <div className="text-gray-900">{viewingParty.email}</div>
                     </div>
                   )}
                   <div>
-                    <div className="text-slate-400 mb-1">Current Balance</div>
+                    <div className="text-gray-600 mb-1">Current Balance</div>
                     <div
                       className={`font-medium ${
                         viewingParty.currentBalance >= 0
@@ -1324,8 +1295,8 @@ export const PartiesPanel: React.FC = () => {
                     </div>
                   </div>
                   <div>
-                    <div className="text-slate-400 mb-1">Credit Limit</div>
-                    <div className="text-white">
+                    <div className="text-gray-600 mb-1">Credit Limit</div>
+                    <div className="text-gray-900">
                       NPR {viewingParty.creditLimit.toLocaleString()}
                     </div>
                   </div>
@@ -1334,16 +1305,16 @@ export const PartiesPanel: React.FC = () => {
 
               {/* Transaction History */}
               <div>
-                <h4 className="text-white mb-4 flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-blue-400" />
+                <h4 className="text-gray-900 mb-4 flex items-center gap-2 font-medium">
+                  <FileText className="h-5 w-5 text-blue-600" />
                   Transaction History
                 </h4>
                 {transactions.length > 0 ? (
                   <div className="space-y-2">
                     {transactions.map((txn) => (
-                      <div key={txn.id} className="bg-slate-900 rounded-lg p-3">
+                      <div key={txn.id} className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-white capitalize">
+                          <span className="text-gray-900 capitalize">
                             {txn.type}
                           </span>
                           <span
@@ -1356,7 +1327,7 @@ export const PartiesPanel: React.FC = () => {
                             NPR {txn.amount.toLocaleString()}
                           </span>
                         </div>
-                        <div className="text-xs text-slate-400">
+                        <div className="text-xs text-gray-600">
                           {new Date(txn.date).toLocaleDateString()} - Balance:
                           NPR {txn.balanceAfter.toLocaleString()}
                         </div>
@@ -1364,7 +1335,7 @@ export const PartiesPanel: React.FC = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-slate-400">
+                  <div className="text-center py-8 text-gray-600">
                     No transactions yet
                   </div>
                 )}
