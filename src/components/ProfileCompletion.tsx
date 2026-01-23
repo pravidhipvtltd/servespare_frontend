@@ -10,6 +10,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { handlePhoneInput, NEPAL_COUNTRY_CODE } from "../utils/phoneValidation";
 
 interface ProfileCompletionProps {
   userEmail: string;
@@ -25,7 +26,7 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
   const [profileData, setProfileData] = useState({
     businessName: "",
     ownerName: "",
-    phone: "+977",
+    phone: NEPAL_COUNTRY_CODE,
     address: "",
     panVatNumber: "",
     password: "",
@@ -65,7 +66,7 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
       // Get current user and update their profile
       const users = JSON.parse(localStorage.getItem("users") || "[]");
       const currentUser = JSON.parse(
-        localStorage.getItem("currentUser") || "{}"
+        localStorage.getItem("currentUser") || "{}",
       );
 
       const updatedUsers = users.map((user: any) => {
@@ -88,7 +89,7 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
 
       // Update current user
       const updatedCurrentUser = updatedUsers.find(
-        (u: any) => u.id === currentUser.id
+        (u: any) => u.id === currentUser.id,
       );
       localStorage.setItem("currentUser", JSON.stringify(updatedCurrentUser));
       localStorage.removeItem("needsProfileCompletion");
@@ -205,13 +206,18 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
                 type="tel"
                 value={profileData.phone}
                 onChange={(e) =>
-                  setProfileData({ ...profileData, phone: e.target.value })
+                  handlePhoneInput(e.target.value, (phone) =>
+                    setProfileData({ ...profileData, phone }),
+                  )
                 }
                 className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors"
-                placeholder="+977"
+                placeholder="+977 98XXXXXXXX"
                 required
               />
             </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Enter 10 digit number after +977
+            </p>
           </div>
 
           {/* Password */}

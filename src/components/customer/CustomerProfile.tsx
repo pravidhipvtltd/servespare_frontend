@@ -23,6 +23,11 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  formatPhoneWithCode,
+  handlePhoneInput,
+  isValidNepalPhone,
+} from "../../utils/phoneValidation";
 
 interface CustomerProfileProps {
   customerData: any;
@@ -922,16 +927,23 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
                         type="tel"
                         value={formData.phone}
                         onChange={(e) =>
-                          setFormData({ ...formData, phone: e.target.value })
+                          handlePhoneInput(e.target.value, (phone) =>
+                            setFormData({ ...formData, phone }),
+                          )
                         }
                         disabled={!isEditing}
-                        placeholder="+977 123-456-7890"
+                        placeholder="+977 98XXXXXXXX"
                         className={`w-full px-4 py-3 border rounded-xl transition-all ${
                           isEditing
                             ? "border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
                             : "border-gray-200 bg-gray-50"
                         }`}
                       />
+                      {isEditing && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Enter 10 digit number after +977
+                        </p>
+                      )}
                     </div>
 
                     {/* Address */}

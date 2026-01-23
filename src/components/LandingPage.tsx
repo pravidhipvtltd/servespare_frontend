@@ -226,7 +226,7 @@ export const LandingPage: React.FC<{ onBackToEntry?: () => void }> = ({
     <LandingLanguageProvider>
       <LandingPageContent onBackToEntry={handleBackToEntry} />
       {/* Floating Download Button - Shows on scroll */}
-      <FloatingDownloadButton showOnScroll={true} />
+      {/* <FloatingDownloadButton showOnScroll={true} /> */}
     </LandingLanguageProvider>
   );
 };
@@ -282,12 +282,12 @@ const Navigation: React.FC<{
         <div className="flex items-center justify-between h-20">
           {/* Logo & Back Button */}
           <div className="flex items-center space-x-2">
-            <button
+            {/* <button
               onClick={onBackToEntry}
               className="text-gray-400 hover:text-amber-600 transition-colors p-2 hover:bg-gray-50 rounded-lg"
             >
               <ArrowLeft className="w-5 h-5" />
-            </button>
+            </button> */}
             <button
               onClick={() => onNavigate("home")}
               className="flex items-center space-x-3"
@@ -308,8 +308,8 @@ const Navigation: React.FC<{
             </button>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="flex md:flex items-center space-x-8">
+          {/* Desktop Navigation (large screens) */}
+          <div className="hidden lg:flex items-center space-x-8">
             {navLinks.map((link) => (
               <button
                 key={link.page}
@@ -329,8 +329,8 @@ const Navigation: React.FC<{
             ))}
           </div>
 
-          {/* Login Button & Language Switcher */}
-          <div className="hidden md:flex items-center space-x-4">
+          {/* Login Button & Language Switcher (large screens) */}
+          <div className="hidden lg:flex items-center space-x-4">
             {/* Language Dropdown Selector */}
             <div className="relative">
               <button
@@ -397,10 +397,10 @@ const Navigation: React.FC<{
             </motion.button> */}
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Menu Button (shown on small/medium) */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100"
+            className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -413,7 +413,7 @@ const Navigation: React.FC<{
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0 }}
-          className="md:hidden bg-white border-t border-gray-200"
+          className="lg:hidden bg-white border-t border-gray-200"
         >
           <div className="px-4 py-4 space-y-3">
             {navLinks.map((link) => (
@@ -1303,7 +1303,7 @@ const Footer: React.FC<{
               </li>
               <li className="flex items-center text-sm">
                 <Phone size={16} className="mr-2 text-indigo-400" />
-                +977 1234567890
+                +977 9864430493
               </li>
               <li className="flex items-center text-sm">
                 <MapPin size={16} className="mr-2 text-indigo-400" />

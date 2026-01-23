@@ -27,6 +27,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { InventoryItem } from "../../types";
 import { useCustomPopup } from "../../hooks/useCustomPopup";
 import { PopupContainer } from "../PopupContainer";
+import { Pagination } from "../common/Pagination";
 import { toast } from "sonner";
 
 interface PricingTier {
@@ -58,6 +59,10 @@ export const PricingControlPanel: React.FC = () => {
   const [vehicleFilter, setVehicleFilter] = useState<
     "all" | "two_wheeler" | "four_wheeler"
   >("all");
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
 
   const [pricing, setPricing] = useState<PricingTier>({
     mrp: 0,
@@ -307,6 +312,18 @@ export const PricingControlPanel: React.FC = () => {
     return matchesSearch && matchesVehicle;
   });
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+  const paginatedItems = filteredItems.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, vehicleFilter]);
+
   const stats = {
     totalItems: items.length,
     avgRetailPrice: Math.round(
@@ -491,7 +508,7 @@ export const PricingControlPanel: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredItems.map((item) => {
+                {paginatedItems.map((item) => {
                   const costPrice = item.costPrice || item.price || 0;
                   const mrp = item.pricing?.mrp || item.mrp || 0;
                   const retailPrice =
@@ -573,6 +590,22 @@ export const PricingControlPanel: React.FC = () => {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+        
+        {/* Pagination */}
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between p-4 border-t border-gray-200">
+            <div className="text-sm text-gray-600">
+              Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+              {Math.min(currentPage * itemsPerPage, filteredItems.length)} of{" "}
+              {filteredItems.length} items
+            </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
         )}
       </div>

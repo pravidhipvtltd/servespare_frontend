@@ -18,6 +18,7 @@ import {
 import { Workspace, User, Bill } from "../types";
 import { getFromStorage, saveToStorage } from "../utils/mockData";
 import { ViewBranchModal, EditBranchModal } from "./SuperAdminModals";
+import { handlePhoneInput, NEPAL_COUNTRY_CODE } from "../utils/phoneValidation";
 
 interface BranchManagementViewProps {
   workspaces: Workspace[];
@@ -36,14 +37,23 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(
-    null
+    null,
   );
   const [formData, setFormData] = useState({
     name: "",
     contactEmail: "",
-    contactPhone: "+977",
+    contactPhone: NEPAL_COUNTRY_CODE,
     address: "",
   });
+  const [phoneError, setPhoneError] = useState("");
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handlePhoneInput(
+      e.target.value,
+      (phone) => setFormData({ ...formData, contactPhone: phone }),
+      setPhoneError,
+    );
+  };
 
   const handleAddBranch = () => {
     if (!formData.name) {
@@ -67,7 +77,7 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
     setFormData({
       name: "",
       contactEmail: "",
-      contactPhone: "+977",
+      contactPhone: NEPAL_COUNTRY_CODE,
       address: "",
     });
     alert("✅ Branch created successfully!");
@@ -76,12 +86,12 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
   const deleteBranch = (workspaceId: string) => {
     if (
       window.confirm(
-        "⚠️ Are you sure you want to delete this branch? This action cannot be undone."
+        "⚠️ Are you sure you want to delete this branch? This action cannot be undone.",
       )
     ) {
       const allWorkspaces: Workspace[] = getFromStorage("workspaces", []);
       const updatedWorkspaces = allWorkspaces.filter(
-        (w) => w.id !== workspaceId
+        (w) => w.id !== workspaceId,
       );
       saveToStorage("workspaces", updatedWorkspaces);
       onUpdate();
@@ -141,14 +151,14 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {workspaces.map((workspace: Workspace) => {
           const branchUsers = users.filter(
-            (u: User) => u.workspaceId === workspace.id
+            (u: User) => u.workspaceId === workspace.id,
           );
           const branchBills = bills.filter(
-            (b: Bill) => b.workspaceId === workspace.id
+            (b: Bill) => b.workspaceId === workspace.id,
           );
           const branchRevenue = branchBills.reduce(
             (sum: number, b: Bill) => sum + b.total,
-            0
+            0,
           );
 
           return (
@@ -277,7 +287,7 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
                   setFormData({
                     name: "",
                     contactEmail: "",
-                    contactPhone: "",
+                    contactPhone: NEPAL_COUNTRY_CODE,
                     address: "",
                   });
                 }}
@@ -333,12 +343,18 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
                 <input
                   type="tel"
                   value={formData.contactPhone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, contactPhone: e.target.value })
-                  }
-                  placeholder="+977"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  onChange={handlePhoneChange}
+                  placeholder="+977 98XXXXXXXX"
+                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                    phoneError ? "border-red-500" : "border-gray-300"
+                  }`}
                 />
+                {phoneError && (
+                  <p className="text-red-500 text-xs mt-1">{phoneError}</p>
+                )}
+                <p className="text-gray-500 text-xs mt-1">
+                  Enter 10 digit number after +977
+                </p>
               </div>
 
               <div>
@@ -366,7 +382,7 @@ export const BranchManagementViewFixed: React.FC<BranchManagementViewProps> = ({
                   setFormData({
                     name: "",
                     contactEmail: "",
-                    contactPhone: "",
+                    contactPhone: NEPAL_COUNTRY_CODE,
                     address: "",
                   });
                 }}

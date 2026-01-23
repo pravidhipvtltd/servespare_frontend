@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { apiFetch } from "../../utils/apiClient";
 import {
@@ -42,43 +42,12 @@ interface CustomerHomepageProps {
   onOpenCart?: () => void;
 }
 
-// Hero Slides with dynamic content
-const heroSlides = [
-  {
-    id: 1,
-    title: "Premium Auto Parts",
-    subtitle: "For Every Journey",
-    description:
-      "Authentic parts for two-wheelers and four-wheelers with guaranteed quality",
-    cta: "Shop Now",
-    image:
-      "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=800&h=600&fit=crop",
-    badge: "New Arrivals",
-    color: "from-blue-600 to-purple-600",
-  },
-  {
-    id: 2,
-    title: "Up to 50% Off",
-    subtitle: "Mega Sale Event",
-    description:
-      "Limited time offer on brake systems, lighting, and engine parts",
-    cta: "Grab Deals",
-    image:
-      "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=800&h=600&fit=crop",
-    badge: "Hot Deals",
-    color: "from-red-600 to-orange-600",
-  },
-  {
-    id: 3,
-    title: "Fast & Free Delivery",
-    subtitle: "Across Pokhara Valley",
-    description: "Same-day delivery available on selected products",
-    cta: "Explore",
-    image:
-      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=600&fit=crop",
-    badge: "Free Shipping",
-    color: "from-green-600 to-teal-600",
-  },
+// Color palette for hero slides derived from inventory
+const heroSlideGradients = [
+  "from-blue-600 to-purple-600",
+  "from-red-600 to-orange-600",
+  "from-green-600 to-teal-600",
+  "from-amber-600 to-rose-600",
 ];
 
 // Featured products
@@ -179,6 +148,49 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
   const [subscriptionEmail, setSubscriptionEmail] = useState("");
   const [subscribing, setSubscribing] = useState(false);
   const [subscriptionSuccess, setSubscriptionSuccess] = useState(false);
+
+  const heroSlides = useMemo(() => {
+    if (!products.length) {
+      return [
+        {
+          id: "placeholder",
+          title: "Premium Auto Parts",
+          subtitle: "For Every Journey",
+          description:
+            "Authentic parts for two-wheelers and four-wheelers with guaranteed quality",
+          cta: "Shop Now",
+          image:
+            "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=800&h=600&fit=crop",
+          badge: "New Arrivals",
+          color: heroSlideGradients[0],
+          price: 0,
+          originalPrice: 0,
+          category: "",
+          product: null,
+        },
+      ];
+    }
+
+    return products.slice(0, 4).map((product, index) => ({
+      id: product.id,
+      title: product.name,
+      subtitle: product.category || "Premium auto parts",
+      description:
+        product.vehicleType && product.vehicleType !== "both"
+          ? `Perfect fit for ${product.vehicleType === "two-wheeler" ? "two-wheelers" : "four-wheelers"}`
+          : "Quality you can trust",
+      cta: "View product",
+      image:
+        product.image ||
+        "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=800&h=600&fit=crop",
+      badge: product.badge || (product.inStock ? "In Stock" : "Limited"),
+      color: heroSlideGradients[index % heroSlideGradients.length],
+      price: product.price,
+      originalPrice: product.originalPrice,
+      category: product.category,
+      product,
+    }));
+  }, [products]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -327,30 +339,38 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
 
   // Auto-advance hero slides
   useEffect(() => {
+    if (!heroSlides.length) return;
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [heroSlides.length]);
 
-  const nextSlide = () =>
+  const nextSlide = () => {
+    if (!heroSlides.length) return;
     setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-  const prevSlide = () =>
+  };
+
+  const prevSlide = () => {
+    if (!heroSlides.length) return;
     setCurrentSlide(
       (prev) => (prev - 1 + heroSlides.length) % heroSlides.length,
     );
+  };
+
+  const currentHero = heroSlides[currentSlide % heroSlides.length];
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="relative h-[600px] md:h-[700px] overflow-hidden">
         <AnimatePresence mode="wait">
           <motion.div
-            key={currentSlide}
+            key={currentHero?.id || currentSlide}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
-            className={`absolute inset-0 bg-gradient-to-br ${heroSlides[currentSlide].color}`}
+            className={`absolute inset-0 bg-gradient-to-br ${currentHero?.color || heroSlideGradients[0]}`}
           >
             {/* Animated Background Pattern */}
             <div className="absolute inset-0 opacity-10">
@@ -411,9 +431,7 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
                     >
                       <Sparkles className="w-4 h-4" />
                     </motion.div>
-                    <span className="text-sm">
-                      {heroSlides[currentSlide].badge}
-                    </span>
+                    <span className="text-sm">{currentHero?.badge || ""}</span>
                   </motion.div>
 
                   {/* Title with animated gradient */}
@@ -430,7 +448,7 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
                       transition={{ duration: 5, repeat: Infinity }}
                       className="bg-gradient-to-r from-white via-yellow-200 to-white bg-clip-text text-transparent bg-[length:200%_auto]"
                     >
-                      {heroSlides[currentSlide].title}
+                      {currentHero?.title || ""}
                     </motion.span>
                   </motion.h1>
 
@@ -440,7 +458,7 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
                     transition={{ delay: 0.4 }}
                     className="text-4xl md:text-5xl mb-6 text-white/90"
                   >
-                    {heroSlides[currentSlide].subtitle}
+                    {currentHero?.subtitle || ""}
                   </motion.h2>
 
                   <motion.p
@@ -449,7 +467,7 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
                     transition={{ delay: 0.5 }}
                     className="text-xl text-white/80 mb-8 leading-relaxed"
                   >
-                    {heroSlides[currentSlide].description}
+                    {currentHero?.description || ""}
                   </motion.p>
 
                   {/* CTA Buttons */}
@@ -462,11 +480,17 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={onViewAllProducts}
+                      onClick={() => {
+                        if (currentHero?.product && onViewProduct) {
+                          onViewProduct(currentHero.product);
+                        } else if (onViewAllProducts) {
+                          onViewAllProducts();
+                        }
+                      }}
                       className="bg-white text-gray-900 px-8 py-4 rounded-full text-lg hover:shadow-2xl transition-all shadow-xl group flex items-center space-x-2"
                     >
                       <ShoppingBag className="w-5 h-5" />
-                      <span>{heroSlides[currentSlide].cta}</span>
+                      <span>{currentHero?.cta || "Shop Now"}</span>
                       <motion.div
                         animate={{ x: [0, 5, 0] }}
                         transition={{ duration: 1, repeat: Infinity }}
@@ -533,7 +557,7 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
                     <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20">
                       <div className="relative">
                         <img
-                          src={heroSlides[currentSlide].image}
+                          src={currentHero?.image}
                           alt="Featured Product"
                           className="w-full h-80 object-cover rounded-2xl mb-6"
                         />
@@ -552,21 +576,38 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
                       </div>
 
                       <h3 className="text-2xl text-white mb-4">
-                        Premium Auto Parts
+                        {currentHero?.title || "Premium Auto Parts"}
                       </h3>
 
                       <div className="flex items-center justify-between mb-6">
                         <div>
-                          <p className="text-4xl text-white">NPR 4,500</p>
-                          <p className="text-white/60 line-through">
-                            NPR 9,000
+                          <p className="text-4xl text-white">
+                            {currentHero?.price
+                              ? `NPR ${currentHero.price.toLocaleString()}`
+                              : "Contact for price"}
                           </p>
+                          {currentHero?.originalPrice &&
+                            currentHero.originalPrice > currentHero.price && (
+                              <p className="text-white/60 line-through">
+                                NPR {currentHero.originalPrice.toLocaleString()}
+                              </p>
+                            )}
                         </div>
                         <motion.button
                           whileHover={{ scale: 1.1, rotate: 360 }}
                           whileTap={{ scale: 0.9 }}
                           transition={{ duration: 0.3 }}
-                          className="bg-white text-gray-900 p-4 rounded-full shadow-xl"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (currentHero?.product) {
+                              handleAddToCart(currentHero.product, 1, false);
+                            }
+                          }}
+                          className="bg-white text-gray-900 p-4 rounded-full shadow-xl disabled:opacity-60 disabled:cursor-not-allowed"
+                          disabled={
+                            !currentHero?.product ||
+                            addingToCart === currentHero?.product?.id
+                          }
                         >
                           <ShoppingCart className="w-6 h-6" />
                         </motion.button>
@@ -651,7 +692,7 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
         </AnimatePresence>
 
         {/* Wave Divider */}
-        <div className="absolute bottom-0 left-0 right-0 z-10">
+        {/* <div className="absolute bottom-0 left-0 right-0 z-10">
           <svg
             viewBox="0 0 1440 120"
             fill="none"
@@ -662,7 +703,7 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
               fill="#F9FAFB"
             />
           </svg>
-        </div>
+        </div> */}
       </div>
 
       {/* Quick Search Bar */}
@@ -1273,13 +1314,13 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
               <h4 className="text-white mb-4">Contact Us</h4>
               <ul className="space-y-2 text-sm">
                 <li>Pokhara, Nepal</li>
-                <li>+977 123-456-789</li>
+                <li>+977 9864430493</li>
                 <li>info@servespares.com</li>
               </ul>
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm">
-            <p>&copy; 2024 Serve Spares. All rights reserved.</p>
+            <p>&copy; 2026 Serve Spares. All rights reserved.</p>
           </div>
         </div>
       </footer>

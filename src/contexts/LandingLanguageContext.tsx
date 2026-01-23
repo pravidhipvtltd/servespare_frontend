@@ -404,7 +404,7 @@ const translations: Record<LandingLanguage, Record<string, string>> = {
     // Navigation
     "nav.home": "होम",
     "nav.about": "हाम्रो बारेमा",
-    "nav.features": "विशेषताहRs",
+    "nav.features": "विशेषताहरु",
     "nav.pricing": "मूल्य निर्धारण",
     "nav.contact": "सम्पर्क",
     "nav.blog": "ब्लग",
@@ -429,22 +429,22 @@ const translations: Record<LandingLanguage, Record<string, string>> = {
     "home.heroTagline2": "पूर्ण स्वचालित",
 
     // Features
-    "features.badge": "विशेषताहRs",
+    "features.badge": "विशेषताहरु",
     "feature.inventory.title": "सूची ट्र्याकिङ",
     "feature.inventory.desc":
       "बारकोड स्क्यानिङ र वास्तविक समय अपडेटको साथ दुई-पाङ्ग्रे र चार-पाङ्ग्रे पार्ट्स ट्र्याक गर्नुहोस्",
     "feature.analytics.title": "उन्नत विश्लेषण",
     "feature.analytics.desc":
-      "डाटा-संचालित व्यापार निर्णयहRs गर्न व्यापक रिपोर्ट र अन्तर्दृष्टि",
+      "डाटा-संचालित व्यापार निर्णयहरु गर्न व्यापक रिपोर्ट र अन्तर्दृष्टि",
     "feature.multirole.title": "बहु-भूमिका प्रणाली",
     "feature.multirole.desc":
-      "सुपर एडमिन, एडमिन, सूची प्रबन्धक, र क्यासियर भूमिकाहRs अनुकूलन अनुमतिहRsसहित",
+      "सुपर एडमिन, एडमिन, सूची प्रबन्धक, र क्यासियर भूमिकाहरु अनुकूलन अनुमतिहरुसहित",
     "feature.billing.title": "बिलिङ र अर्डर",
     "feature.billing.desc":
       "NPR मुद्रा, eSewa, र FonePay एकीकरणको साथ पूर्ण अर्डर व्यवस्थापन",
     "feature.supplier.title": "आपूर्तिकर्ता व्यवस्थापन",
     "feature.supplier.desc":
-      "विक्रेताहRs व्यवस्थापन गर्नुहोस्, खरिद ट्र्याक गर्नुहोस्, र बहु-विक्रेता सञ्चालन ह्यान्डल गर्नुहोस्",
+      "विक्रेताहरु व्यवस्थापन गर्नुहोस्, खरिद ट्र्याक गर्नुहोस्, र बहु-विक्रेता सञ्चालन ह्यान्डल गर्नुहोस्",
     "feature.secure.title": "सुरक्षित र भरपर्दो",
     "feature.secure.desc":
       "वास्तविक समय अनुमति सिङ्क र डाटा सुरक्षाको साथ बैंक-स्तर सुरक्षा",
@@ -452,17 +452,17 @@ const translations: Record<LandingLanguage, Record<string, string>> = {
     // Stats
     "stats.parts": "पार्ट्स ट्र्याक गरिएको",
     "stats.roles": "प्रयोगकर्ता भूमिका",
-    "stats.languages": "२ भाषाहRs",
+    "stats.languages": "२ भाषाहरु",
     "stats.sync": "वास्तविक समय सिङ्क",
 
     // How It Works
     "howitworks.badge": "यसले कसरी काम गर्छ",
-    "howitworks.title": "४ सरल चरणहRsमा सुरु गर्नुहोस्",
+    "howitworks.title": "४ सरल चरणहरुमा सुरु गर्नुहोस्",
     "howitworks.subtitle":
       "मिनेटमा आफ्नो अटो पार्ट्स सूची व्यवस्थापन सुरु गर्नुहोस्",
     "howitworks.step1.title": "दर्ता र लगइन",
     "howitworks.step1.desc":
-      "आफ्नो खाता सिर्जना गर्नुहोस् वा अवस्थित प्रमाणहRsसँग लगइन गर्नुहोस्",
+      "आफ्नो खाता सिर्जना गर्नुहोस् वा अवस्थित प्रमाणहरुसँग लगइन गर्नुहोस्",
     "howitworks.step2.title": "सूची सेटअप गर्नुहोस्",
     "howitworks.step2.desc":
       "आफ्नो पार्ट्स, कोटी, र मूल्य निर्धारण जानकारी थप्नुहोस्",
@@ -471,14 +471,14 @@ const translations: Record<LandingLanguage, Record<string, string>> = {
       "अर्डर ट्र्याक गर्नुहोस्, बिलिङ ह्यान्डल गर्नुहोस्, र आफ्नो टोली व्यवस्थापन गर्नुहोस्",
     "howitworks.step4.title": "आफ्नो व्यापार बढाउनुहोस्",
     "howitworks.step4.desc":
-      "राम्रो निर्णयहRs गर्न विश्लेषण र अन्तर्दृष्टि प्रयोग गर्नुहोस्",
+      "राम्रो निर्णयहरु गर्न विश्लेषण र अन्तर्दृष्टि प्रयोग गर्नुहोस्",
 
     // Testimonials
     "testimonials.badge": "प्रशंसापत्र",
-    "testimonials.title": "हाम्रा प्रयोगकर्ताहRs के भन्छन्",
-    "testimonials.subtitle": "नेपालभरि व्यवसायहRsद्वारा विश्वसनीय",
+    "testimonials.title": "हाम्रा प्रयोगकर्ताहरु के भन्छन्",
+    "testimonials.subtitle": "नेपालभरि व्यवसायहरुद्वारा विश्वसनीय",
     "testimonials.1.text":
-      "सर्भ स्पेयर्सले हामी कसरी आफ्नो पार्ट्स सूची व्यवस्थापन गर्छौं भन्ने Rsपान्तरण गर्‍यो। बहु-भाषा समर्थन उत्कृष्ट छ!",
+      "सर्भ स्पेयर्सले हामी कसरी आफ्नो पार्ट्स सूची व्यवस्थापन गर्छौं भन्ने रुपान्तरण गर्‍यो। बहु-भाषा समर्थन उत्कृष्ट छ!",
     "testimonials.1.name": "राजेश कुमार",
     "testimonials.1.role": "पसल मालिक, काठमाडौं",
     "testimonials.2.text":
@@ -486,15 +486,15 @@ const translations: Record<LandingLanguage, Record<string, string>> = {
     "testimonials.2.name": "सीता शर्मा",
     "testimonials.2.role": "सूची प्रबन्धक",
     "testimonials.3.text":
-      "अनुमति प्रणाली उत्तम छ। प्रत्येक कर्मचारी सदस्यसँग उनीहRsलाई आवश्यक पहुँच छ।",
+      "अनुमति प्रणाली उत्तम छ। प्रत्येक कर्मचारी सदस्यसँग उनीहरुलाई आवश्यक पहुँच छ।",
     "testimonials.3.name": "अनिल थापा",
     "testimonials.3.role": "व्यापार मालिक",
 
     // CTA
-    "cta.title": "आफ्नो सूची Rsपान्तरण गर्न तयार हुनुहुन्छ?",
+    "cta.title": "आफ्नो सूची रुपान्तरण गर्न तयार हुनुहुन्छ?",
     "cta.subtitle":
-      "सर्भ स्पेयर्स प्रयोग गरिरहेका सयौं व्यवसायहRsमा सामेल हुनुहोस्",
-    "cta.button": "मूल्य र विशेषताहRs",
+      "सर्भ स्पेयर्स प्रयोग गरिरहेका सयौं व्यवसायहरुमा सामेल हुनुहोस्",
+    "cta.button": "मूल्य र विशेषताहरु",
 
     // Buttons
     "button.register": "दर्ता गर्नुहोस्",
@@ -508,26 +508,26 @@ const translations: Record<LandingLanguage, Record<string, string>> = {
     // About Page
     "about.title": "सर्भ स्पेयर्स बारे",
     "about.subtitle":
-      "नेपाल र बाहिर व्यवसायहRsको लागि अटो पार्ट्स सूची व्यवस्थापनमा क्रान्तिकारी परिवर्तन",
+      "नेपाल र बाहिर व्यवसायहरुको लागि अटो पार्ट्स सूची व्यवस्थापनमा क्रान्तिकारी परिवर्तन",
     "about.mission.title": "हाम्रो मिशन",
     "about.mission.desc":
-      "अटो पार्ट्स व्यवसायहRsलाई अत्याधुनिक सूची व्यवस्थापन प्रविधिको साथ सशक्तिकरण गर्नु जसले सञ्चालन सरल बनाउँछ, लागत घटाउँछ, र वृद्धि ल्याउँछ।",
+      "अटो पार्ट्स व्यवसायहरुलाई अत्याधुनिक सूची व्यवस्थापन प्रविधिको साथ सशक्तिकरण गर्नु जसले सञ्चालन सरल बनाउँछ, लागत घटाउँछ, र वृद्धि ल्याउँछ।",
     "about.vision.title": "हाम्रो दृष्टिकोण",
     "about.vision.desc":
-      "नेपाल र दक्षिण एशियामा अग्रणी अटो पार्ट्स सूची व्यवस्थापन प्लेटफर्म बन्ने, हजारौं व्यवसायहRsलाई डिजिटल युगमा फस्टाउन मद्दत गर्दै।",
+      "नेपाल र दक्षिण एशियामा अग्रणी अटो पार्ट्स सूची व्यवस्थापन प्लेटफर्म बन्ने, हजारौं व्यवसायहरुलाई डिजिटल युगमा फस्टाउन मद्दत गर्दै।",
     "about.story.title": "हाम्रो कथा",
     "about.story.p1":
-      "सर्भ स्पेयर्स एक सरल अवलोकनबाट जन्मिएको थियो: नेपालमा अटो पार्ट्स व्यवसायहRs पुरानो सूची व्यवस्थापन विधिहRsसँग संघर्ष गरिरहेका थिए जसले अकुशलता, हराएको बिक्री, र सञ्चालन समस्याहRs निम्त्याएको थियो।",
+      "सर्भ स्पेयर्स एक सरल अवलोकनबाट जन्मिएको थियो: नेपालमा अटो पार्ट्स व्यवसायहरु पुरानो सूची व्यवस्थापन विधिहरुसँग संघर्ष गरिरहेका थिए जसले अकुशलता, हराएको बिक्री, र सञ्चालन समस्याहरु निम्त्याएको थियो।",
     "about.story.p2":
-      "२०२३ मा स्थापित, हामीले नेपालमा अटो पार्ट्स व्यवसायहRsको अद्वितीय आवश्यकताहRsको लागि विशेष Rsपमा डिजाइन गरिएको एक व्यापक, प्रयोग गर्न सजिलो प्रणाली सिर्जना गर्न सुरु गर्‍यौं। विकासकर्ताहRs र उद्योग विशेषज्ञहRsको हाम्रो टोलीले शक्तिशाली सुविधाहRsलाई सहज डिजाइनसँग संयोजन गर्ने प्लेटफर्म निर्माण गर्न अथक परिश्रम गर्‍यो।",
+      "२०२३ मा स्थापित, हामीले नेपालमा अटो पार्ट्स व्यवसायहरुको अद्वितीय आवश्यकताहरुको लागि विशेष रुपमा डिजाइन गरिएको एक व्यापक, प्रयोग गर्न सजिलो प्रणाली सिर्जना गर्न सुरु गर्‍यौं। विकासकर्ताहरु र उद्योग विशेषज्ञहरुको हाम्रो टोलीले शक्तिशाली सुविधाहरुलाई सहज डिजाइनसँग संयोजन गर्ने प्लेटफर्म निर्माण गर्न अथक परिश्रम गर्‍यो।",
     "about.story.p3":
-      "आज, सर्भ स्पेयर्सले नेपालभरि सयौं व्यवसायहRsलाई सेवा दिन्छ, साना स्थानीय पसलहRsदेखि ठूला बहु-शाखा सञ्चालनहRsसम्म। हामी नेपालको डिजिटल Rsपान्तरणको अंश बन्न पाउँदा गर्व गर्छौं, व्यवसायहRsलाई आधुनिकीकरण र वृद्धि गर्न मद्दत गर्दै।",
-    "about.values.title": "हाम्रा मूल मूल्यहRs",
+      "आज, सर्भ स्पेयर्सले नेपालभरि सयौं व्यवसायहरुलाई सेवा दिन्छ, साना स्थानीय पसलहरुदेखि ठूला बहु-शाखा सञ्चालनहरुसम्म। हामी नेपालको डिजिटल रुपान्तरणको अंश बन्न पाउँदा गर्व गर्छौं, व्यवसायहरुलाई आधुनिकीकरण र वृद्धि गर्न मद्दत गर्दै।",
+    "about.values.title": "हाम्रा मूल मूल्यहरु",
     "about.values.subtitle":
-      "सिद्धान्तहRs जसले हामीले गर्ने सबै कुरालाई मार्गदर्शन गर्दछ",
+      "सिद्धान्तहरु जसले हामीले गर्ने सबै कुरालाई मार्गदर्शन गर्दछ",
     "about.values.innovation": "नवीनता",
     "about.values.innovation.desc":
-      "प्रयोगकर्ता प्रतिक्रियाको आधारमा निरन्तर सुधार र नयाँ सुविधाहRs थप्दै",
+      "प्रयोगकर्ता प्रतिक्रियाको आधारमा निरन्तर सुधार र नयाँ सुविधाहरु थप्दै",
     "about.values.customer": "ग्राहक पहिलो",
     "about.values.customer.desc":
       "तपाईंको सफलता हाम्रो सफलता हो। हामी तपाईंलाई बढ्न मद्दत गर्न यहाँ छौं",
@@ -539,11 +539,11 @@ const translations: Record<LandingLanguage, Record<string, string>> = {
       "NPR, eSewa, FonePay, र नेपाली भाषा समर्थनको साथ नेपालको लागि निर्मित",
     "about.values.scalability": "स्केलेबिलिटी",
     "about.values.scalability.desc":
-      "एकल पसलबाट धेरै शाखाहRsमा सहज Rsपमा बढ्नुहोस्",
+      "एकल पसलबाट धेरै शाखाहरुमा सहज रुपमा बढ्नुहोस्",
     "about.values.efficiency": "दक्षता",
     "about.values.efficiency.desc":
-      "स्वचालित प्रक्रियाहRs र स्मार्ट सुविधाहRsको साथ समय र पैसा बचत गर्नुहोस्",
-    "about.stats.users": "खुशी प्रयोगकर्ताहRs",
+      "स्वचालित प्रक्रियाहरु र स्मार्ट सुविधाहरुको साथ समय र पैसा बचत गर्नुहोस्",
+    "about.stats.users": "खुशी प्रयोगकर्ताहरु",
     "about.stats.parts": "पार्ट्स प्रबंधित",
     "about.stats.uptime": "अपटाइम",
     "about.stats.support": "समर्थन",
@@ -551,7 +551,7 @@ const translations: Record<LandingLanguage, Record<string, string>> = {
     // Pricing Page
     "pricing.title": "सरल, पारदर्शी मूल्य निर्धारण",
     "pricing.subtitle":
-      "आफ्नो व्यवसायको लागि उत्तम योजना छान्नुहोस्। कुनै लुकेका शुल्कहRs छैनन्, जुनसुकै बेला रद्द गर्नुहोस्।",
+      "आफ्नो व्यवसायको लागि उत्तम योजना छान्नुहोस्। कुनै लुकेका शुल्कहरु छैनन्, जुनसुकै बेला रद्द गर्नुहोस्।",
     "pricing.monthly": "मासिक",
     "pricing.yearly": "वार्षिक",
     "pricing.save": "२०% बचत गर्नुहोस्",
@@ -564,77 +564,77 @@ const translations: Record<LandingLanguage, Record<string, string>> = {
     "pricing.plan.starter": "स्टार्टर",
     "pricing.plan.professional": "प्रोफेशनल",
     "pricing.plan.enterprise": "इन्टरप्राइज",
-    "pricing.starter.desc": "सुरुवात गर्ने साना पसलहRsको लागि उत्तम",
+    "pricing.starter.desc": "सुरुवात गर्ने साना पसलहरुको लागि उत्तम",
     "pricing.starter.f1": "१,००० सम्म पार्ट्स",
     "pricing.starter.f2": "१ शाखा स्थान",
-    "pricing.starter.f3": "३ प्रयोगकर्ता खाताहRs",
+    "pricing.starter.f3": "३ प्रयोगकर्ता खाताहरु",
     "pricing.starter.f4": "आधारभूत सूची ट्र्याकिङ",
     "pricing.starter.f5": "बारकोड स्क्यानिङ",
     "pricing.starter.f6": "इमेल समर्थन",
     "pricing.starter.f7": "उन्नत विश्लेषण",
     "pricing.starter.f8": "बहु-शाखा समर्थन",
     "pricing.starter.f9": "प्राथमिकता समर्थन",
-    "pricing.professional.desc": "बढ्दो व्यवसायहRsको लागि आदर्श",
+    "pricing.professional.desc": "बढ्दो व्यवसायरुको लागि आदर्श",
     "pricing.professional.f1": "१०,००० सम्म पार्ट्स",
-    "pricing.professional.f2": "५ सम्म शाखाहRs",
-    "pricing.professional.f3": "असीमित प्रयोगकर्ताहRs",
+    "pricing.professional.f2": "५ सम्म शाखाहरु",
+    "pricing.professional.f3": "असीमित प्रयोगकर्ताहरु",
     "pricing.professional.f4": "उन्नत सूची ट्र्याकिङ",
     "pricing.professional.f5": "बारकोड स्क्यानिङ",
     "pricing.professional.f6": "उन्नत विश्लेषण",
     "pricing.professional.f7": "बहु-शाखा समर्थन",
     "pricing.professional.f8": "प्राथमिकता इमेल र च्याट समर्थन",
-    "pricing.professional.f9": "अनुकूलन रिपोर्टहRs",
-    "pricing.enterprise.desc": "ठूला सञ्चालन र फ्रान्चाइजीहRsको लागि",
+    "pricing.professional.f9": "अनुकूलन रिपोर्टहरु",
+    "pricing.enterprise.desc": "ठूला सञ्चालन र फ्रान्चाइजीहरुको लागि",
     "pricing.enterprise.f1": "असीमित पार्ट्स",
-    "pricing.enterprise.f2": "असीमित शाखाहRs",
-    "pricing.enterprise.f3": "असीमित प्रयोगकर्ताहRs",
+    "pricing.enterprise.f2": "असीमित शाखाहरु",
+    "pricing.enterprise.f3": "असीमित प्रयोगकर्ताहरु",
     "pricing.enterprise.f4": "इन्टरप्राइज सूची ट्र्याकिङ",
     "pricing.enterprise.f5": "उन्नत बारकोड प्रणाली",
     "pricing.enterprise.f6": "AI-संचालित विश्लेषण",
     "pricing.enterprise.f7": "बहु-शाखा व्यवस्थापन",
     "pricing.enterprise.f8": "२४/७ प्राथमिकता समर्थन",
-    "pricing.enterprise.f9": "अनुकूलन एकीकरणहRs",
+    "pricing.enterprise.f9": "अनुकूलन एकीकरणहरु",
     "pricing.enterprise.f10": "समर्पित खाता प्रबन्धक",
     "pricing.enterprise.f11": "अनुकूलन प्रशिक्षण",
-    "pricing.faq.title": "बारम्बार सोधिने प्रश्नहRs",
+    "pricing.faq.title": "बारम्बार सोधिने प्रश्नहरु",
     "pricing.faq.subtitle":
       "हाम्रो मूल्य निर्धारणको बारेमा तपाईंले जान्नु आवश्यक सबै कुरा",
     "pricing.faq.q1": "के म मेरो योजना अपग्रेड वा डाउनग्रेड गर्न सक्छु?",
     "pricing.faq.a1":
-      "हो! तपाईं कुनै पनि समयमा आफ्नो योजना अपग्रेड वा डाउनग्रेड गर्न सक्नुहुन्छ। परिवर्तनहRs तुरुन्त प्रभावकारी हुन्छन् र हामी कुनै पनि भिन्नताहRs प्रोरेट गर्नेछौं।",
-    "pricing.faq.q2": "तपाईं कुन भुक्तानी विधिहRs स्वीकार गर्नुहुन्छ?",
+      "हो! तपाईं कुनै पनि समयमा आफ्नो योजना अपग्रेड वा डाउनग्रेड गर्न सक्नुहुन्छ। परिवर्तनहरु तुरुन्त प्रभावकारी हुन्छन् र हामी कुनै पनि भिन्नताहरु प्रोरेट गर्नेछौं।",
+    "pricing.faq.q2": "तपाईं कुन भुक्तानी विधिहरु स्वीकार गर्नुहुन्छ?",
     "pricing.faq.a2":
-      "हामी eSewa, FonePay, बैंक स्थानान्तरण, र सबै प्रमुख क्रेडिट कार्डहRs स्वीकार गर्छौं। सबै भुक्तानीहRs सुरक्षित Rsपमा प्रशोधन गरिन्छ।",
+      "हामी eSewa, FonePay, बैंक स्थानान्तरण, र सबै प्रमुख क्रेडिट कार्डहरु स्वीकार गर्छौं। सबै भुक्तानीहरु सुरक्षित रुपमा प्रशोधन गरिन्छ।",
     "pricing.faq.q3": "के त्यहाँ नि:शुल्क परीक्षण छ?",
     "pricing.faq.a3":
-      "हो! सबै नयाँ प्रयोगकर्ताहRsले सबै सुविधाहRsमा पूर्ण पहुँचको साथ १४-दिनको नि:शुल्क परीक्षण पाउँछन्। कुनै क्रेडिट कार्ड आवश्यक छैन।",
+      "हो! सबै नयाँ प्रयोगकर्ताहरुले सबै सुविधाहरुमा पूर्ण पहुँचको साथ १४-दिनको नि:शुल्क परीक्षण पाउँछन्। कुनै क्रेडिट कार्ड आवश्यक छैन।",
     "pricing.faq.q4": "के म मेरो सदस्यता रद्द गर्न सक्छु?",
     "pricing.faq.a4":
       "हो, तपाईं जुनसुकै बेला रद्द गर्न सक्नुहुन्छ। तपाईंको खाता तपाईंको बिलिङ अवधिको अन्त्यसम्म सक्रिय रहनेछ।",
-    "pricing.faq.q5": "के तपाईं वार्षिक योजनाहRsको लागि छुट प्रदान गर्नुहुन्छ?",
+    "pricing.faq.q5": "के तपाईं वार्षिक योजनाहरुको लागि छुट प्रदान गर्नुहुन्छ?",
     "pricing.faq.a5":
-      "हो! वार्षिक योजनाहRsले मासिक बिलिङको तुलनामा २०% छुट पाउँछन्। यो हाम्रो उत्तम मूल्य हो!",
+      "हो! वार्षिक योजनाहरुले मासिक बिलिङको तुलनामा २०% छुट पाउँछन्। यो हाम्रो उत्तम मूल्य हो!",
     "pricing.faq.q6": "के प्रशिक्षण समावेश छ?",
     "pricing.faq.a6":
-      "प्रोफेशनल र इन्टरप्राइज योजनाहRsमा अनबोर्डिङ प्रशिक्षण समावेश छ। स्टार्टर योजनामा भिडियो ट्यूटोरियलहRs र कागजातहRs छन्।",
+      "प्रोफेशनल र इन्टरप्राइज योजनाहरुमा अनबोर्डिङ प्रशिक्षण समावेश छ। स्टार्टर योजनामा भिडियो ट्यूटोरियलहरु र कागजातहरु छन्।",
     "pricing.cta.title": "सुरु गर्न तयार हुनुहुन्छ?",
     "pricing.cta.subtitle":
-      "सर्भ स्पेयर्स प्रयोग गरिरहेका सयौं व्यवसायहRsमा सामेल हुनुहोस्",
+      "सर्भ स्पेयर्स प्रयोग गरिरहेका सयौं व्यवसायहरुमा सामेल हुनुहोस्",
     "pricing.cta.button": "आफ्नो नि:शुल्क परीक्षण सुरु गर्नुहोस्",
 
     // Features Page
-    "features.title": "तपाईंको व्यवसायको लागि शक्तिशाली सुविधाहRs",
+    "features.title": "तपाईंको व्यवसायको लागि शक्तिशाली सुविधाहरु",
     "features.subtitle":
-      "तपाईंको अटो पार्ट्स सूची प्रभावकारी Rsपमा व्यवस्थापन गर्न आवश्यक सबै कुरा",
-    "features.core.badge": "मुख्य सुविधाहRs",
-    "features.core.title": "अटो पार्ट्स व्यवसायहRsको लागि निर्मित",
+      "तपाईंको अटो पार्ट्स सूची प्रभावकारी रुपमा व्यवस्थापन गर्न आवश्यक सबै कुरा",
+    "features.core.badge": "मुख्य सुविधाहरु",
+    "features.core.title": "अटो पार्ट्स व्यवसायहरुको लागि निर्मित",
     "features.core.subtitle":
-      "दुई-पाङ्ग्रे र चार-पाङ्ग्रे पार्ट्स व्यवस्थापनको लागि विशेष Rsपमा डिजाइन गरिएका व्यापक सुविधाहRs",
+      "दुई-पाङ्ग्रे र चार-पाङ्ग्रे पार्ट्स व्यवस्थापनको लागि विशेष रुपमा डिजाइन गरिएका व्यापक सुविधाहरु",
     "features.inventory.title": "सूची व्यवस्थापन",
     "features.inventory.desc":
       "वास्तविक समय ट्र्याकिङको साथ तपाईंको पार्ट्स सूचीमा पूर्ण नियन्त्रण",
     "features.inventory.f1": "वास्तविक समय स्टक स्तर",
-    "features.inventory.f2": "कम स्टक अलर्टहRs",
+    "features.inventory.f2": "कम स्टक अलर्टहरु",
     "features.inventory.f3": "पार्ट वर्गीकरण",
     "features.inventory.f4": "ब्याच व्यवस्थापन",
     "features.barcode.title": "बारकोड प्रणाली",
@@ -645,12 +645,12 @@ const translations: Record<LandingLanguage, Record<string, string>> = {
     "features.barcode.f3": "मोबाइल स्क्यानर समर्थन",
     "features.barcode.f4": "लेबल प्रिन्ट गर्नुहोस्",
     "features.orders.title": "अर्डर व्यवस्थापन",
-    "features.orders.desc": "बिक्री र खरिद सहज Rsपमा ह्यान्डल गर्नुहोस्",
+    "features.orders.desc": "बिक्री र खरिद सहज रुपमा ह्यान्डल गर्नुहोस्",
     "features.orders.f1": "द्रुत अर्डर प्रविष्टि",
     "features.orders.f2": "अर्डर ट्र्याकिङ",
-    "features.orders.f3": "खरिद अर्डरहRs",
+    "features.orders.f3": "खरिद अर्डरहरु",
     "features.orders.f4": "रिटर्न व्यवस्थापन",
-    "features.billing.title": "बिलिङ र भुक्तानीहRs",
+    "features.billing.title": "बिलिङ र भुक्तानीहरु",
     "features.billing.desc": "स्थानीय भुक्तानी एकीकरणको साथ पूर्ण बिलिङ समाधान",
     "features.billing.f1": "NPR मुद्रा समर्थन",
     "features.billing.f2": "eSewa एकीकरण",
@@ -662,21 +662,21 @@ const translations: Record<LandingLanguage, Record<string, string>> = {
     "features.roles.f2": "एडमिन भूमिका",
     "features.roles.f3": "सूची प्रबन्धक भूमिका",
     "features.roles.f4": "क्यासियर भूमिका",
-    "features.roles.f5": "अनुकूलन अनुमतिहRs",
+    "features.roles.f5": "अनुकूलन अनुमतिहरु",
     "features.analytics.title": "उन्नत विश्लेषण",
     "features.analytics.desc":
-      "राम्रो निर्णयहRsको लागि डाटा-संचालित अन्तर्दृष्टि",
-    "features.analytics.f1": "बिक्री रिपोर्टहRs",
-    "features.analytics.f2": "सूची रिपोर्टहRs",
+      "राम्रो निर्णयहरुको लागि डाटा-संचालित अन्तर्दृष्टि",
+    "features.analytics.f1": "बिक्री रिपोर्टहरु",
+    "features.analytics.f2": "सूची रिपोर्टहरु",
     "features.analytics.f3": "नाफा विश्लेषण",
-    "features.analytics.f4": "अनुकूलन ड्यासबोर्डहRs",
-    "features.categories.title": "सुविधा कोटीहRs",
+    "features.analytics.f4": "अनुकूलन ड्यासबोर्डहरु",
+    "features.categories.title": "सुविधा कोटीहरु",
     "features.categories.subtitle":
       "तपाईंको सुविधाको लागि कार्यक्षमता अनुसार संगठित",
     "features.cat1.title": "सूची नियन्त्रण",
     "features.cat1.f1": "स्टक व्यवस्थापन",
     "features.cat1.f2": "पार्ट ट्र्याकिङ",
-    "features.cat1.f3": "पुन: अर्डर अलर्टहRs",
+    "features.cat1.f3": "पुन: अर्डर अलर्टहरु",
     "features.cat1.f4": "म्याद समाप्ति ट्र्याकिङ",
     "features.cat1.f5": "स्थान व्यवस्थापन",
     "features.cat1.f6": "ब्याच ट्र्याकिङ",
@@ -690,8 +690,8 @@ const translations: Record<LandingLanguage, Record<string, string>> = {
     "features.cat3.title": "व्यवसाय सञ्चालन",
     "features.cat3.f1": "बहु-शाखा समर्थन",
     "features.cat3.f2": "प्रयोगकर्ता व्यवस्थापन",
-    "features.cat3.f3": "भूमिका अनुमतिहRs",
-    "features.cat3.f4": "गतिविधि लगहRs",
+    "features.cat3.f3": "भूमिका अनुमतिहरु",
+    "features.cat3.f4": "गतिविधि लगहरु",
     "features.cat3.f5": "ब्याकअप र पुनर्स्थापना",
     "features.cat3.f6": "डाटा निर्यात",
     "features.cat4.title": "स्थानीयकरण",
@@ -703,10 +703,10 @@ const translations: Record<LandingLanguage, Record<string, string>> = {
     "features.cat4.f6": "FonePay भुक्तानी",
     "features.cat4.f7": "स्थानीय मिति ढाँचा",
     "features.cat4.f8": "नेपाल समय क्षेत्र",
-    "features.technical.badge": "प्राविधिक सुविधाहRs",
+    "features.technical.badge": "प्राविधिक सुविधाहरु",
     "features.technical.title": "आधुनिक प्रविधि स्ट्याक",
     "features.technical.subtitle":
-      "प्रदर्शन र विश्वसनीयताको लागि नवीनतम प्रविधिहRsसँग निर्मित",
+      "प्रदर्शन र विश्वसनीयताको लागि नवीनतम प्रविधिहरुसँग निर्मित",
     "features.tech1.title": "बिजुली छिटो",
     "features.tech1.desc": "सुचारु सञ्चालनको लागि अनुकूलित प्रदर्शन",
     "features.tech2.title": "द्विभाषी समर्थन",
@@ -714,16 +714,16 @@ const translations: Record<LandingLanguage, Record<string, string>> = {
     "features.tech3.title": "डाटा सुरक्षा",
     "features.tech3.desc": "बैंक-स्तर एन्क्रिप्शन र सुरक्षा",
     "features.tech4.title": "मोबाइल उत्तरदायी",
-    "features.tech4.desc": "सबै उपकरणहRsमा पूर्ण Rsपमा काम गर्दछ",
+    "features.tech4.desc": "सबै उपकरणहरुमा पूर्ण रुपमा काम गर्दछ",
     "features.tech5.title": "स्वत: ब्याकअप",
     "features.tech5.desc": "स्वचालित डाटा ब्याकअप र पुनर्प्राप्ति",
     "features.tech6.title": "सजिलो एकीकरण",
-    "features.tech6.desc": "तपाईंको अवस्थित उपकरणहRsसँग जडान गर्नुहोस्",
+    "features.tech6.desc": "तपाईंको अवस्थित उपकरणहरुसँग जडान गर्नुहोस्",
     "features.security.title": "इन्टरप्राइज-ग्रेड सुरक्षा",
     "features.security.subtitle": "तपाईंको डाटा हामीसँग सुरक्षित र सुरक्षित छ",
     "features.security1.title": "डाटा एन्क्रिप्शन",
     "features.security1.desc": "सबै डाटा आराम र ट्रान्जिटमा एन्क्रिप्ट गरिएको",
-    "features.security2.title": "नियमित ब्याकअपहRs",
+    "features.security2.title": "नियमित ब्याकअपहरु",
     "features.security2.desc": "तपाईंको सबै डाटाको स्वचालित दैनिक ब्याकअप",
     "features.security3.title": "९९.९% अपटाइम",
     "features.security3.desc": "भरपर्दो सेवा जसमा तपाईं भरोसा गर्न सक्नुहुन्छ",
@@ -763,9 +763,9 @@ const translations: Record<LandingLanguage, Record<string, string>> = {
     "contact.info.visit.sub": "मुख्य कार्यालय",
     "contact.map.title": "नक्सामा हामीलाई भेट्टाउनुहोस्",
     "contact.map.subtitle": "छिट्टै आउँदैछ",
-    "contact.locations.title": "हाम्रा स्थानहRs",
+    "contact.locations.title": "हाम्रा स्थानहरु",
     "contact.locations.subtitle":
-      "नेपालका प्रमुख शहरहRsमा हामीलाई भेट्टाउनुहोस्",
+      "नेपालका प्रमुख शहरहरुमा हामीलाई भेट्टाउनुहोस्",
     "contact.location.Kathmandu": "काठमाडौं",
     "contact.location.Kathmandu.region": "केन्द्रीय क्षेत्र",
     "contact.location.Kathmandu.address": "ठमेल, काठमाडौं",

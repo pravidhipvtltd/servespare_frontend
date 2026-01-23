@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { getFromStorage } from "../../utils/mockData";
 import { useAuth } from "../../contexts/AuthContext";
+import { Pagination } from "../common/Pagination";
 import { Party, Bill } from "../../types";
 import {
   fetchLedger,
@@ -88,10 +89,19 @@ export const LedgerPanel: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+
   useEffect(() => {
     loadLedgerData();
     loadLedgerStatistics();
   }, [activeTab]);
+
+  // Reset pagination when search query or tab changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeTab]);
 
   const loadLedgerStatistics = async () => {
     try {
@@ -113,7 +123,7 @@ export const LedgerPanel: React.FC = () => {
             Authorization: `Bearer ${token}`,
             "ngrok-skip-browser-warning": "true",
           },
-        }
+        },
       );
 
       if (response.ok) {
@@ -237,7 +247,7 @@ export const LedgerPanel: React.FC = () => {
             netAmount,
             dueRemaining,
           };
-        }
+        },
       );
 
       console.log(`📊 Processed ${entries.length} party entries`);
@@ -246,7 +256,7 @@ export const LedgerPanel: React.FC = () => {
     } catch (err) {
       console.error(`❌ Error loading ${activeTab} ledger:`, err);
       setError(
-        err instanceof Error ? err.message : "Failed to load ledger data"
+        err instanceof Error ? err.message : "Failed to load ledger data",
       );
       setLoading(false);
 
@@ -257,24 +267,24 @@ export const LedgerPanel: React.FC = () => {
 
   const loadLedgerDataFromStorage = () => {
     const parties = getFromStorage("parties", []).filter(
-      (p: Party) => p.workspaceId === currentUser?.workspaceId
+      (p: Party) => p.workspaceId === currentUser?.workspaceId,
     );
     const bills = getFromStorage("bills", []).filter(
-      (b: Bill) => b.workspaceId === currentUser?.workspaceId
+      (b: Bill) => b.workspaceId === currentUser?.workspaceId,
     );
     const purchaseOrders = getFromStorage("purchaseOrders", []).filter(
-      (o: any) => o.workspaceId === currentUser?.workspaceId
+      (o: any) => o.workspaceId === currentUser?.workspaceId,
     );
     const salesOrders = getFromStorage("salesOrders", []).filter(
-      (o: any) => o.workspaceId === currentUser?.workspaceId
+      (o: any) => o.workspaceId === currentUser?.workspaceId,
     );
     const returns = getFromStorage("returns", []).filter(
-      (r: any) => r.workspaceId === currentUser?.workspaceId
+      (r: any) => r.workspaceId === currentUser?.workspaceId,
     );
 
     // Filter parties by type
     const filteredParties = parties.filter((p: Party) =>
-      activeTab === "purchase" ? p.type === "supplier" : p.type === "customer"
+      activeTab === "purchase" ? p.type === "supplier" : p.type === "customer",
     );
 
     // Calculate ledger entries
@@ -288,13 +298,13 @@ export const LedgerPanel: React.FC = () => {
       if (activeTab === "purchase") {
         // Purchase ledger - supplier transactions from purchase orders only
         const partyOrders = purchaseOrders.filter(
-          (o: any) => o.supplierId === party.id
+          (o: any) => o.supplierId === party.id,
         );
         partyOrders.forEach((order: any) => {
           const totalItems =
             order.items?.reduce(
               (sum: number, item: any) => sum + item.orderedQuantity,
-              0
+              0,
             ) || 0;
           itemsPurchased += totalItems;
           grossAmount += order.totalAmount || 0;
@@ -302,13 +312,13 @@ export const LedgerPanel: React.FC = () => {
 
         // Check for purchase returns (items returned to supplier)
         const partyReturns = returns.filter(
-          (r: any) => r.type === "purchase" && r.partyId === party.id
+          (r: any) => r.type === "purchase" && r.partyId === party.id,
         );
         partyReturns.forEach((ret: any) => {
           const totalItems =
             ret.items?.reduce(
               (sum: number, item: any) => sum + item.returnQuantity,
-              0
+              0,
             ) || 0;
           itemsReturned += totalItems;
           returnAmount += ret.refundAmount || 0;
@@ -319,23 +329,23 @@ export const LedgerPanel: React.FC = () => {
           (b: Bill) =>
             b.customerId === party.id &&
             b.paymentStatus === "paid" &&
-            !b.billNumber?.includes("RET")
+            !b.billNumber?.includes("RET"),
         );
         paidAmount = partyBills.reduce(
           (sum: number, b: Bill) => sum + (b.total || 0),
-          0
+          0,
         );
       } else {
         // Sales ledger - customer transactions from bills only
         const partyBills = bills.filter(
           (b: Bill) =>
-            b.customerId === party.id && !b.billNumber?.includes("RET")
+            b.customerId === party.id && !b.billNumber?.includes("RET"),
         );
         partyBills.forEach((bill: Bill) => {
           const totalItems =
             bill.items?.reduce(
               (sum: number, item: any) => sum + item.quantity,
-              0
+              0,
             ) || 0;
           itemsPurchased += totalItems;
           grossAmount += bill.total || 0;
@@ -347,13 +357,13 @@ export const LedgerPanel: React.FC = () => {
         // Check for returns from customers
         const partyReturns = bills.filter(
           (b: Bill) =>
-            b.customerId === party.id && b.billNumber?.includes("RET")
+            b.customerId === party.id && b.billNumber?.includes("RET"),
         );
         partyReturns.forEach((ret: Bill) => {
           const totalItems =
             ret.items?.reduce(
               (sum: number, item: any) => sum + item.quantity,
-              0
+              0,
             ) || 0;
           itemsReturned += totalItems;
           returnAmount += ret.total || 0;
@@ -392,11 +402,11 @@ export const LedgerPanel: React.FC = () => {
       const partyTransactions = apiData.filter(
         (entry) =>
           entry.reference === party.partyName ||
-          entry.description === party.partyName
+          entry.description === party.partyName,
       );
 
       console.log(
-        `✅ Found ${partyTransactions.length} transactions for party`
+        `✅ Found ${partyTransactions.length} transactions for party`,
       );
 
       // Convert API entries to Transaction format
@@ -407,7 +417,7 @@ export const LedgerPanel: React.FC = () => {
         .sort(
           (a, b) =>
             new Date(a.transaction_date).getTime() -
-            new Date(b.transaction_date).getTime()
+            new Date(b.transaction_date).getTime(),
         )
         .forEach((entry) => {
           const debit = parseFloat(entry.debit) || 0;
@@ -456,16 +466,16 @@ export const LedgerPanel: React.FC = () => {
 
   const loadPartyTransactionsFromStorage = (party: LedgerEntry) => {
     const bills = getFromStorage("bills", []).filter(
-      (b: Bill) => b.workspaceId === currentUser?.workspaceId
+      (b: Bill) => b.workspaceId === currentUser?.workspaceId,
     );
     const purchaseOrders = getFromStorage("purchaseOrders", []).filter(
-      (o: any) => o.workspaceId === currentUser?.workspaceId
+      (o: any) => o.workspaceId === currentUser?.workspaceId,
     );
     const salesOrders = getFromStorage("salesOrders", []).filter(
-      (o: any) => o.workspaceId === currentUser?.workspaceId
+      (o: any) => o.workspaceId === currentUser?.workspaceId,
     );
     const returns = getFromStorage("returns", []).filter(
-      (r: any) => r.workspaceId === currentUser?.workspaceId
+      (r: any) => r.workspaceId === currentUser?.workspaceId,
     );
 
     const txns: Transaction[] = [];
@@ -478,7 +488,7 @@ export const LedgerPanel: React.FC = () => {
         .sort(
           (a: any, b: any) =>
             new Date(a.createdAt || a.orderDate).getTime() -
-            new Date(b.createdAt || b.orderDate).getTime()
+            new Date(b.createdAt || b.orderDate).getTime(),
         );
 
       partyOrders.forEach((order: any) => {
@@ -511,11 +521,11 @@ export const LedgerPanel: React.FC = () => {
       // Returns to supplier
       const partyReturns = returns
         .filter(
-          (r: any) => r.type === "purchase" && r.partyId === party.partyId
+          (r: any) => r.type === "purchase" && r.partyId === party.partyId,
         )
         .sort(
           (a: any, b: any) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
         );
 
       partyReturns.forEach((ret: any) => {
@@ -549,11 +559,11 @@ export const LedgerPanel: React.FC = () => {
           (b: Bill) =>
             b.customerId === party.partyId &&
             b.paymentStatus === "paid" &&
-            !b.billNumber?.includes("RET")
+            !b.billNumber?.includes("RET"),
         )
         .sort(
           (a: Bill, b: Bill) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
         );
 
       payments.forEach((payment: Bill) => {
@@ -581,11 +591,11 @@ export const LedgerPanel: React.FC = () => {
       const partyBills = bills
         .filter(
           (b: Bill) =>
-            b.customerId === party.partyId && !b.billNumber?.includes("RET")
+            b.customerId === party.partyId && !b.billNumber?.includes("RET"),
         )
         .sort(
           (a: Bill, b: Bill) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
         );
 
       partyBills.forEach((bill: Bill) => {
@@ -614,11 +624,11 @@ export const LedgerPanel: React.FC = () => {
       const partyReturns = bills
         .filter(
           (b: Bill) =>
-            b.customerId === party.partyId && b.billNumber?.includes("RET")
+            b.customerId === party.partyId && b.billNumber?.includes("RET"),
         )
         .sort(
           (a: Bill, b: Bill) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
         );
 
       partyReturns.forEach((ret: Bill) => {
@@ -645,7 +655,7 @@ export const LedgerPanel: React.FC = () => {
 
     // Sort all transactions by date
     txns.sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
     );
 
     // Recalculate running balance
@@ -662,7 +672,14 @@ export const LedgerPanel: React.FC = () => {
   const filteredEntries = ledgerEntries.filter(
     (entry) =>
       entry.partyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      entry.partyEmail?.toLowerCase().includes(searchQuery.toLowerCase())
+      entry.partyEmail?.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredEntries.length / itemsPerPage);
+  const paginatedEntries = filteredEntries.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
   );
 
   const totalStats = ledgerStats;
@@ -879,108 +896,133 @@ export const LedgerPanel: React.FC = () => {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b-2 border-gray-200">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-gray-900">S.N</th>
-                      <th className="px-6 py-4 text-left text-gray-900">
-                        {activeTab === "purchase"
-                          ? "Supplier Name"
-                          : "Customer Name"}
-                      </th>
-                      <th className="px-6 py-4 text-left text-gray-900">
-                        Items Purchased
-                      </th>
-                      <th className="px-6 py-4 text-left text-gray-900">
-                        Items Returned
-                      </th>
-                      <th className="px-6 py-4 text-left text-gray-900">
-                        Gross Amount
-                      </th>
-                      <th className="px-6 py-4 text-left text-gray-900">
-                        Return Amount
-                      </th>
-                      <th className="px-6 py-4 text-left text-gray-900">
-                        Net Amount
-                      </th>
-                      <th className="px-6 py-4 text-left text-gray-900">
-                        Due Remaining
-                      </th>
-                      <th className="px-6 py-4 text-left text-gray-900">
-                        Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {filteredEntries.map((entry, index) => (
-                      <tr
-                        key={entry.partyId}
-                        className="hover:bg-gray-50 transition-colors"
-                      >
-                        <td className="px-6 py-4 text-gray-900">{index + 1}</td>
-                        <td className="px-6 py-4">
-                          <div>
-                            <p className="font-semibold text-gray-900">
-                              {entry.partyName}
-                            </p>
-                            {entry.partyEmail && (
-                              <p className="text-sm text-gray-500">
-                                {entry.partyEmail}
-                              </p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-yellow-100 text-yellow-700 font-bold">
-                            {entry.itemsPurchased}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-red-100 text-red-700 font-bold">
-                            {entry.itemsReturned}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="text-green-600 font-semibold">
-                            Rs{entry.grossAmount.toLocaleString()}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="text-red-600 font-semibold">
-                            Rs{entry.returnAmount.toLocaleString()}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="text-blue-600 font-semibold">
-                            Rs{entry.netAmount.toLocaleString()}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span
-                            className={`font-semibold ${
-                              entry.dueRemaining > 0
-                                ? "text-red-600"
-                                : "text-green-600"
-                            }`}
-                          >
-                            Rs{entry.dueRemaining.toLocaleString()}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <button
-                            onClick={() => loadPartyTransactions(entry)}
-                            className="flex items-center space-x-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
-                          >
-                            <Eye className="w-4 h-4" />
-                            <span>View Details</span>
-                          </button>
-                        </td>
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b-2 border-gray-200">
+                      <tr>
+                        <th className="px-6 py-4 text-left text-gray-900">
+                          S.N
+                        </th>
+                        <th className="px-6 py-4 text-left text-gray-900">
+                          {activeTab === "purchase"
+                            ? "Supplier Name"
+                            : "Customer Name"}
+                        </th>
+                        <th className="px-6 py-4 text-left text-gray-900">
+                          Items Purchased
+                        </th>
+                        <th className="px-6 py-4 text-left text-gray-900">
+                          Items Returned
+                        </th>
+                        <th className="px-6 py-4 text-left text-gray-900">
+                          Gross Amount
+                        </th>
+                        <th className="px-6 py-4 text-left text-gray-900">
+                          Return Amount
+                        </th>
+                        <th className="px-6 py-4 text-left text-gray-900">
+                          Net Amount
+                        </th>
+                        <th className="px-6 py-4 text-left text-gray-900">
+                          Due Remaining
+                        </th>
+                        <th className="px-6 py-4 text-left text-gray-900">
+                          Action
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {paginatedEntries.map((entry, index) => (
+                        <tr
+                          key={entry.partyId}
+                          className="hover:bg-gray-50 transition-colors"
+                        >
+                          <td className="px-6 py-4 text-gray-900">
+                            {(currentPage - 1) * itemsPerPage + index + 1}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div>
+                              <p className="font-semibold text-gray-900">
+                                {entry.partyName}
+                              </p>
+                              {entry.partyEmail && (
+                                <p className="text-sm text-gray-500">
+                                  {entry.partyEmail}
+                                </p>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-yellow-100 text-yellow-700 font-bold">
+                              {entry.itemsPurchased}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-red-100 text-red-700 font-bold">
+                              {entry.itemsReturned}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-green-600 font-semibold">
+                              Rs{entry.grossAmount.toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-red-600 font-semibold">
+                              Rs{entry.returnAmount.toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-blue-600 font-semibold">
+                              Rs{entry.netAmount.toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`font-semibold ${
+                                entry.dueRemaining > 0
+                                  ? "text-red-600"
+                                  : "text-green-600"
+                              }`}
+                            >
+                              Rs{entry.dueRemaining.toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <button
+                              onClick={() => loadPartyTransactions(entry)}
+                              className="flex items-center space-x-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                            >
+                              <Eye className="w-4 h-4" />
+                              <span>View Details</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-6 px-4">
+                    <div className="text-sm text-gray-600">
+                      Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                      {Math.min(
+                        currentPage * itemsPerPage,
+                        filteredEntries.length,
+                      )}{" "}
+                      of {filteredEntries.length} entries
+                    </div>
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </>
@@ -1144,7 +1186,7 @@ export const LedgerPanel: React.FC = () => {
                             className="hover:bg-gray-50 transition-colors cursor-pointer"
                             onClick={() =>
                               setExpandedTxn(
-                                expandedTxn === txn.id ? null : txn.id
+                                expandedTxn === txn.id ? null : txn.id,
                               )
                             }
                           >
@@ -1156,7 +1198,7 @@ export const LedgerPanel: React.FC = () => {
                                 <Calendar className="w-4 h-4" />
                                 <span className="text-sm">
                                   {new Date(txn.date).toLocaleDateString(
-                                    "en-NP"
+                                    "en-NP",
                                   )}
                                 </span>
                               </div>
@@ -1295,7 +1337,7 @@ export const LedgerPanel: React.FC = () => {
                                                 .reduce(
                                                   (sum, item) =>
                                                     sum + item.total,
-                                                  0
+                                                  0,
                                                 )
                                                 .toLocaleString()}
                                             </td>

@@ -12,10 +12,18 @@ import {
   Lock,
   X,
   Check,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { getFromStorage, saveToStorage } from "../utils/mockData";
 import { PaymentModal } from "./PaymentModal";
+import { apiFetch } from "../utils/apiClient";
+import {
+  handlePhoneInput,
+  isValidNepalPhone,
+  NEPAL_COUNTRY_CODE,
+  formatPhoneWithCode,
+} from "../utils/phoneValidation";
 
 // Package limits for branches
 const BRANCH_LIMITS = {
@@ -49,7 +57,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
   const loadBranches = () => {
     const allBranches: Branch[] = getFromStorage("branches", []);
     const userBranches = allBranches.filter(
-      (b) => b.workspaceId === currentUser?.workspaceId
+      (b) => b.workspaceId === currentUser?.workspaceId,
     );
     setBranches(userBranches);
   };
@@ -59,15 +67,15 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
     if (branches.length >= branchLimit) {
       if (currentPackage === "basic") {
         setUpgradeMessage(
-          "You've reached the maximum of 1 branch in the Basic package. Upgrade to Professional to create up to 5 branches, or Enterprise for unlimited branches."
+          "You've reached the maximum of 1 branch in the Basic package. Upgrade to Professional to create up to 5 branches, or Enterprise for unlimited branches.",
         );
       } else if (currentPackage === "professional") {
         setUpgradeMessage(
-          "You've reached the maximum of 5 branches in the Professional package. Upgrade to Enterprise for unlimited branches."
+          "You've reached the maximum of 5 branches in the Professional package. Upgrade to Enterprise for unlimited branches.",
         );
       } else {
         setUpgradeMessage(
-          "You've reached your branch limit. Please upgrade your package."
+          "You've reached your branch limit. Please upgrade your package.",
         );
       }
       setShowUpgradeModal(true);
@@ -86,7 +94,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
   const handleDeleteBranch = (branchId: string) => {
     if (
       window.confirm(
-        "Are you sure you want to delete this branch? Users assigned to this branch will need to be reassigned."
+        "Are you sure you want to delete this branch? Users assigned to this branch will need to be reassigned.",
       )
     ) {
       const allBranches: Branch[] = getFromStorage("branches", []);
@@ -104,7 +112,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
       const updatedBranches = allBranches.map((b) =>
         b.id === editingBranch.id
           ? { ...b, ...branchData, updatedAt: new Date().toISOString() }
-          : b
+          : b,
       );
       saveToStorage("branches", updatedBranches);
     } else {
@@ -187,7 +195,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
               <button
                 onClick={() => {
                   setUpgradeMessage(
-                    "Upgrade to Professional or Enterprise to unlock more branches and assign staff to different locations."
+                    "Upgrade to Professional or Enterprise to unlock more branches and assign staff to different locations.",
                   );
                   setShowUpgradeModal(true);
                 }}
@@ -322,6 +330,17 @@ interface BranchModalProps {
   onClose: () => void;
 }
 
+interface District {
+  id: string;
+  name: string;
+}
+
+interface Province {
+  id: string;
+  name: string;
+  districts: District[];
+}
+
 const BranchModal: React.FC<BranchModalProps> = ({
   branch,
   onSave,
@@ -333,11 +352,52 @@ const BranchModal: React.FC<BranchModalProps> = ({
     address: branch?.address || "",
     city: branch?.city || "",
     state: branch?.state || "",
-    phone: branch?.phone || "+977",
+    district: "",
+    phone: formatPhoneWithCode(branch?.phone) || NEPAL_COUNTRY_CODE,
     email: branch?.email || "",
     manager: branch?.manager || "",
     managerName: branch?.managerName || "",
   });
+  const [phoneError, setPhoneError] = useState("");
+
+  // Province/District state
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [isLoadingRegions, setIsLoadingRegions] = useState(false);
+
+  // Fetch provinces and districts from API
+  useEffect(() => {
+    const fetchRegions = async () => {
+      setIsLoadingRegions(true);
+      try {
+        const url = `${import.meta.env.VITE_API_BASE_URL}/sales/orders/province_districts/`;
+        const response = await apiFetch(url);
+
+        if (response.ok) {
+          const data = await response.json();
+          setProvinces(data.provinces || []);
+        } else {
+          console.error("Failed to fetch regions:", response.status);
+        }
+      } catch (error) {
+        console.error("Failed to fetch regions:", error);
+      } finally {
+        setIsLoadingRegions(false);
+      }
+    };
+    fetchRegions();
+  }, []);
+
+  const handleProvinceChange = (provinceName: string) => {
+    setFormData({ ...formData, state: provinceName, district: "" });
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handlePhoneInput(
+      e.target.value,
+      (phone) => setFormData({ ...formData, phone }),
+      setPhoneError,
+    );
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -412,34 +472,69 @@ const BranchModal: React.FC<BranchModalProps> = ({
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                City *
+                Province *
               </label>
-              <input
-                type="text"
-                value={formData.city}
-                onChange={(e) =>
-                  setFormData({ ...formData, city: e.target.value })
-                }
-                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
-                placeholder="Pokhara"
+              <select
                 required
-              />
+                value={formData.state}
+                onChange={(e) => handleProvinceChange(e.target.value)}
+                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
+                disabled={isLoadingRegions}
+              >
+                <option value="">Select Province</option>
+                {provinces.map((prov) => (
+                  <option key={prov.id} value={prov.name}>
+                    {prov.name}
+                  </option>
+                ))}
+              </select>
+              {isLoadingRegions && (
+                <p className="text-gray-500 text-xs mt-1 flex items-center">
+                  <Loader2 className="w-3 h-3 animate-spin mr-1" /> Loading
+                  provinces...
+                </p>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                State/Province
+                District *
               </label>
-              <input
-                type="text"
-                value={formData.state}
+              <select
+                required
+                value={formData.district}
                 onChange={(e) =>
-                  setFormData({ ...formData, state: e.target.value })
+                  setFormData({ ...formData, district: e.target.value })
                 }
                 className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
-                placeholder="Bagmati"
-              />
+                disabled={!formData.state || isLoadingRegions}
+              >
+                <option value="">Select District</option>
+                {provinces
+                  .find((p) => p.name === formData.state)
+                  ?.districts.map((dist) => (
+                    <option key={dist.id} value={dist.name}>
+                      {dist.name}
+                    </option>
+                  ))}
+              </select>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              City/Town *
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.city}
+              onChange={(e) =>
+                setFormData({ ...formData, city: e.target.value })
+              }
+              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
+              placeholder="Enter city/town name"
+            />
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
@@ -450,13 +545,19 @@ const BranchModal: React.FC<BranchModalProps> = ({
               <input
                 type="tel"
                 value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
-                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
-                placeholder="+977"
+                onChange={handlePhoneChange}
+                className={`w-full px-4 py-2 border-2 rounded-lg focus:border-indigo-500 focus:outline-none ${
+                  phoneError ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="+977 98XXXXXXXX"
                 required
               />
+              {phoneError && (
+                <p className="text-red-500 text-xs mt-1">{phoneError}</p>
+              )}
+              <p className="text-gray-500 text-xs mt-1">
+                Enter 10 digit number after +977
+              </p>
             </div>
 
             <div>

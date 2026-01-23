@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { initiatePayment, mockPaymentSuccess } from "../utils/paymentGateway";
+import { handlePhoneInput, NEPAL_COUNTRY_CODE } from "../utils/phoneValidation";
 
 interface RegistrationData {
   // Business Information
@@ -100,7 +101,7 @@ export const BusinessRegistrationForm: React.FC<
     businessType: "",
     panVatNumber: "",
     businessAddress: "",
-    businessPhone: "+977",
+    businessPhone: NEPAL_COUNTRY_CODE,
     businessEmail: "",
     ownerName: "",
     citizenshipNumber: "",
@@ -540,11 +541,16 @@ Thank you for your patience!`);
                     type="tel"
                     value={formData.businessPhone}
                     onChange={(e) =>
-                      handleInputChange("businessPhone", e.target.value)
+                      handlePhoneInput(e.target.value, (phone) =>
+                        handleInputChange("businessPhone", phone),
+                      )
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    placeholder="+977"
+                    placeholder="+977 98XXXXXXXX"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Enter 10 digit number after +977
+                  </p>
                 </div>
 
                 <div className="md:col-span-2">

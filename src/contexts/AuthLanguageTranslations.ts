@@ -23,7 +23,7 @@ export const authTranslations = {
   ne: {
     "auth.welcome": "फेरि स्वागत छ!",
     "auth.subtitle": "आफ्नो ड्यासबोर्डमा जान लगइन गर्नुहोस्",
-    "auth.demo.title": "🎉 डेमो खाताहRs उपलब्ध छन्!",
+    "auth.demo.title": "🎉 डेमो खाताहरु उपलब्ध छन्!",
     "auth.demo.superadmin": "👑 सुपर प्रशासक:",
     "auth.demo.admin": "⭐ प्रशासक:",
     "auth.demo.inventoryManager": "📦 सूची प्रबन्धक:",

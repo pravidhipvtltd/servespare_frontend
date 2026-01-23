@@ -1,23 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Download, X, Monitor, Apple, Loader2, Eye, EyeOff } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  Download,
+  X,
+  Monitor,
+  Apple,
+  Loader2,
+  Eye,
+  EyeOff,
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
-type Platform = 'windows' | 'macos' | 'linux' | null;
+type Platform = "windows" | "macos" | "linux" | null;
 
 interface FloatingDownloadButtonProps {
   showOnScroll?: boolean;
 }
 
-export const FloatingDownloadButton: React.FC<FloatingDownloadButtonProps> = ({ showOnScroll = true }) => {
+export const FloatingDownloadButton: React.FC<FloatingDownloadButtonProps> = ({
+  showOnScroll = true,
+}) => {
   const [showButton, setShowButton] = useState(!showOnScroll);
   const [showModal, setShowModal] = useState(false);
-  const [step, setStep] = useState<'platform' | 'login'>('platform');
+  const [step, setStep] = useState<"platform" | "login">("platform");
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
 
@@ -33,99 +43,104 @@ export const FloatingDownloadButton: React.FC<FloatingDownloadButtonProps> = ({ 
       }
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, [showOnScroll]);
 
   const platforms = [
     {
-      id: 'windows' as Platform,
-      name: 'Windows',
-      icon: '🪟',
-      size: '~120 MB',
-      requirements: 'Windows 10 or later',
-      downloadUrl: '/downloads/serve-spares-setup.exe',
+      id: "windows" as Platform,
+      name: "Windows",
+      icon: "🪟",
+      size: "~120 MB",
+      requirements: "Windows 10 or later",
+      downloadUrl: "/downloads/serve-spares-setup.exe",
     },
     {
-      id: 'macos' as Platform,
-      name: 'macOS',
-      icon: '🍎',
-      size: '~130 MB',
-      requirements: 'macOS 10.15 or later',
-      downloadUrl: '/downloads/serve-spares.dmg',
+      id: "macos" as Platform,
+      name: "macOS",
+      icon: "🍎",
+      size: "~130 MB",
+      requirements: "macOS 10.15 or later",
+      downloadUrl: "/downloads/serve-spares.dmg",
     },
     {
-      id: 'linux' as Platform,
-      name: 'Linux',
-      icon: '🐧',
-      size: '~125 MB',
-      requirements: 'Ubuntu 20.04+ / Debian 10+',
-      downloadUrl: '/downloads/serve-spares.AppImage',
+      id: "linux" as Platform,
+      name: "Linux",
+      icon: "🐧",
+      size: "~125 MB",
+      requirements: "Ubuntu 20.04+ / Debian 10+",
+      downloadUrl: "/downloads/serve-spares.AppImage",
     },
   ];
 
   const handlePlatformSelect = (platform: Platform) => {
     setSelectedPlatform(platform);
-    setStep('login');
-    setError('');
+    setStep("login");
+    setError("");
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setIsLoading(true);
 
     try {
       // Attempt to login
       const success = await login(email, password);
-      
+
       if (success) {
         // Login successful, trigger download
-        const platform = platforms.find(p => p.id === selectedPlatform);
+        const platform = platforms.find((p) => p.id === selectedPlatform);
         if (platform) {
           // Create a temporary link and trigger download
-          const link = document.createElement('a');
+          const link = document.createElement("a");
           link.href = platform.downloadUrl;
-          link.download = platform.downloadUrl.split('/').pop() || 'serve-spares-installer';
+          link.download =
+            platform.downloadUrl.split("/").pop() || "serve-spares-installer";
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
 
           // Show success message
-          alert(`✅ Download started for ${platform.name}!\n\nYour installer will be saved to your downloads folder.`);
-          
+          alert(
+            `✅ Download started for ${platform.name}!\n\nYour installer will be saved to your downloads folder.`,
+          );
+
           // Reset modal
           setShowModal(false);
-          setStep('platform');
+          setStep("platform");
           setSelectedPlatform(null);
-          setEmail('');
-          setPassword('');
+          setEmail("");
+          setPassword("");
         }
       } else {
-        setError('Invalid email or password. Please try again or register first.');
+        setError(
+          "Invalid email or password. Please try again or register first.",
+        );
       }
     } catch (err) {
-      setError('Login failed. Please check your credentials.');
+      setError("Login failed. Please check your credentials.");
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleBackToPlatform = () => {
-    setStep('platform');
+    setStep("platform");
     setSelectedPlatform(null);
-    setEmail('');
-    setPassword('');
-    setError('');
+    setEmail("");
+    setPassword("");
+    setError("");
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
-    setStep('platform');
+    setStep("platform");
     setSelectedPlatform(null);
-    setEmail('');
-    setPassword('');
-    setError('');
+    setEmail("");
+    setPassword("");
+    setError("");
   };
 
   return (
@@ -140,7 +155,7 @@ export const FloatingDownloadButton: React.FC<FloatingDownloadButtonProps> = ({ 
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => setShowModal(true)}
-            className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-40 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-4 rounded-full font-bold text-lg shadow-2xl hover:shadow-green-500/50 transition-all flex items-center space-x-3"
+            className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-40 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-2 py-2 rounded-3xl  text-md shadow-2xl hover:shadow-green-500/50 transition-all flex items-center space-x-3"
           >
             <Download size={24} className="animate-bounce" />
             <span>Download Desktop App</span>
@@ -178,7 +193,9 @@ export const FloatingDownloadButton: React.FC<FloatingDownloadButtonProps> = ({ 
                   <div>
                     <h2 className="text-2xl font-bold">Download Desktop App</h2>
                     <p className="text-green-100 text-sm">
-                      {step === 'platform' ? 'Choose your platform' : 'Login to download'}
+                      {step === "platform"
+                        ? "Choose your platform"
+                        : "Login to download"}
                     </p>
                   </div>
                 </div>
@@ -186,7 +203,7 @@ export const FloatingDownloadButton: React.FC<FloatingDownloadButtonProps> = ({ 
 
               {/* Content */}
               <div className="p-6">
-                {step === 'platform' ? (
+                {step === "platform" ? (
                   // Step 1: Platform Selection
                   <div className="space-y-4">
                     <p className="text-gray-600 mb-6">
@@ -204,9 +221,15 @@ export const FloatingDownloadButton: React.FC<FloatingDownloadButtonProps> = ({ 
                           <div className="flex items-center space-x-4">
                             <div className="text-5xl">{platform.icon}</div>
                             <div>
-                              <h3 className="text-xl font-bold text-gray-900">{platform.name}</h3>
-                              <p className="text-sm text-gray-600">{platform.requirements}</p>
-                              <p className="text-xs text-gray-500 mt-1">Size: {platform.size}</p>
+                              <h3 className="text-xl font-bold text-gray-900">
+                                {platform.name}
+                              </h3>
+                              <p className="text-sm text-gray-600">
+                                {platform.requirements}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Size: {platform.size}
+                              </p>
                             </div>
                           </div>
                           <Download className="text-green-600" size={24} />
@@ -220,14 +243,23 @@ export const FloatingDownloadButton: React.FC<FloatingDownloadButtonProps> = ({ 
                     <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
                       <div className="flex items-center space-x-3">
                         <div className="text-3xl">
-                          {platforms.find(p => p.id === selectedPlatform)?.icon}
+                          {
+                            platforms.find((p) => p.id === selectedPlatform)
+                              ?.icon
+                          }
                         </div>
                         <div>
                           <p className="font-semibold text-gray-900">
-                            {platforms.find(p => p.id === selectedPlatform)?.name}
+                            {
+                              platforms.find((p) => p.id === selectedPlatform)
+                                ?.name
+                            }
                           </p>
                           <p className="text-sm text-gray-600">
-                            {platforms.find(p => p.id === selectedPlatform)?.size}
+                            {
+                              platforms.find((p) => p.id === selectedPlatform)
+                                ?.size
+                            }
                           </p>
                         </div>
                       </div>
@@ -254,7 +286,7 @@ export const FloatingDownloadButton: React.FC<FloatingDownloadButtonProps> = ({ 
                         </label>
                         <div className="relative">
                           <input
-                            type={showPassword ? 'text' : 'password'}
+                            type={showPassword ? "text" : "password"}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="Enter your password"
@@ -266,7 +298,11 @@ export const FloatingDownloadButton: React.FC<FloatingDownloadButtonProps> = ({ 
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                           >
-                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            {showPassword ? (
+                              <EyeOff size={20} />
+                            ) : (
+                              <Eye size={20} />
+                            )}
                           </button>
                         </div>
                       </div>
@@ -277,9 +313,12 @@ export const FloatingDownloadButton: React.FC<FloatingDownloadButtonProps> = ({ 
                           animate={{ opacity: 1, y: 0 }}
                           className="bg-red-50 border-2 border-red-200 rounded-xl p-4"
                         >
-                          <p className="text-red-800 text-sm font-semibold">⚠️ {error}</p>
+                          <p className="text-red-800 text-sm font-semibold">
+                            ⚠️ {error}
+                          </p>
                           <p className="text-red-600 text-xs mt-1">
-                            Do not have an account? Please register first from the main page.
+                            Do not have an account? Please register first from
+                            the main page.
                           </p>
                         </motion.div>
                       )}
@@ -314,7 +353,9 @@ export const FloatingDownloadButton: React.FC<FloatingDownloadButtonProps> = ({ 
 
                     <div className="mt-6 p-4 bg-gray-50 rounded-xl">
                       <p className="text-xs text-gray-600 text-center">
-                        🔒 Your credentials are verified securely. After successful login, your download will start automatically.
+                        🔒 Your credentials are verified securely. After
+                        successful login, your download will start
+                        automatically.
                       </p>
                     </div>
                   </div>

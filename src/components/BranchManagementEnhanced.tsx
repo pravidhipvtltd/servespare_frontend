@@ -18,7 +18,15 @@ import {
   Shield,
   ChevronDown,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
+import { apiFetch } from "../utils/apiClient";
+import {
+  handlePhoneInput,
+  isValidNepalPhone,
+  NEPAL_COUNTRY_CODE,
+  formatPhoneWithCode,
+} from "../utils/phoneValidation";
 import { useAuth } from "../contexts/AuthContext";
 import { getFromStorage, saveToStorage } from "../utils/mockData";
 import { PaymentModal } from "./PaymentModal";
@@ -184,7 +192,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
             "Content-Type": "application/json",
             "ngrok-skip-browser-warning": "true",
           },
-        }
+        },
       );
 
       if (response.ok) {
@@ -239,7 +247,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
                 Authorization: `Bearer ${token}`,
                 "ngrok-skip-browser-warning": "true",
               },
-            }
+            },
           );
 
           if (response.ok) {
@@ -263,7 +271,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
                 branchId: apiUser.branch?.toString(),
                 createdAt: apiUser.created,
                 updatedAt: apiUser.modified,
-              })
+              }),
             );
 
             return { branchId: branch.id, users: mappedUsers };
@@ -295,7 +303,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
     if (isLoadingSubscription) {
       popup.showError(
         "Please wait while we load your subscription information.",
-        "Loading..."
+        "Loading...",
       );
       return;
     }
@@ -304,7 +312,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
     if (!currentSubscription || branchLimit === null) {
       popup.showError(
         "Unable to verify your subscription plan. Please try again.",
-        "Subscription Error"
+        "Subscription Error",
       );
       return;
     }
@@ -315,7 +323,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
       setUpgradeMessage(
         `You've reached the maximum of ${branchLimit} ${
           branchLimit === 1 ? "branch" : "branches"
-        } allowed in your ${planName} plan. Please upgrade your package to create more branches.`
+        } allowed in your ${planName} plan. Please upgrade your package to create more branches.`,
       );
       setShowUpgradeModal(true);
       return;
@@ -348,7 +356,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
                 "Content-Type": "application/json",
                 "ngrok-skip-browser-warning": "true",
               },
-            }
+            },
           );
 
           if (response.ok) {
@@ -358,14 +366,14 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
             console.error("Failed to delete branch:", response.statusText);
             popup.showError(
               "Failed to delete branch. Please try again.",
-              "Delete Failed"
+              "Delete Failed",
             );
           }
         } catch (error) {
           console.error("Error deleting branch:", error);
           popup.showError(
             "An error occurred while deleting the branch.",
-            "Error"
+            "Error",
           );
         }
       },
@@ -375,7 +383,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
           "Users assigned to this branch will need to be reassigned",
           "This action cannot be undone",
         ],
-      }
+      },
     );
   };
 
@@ -410,7 +418,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
               "ngrok-skip-browser-warning": "true",
             },
             body: JSON.stringify(apiData),
-          }
+          },
         );
       } else {
         // Create new branch
@@ -462,7 +470,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
       popup.showSuccess(
         editingBranch
           ? "Branch updated successfully"
-          : "Branch created successfully"
+          : "Branch created successfully",
       );
     } catch (error: any) {
       console.error("Error saving branch:", error);
@@ -510,7 +518,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
                 Authorization: `Bearer ${token}`,
                 "ngrok-skip-browser-warning": "true",
               },
-            }
+            },
           );
 
           if (!response.ok) {
@@ -528,7 +536,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
           console.error("Error deleting user:", error);
           popup.showError(
             "Failed to delete user. Please try again.",
-            "Delete Failed"
+            "Delete Failed",
           );
         }
       },
@@ -538,7 +546,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
           "This action cannot be undone",
           "User access will be revoked immediately",
         ],
-      }
+      },
     );
   };
 
@@ -608,7 +616,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
                   setUpgradeMessage(
                     `Your current plan allows ${branchLimit} ${
                       branchLimit === 1 ? "branch" : "branches"
-                    }. Upgrade your package to unlock more branches and assign staff to different locations.`
+                    }. Upgrade your package to unlock more branches and assign staff to different locations.`,
                   );
                   setShowUpgradeModal(true);
                 }}
@@ -929,6 +937,17 @@ interface BranchModalProps {
   onClose: () => void;
 }
 
+interface District {
+  id: string;
+  name: string;
+}
+
+interface Province {
+  id: string;
+  name: string;
+  districts: District[];
+}
+
 const BranchModal: React.FC<BranchModalProps> = ({
   branch,
   onSave,
@@ -940,11 +959,52 @@ const BranchModal: React.FC<BranchModalProps> = ({
     address: branch?.address || "",
     city: branch?.city || "",
     state: branch?.state || "",
-    phone: branch?.phone || "+977",
+    district: "",
+    phone: formatPhoneWithCode(branch?.phone) || NEPAL_COUNTRY_CODE,
     email: branch?.email || "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState("");
+
+  // Province/District state
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [isLoadingRegions, setIsLoadingRegions] = useState(false);
+
+  // Fetch provinces and districts from API
+  useEffect(() => {
+    const fetchRegions = async () => {
+      setIsLoadingRegions(true);
+      try {
+        const url = `${import.meta.env.VITE_API_BASE_URL}/sales/orders/province_districts/`;
+        const response = await apiFetch(url);
+
+        if (response.ok) {
+          const data = await response.json();
+          setProvinces(data.provinces || []);
+        } else {
+          console.error("Failed to fetch regions:", response.status);
+        }
+      } catch (error) {
+        console.error("Failed to fetch regions:", error);
+      } finally {
+        setIsLoadingRegions(false);
+      }
+    };
+    fetchRegions();
+  }, []);
+
+  const handleProvinceChange = (provinceName: string) => {
+    setFormData({ ...formData, state: provinceName, district: "" });
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handlePhoneInput(
+      e.target.value,
+      (phone) => setFormData({ ...formData, phone }),
+      setPhoneError,
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1034,34 +1094,69 @@ const BranchModal: React.FC<BranchModalProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                City *
+                Province *
               </label>
-              <input
-                type="text"
+              <select
                 required
-                value={formData.city}
-                onChange={(e) =>
-                  setFormData({ ...formData, city: e.target.value })
-                }
+                value={formData.state}
+                onChange={(e) => handleProvinceChange(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Pokhara"
-              />
+                disabled={isLoadingRegions}
+              >
+                <option value="">Select Province</option>
+                {provinces.map((prov) => (
+                  <option key={prov.id} value={prov.name}>
+                    {prov.name}
+                  </option>
+                ))}
+              </select>
+              {isLoadingRegions && (
+                <p className="text-gray-500 text-xs mt-1 flex items-center">
+                  <Loader2 className="w-3 h-3 animate-spin mr-1" /> Loading
+                  provinces...
+                </p>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                State/Province
+                District *
               </label>
-              <input
-                type="text"
-                value={formData.state}
+              <select
+                required
+                value={formData.district}
                 onChange={(e) =>
-                  setFormData({ ...formData, state: e.target.value })
+                  setFormData({ ...formData, district: e.target.value })
                 }
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Bagmati"
-              />
+                disabled={!formData.state || isLoadingRegions}
+              >
+                <option value="">Select District</option>
+                {provinces
+                  .find((p) => p.name === formData.state)
+                  ?.districts.map((dist) => (
+                    <option key={dist.id} value={dist.name}>
+                      {dist.name}
+                    </option>
+                  ))}
+              </select>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              City/Town *
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.city}
+              onChange={(e) =>
+                setFormData({ ...formData, city: e.target.value })
+              }
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              placeholder="Enter city/town name"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -1073,12 +1168,18 @@ const BranchModal: React.FC<BranchModalProps> = ({
                 type="tel"
                 required
                 value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="+977"
+                onChange={handlePhoneChange}
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
+                  phoneError ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="+977 98XXXXXXXX"
               />
+              {phoneError && (
+                <p className="text-red-500 text-xs mt-1">{phoneError}</p>
+              )}
+              <p className="text-gray-500 text-xs mt-1">
+                Enter 10 digit number after +977
+              </p>
             </div>
 
             <div>
@@ -1194,7 +1295,7 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
               ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
             body: JSON.stringify(updatePayload),
-          }
+          },
         );
 
         if (!response.ok) {
@@ -1267,7 +1368,7 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
               ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
             body: JSON.stringify(payload),
-          }
+          },
         );
 
         if (!response.ok) {
@@ -1328,12 +1429,12 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
                   "ngrok-skip-browser-warning": "true",
                 },
                 body: JSON.stringify(patchPayload),
-              }
+              },
             );
           } catch (patchError) {
             console.error(
               "Failed to patch user branch/tenant info:",
-              patchError
+              patchError,
             );
           }
         }

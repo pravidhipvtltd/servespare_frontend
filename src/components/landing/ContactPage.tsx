@@ -159,7 +159,7 @@ const ContactSection: React.FC = () => {
             company: formData.company,
             message: formData.message,
           }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -499,14 +499,14 @@ const Support: React.FC<{
   const isInView = useInView(ref, { once: true });
 
   const supportOptions = [
-    {
-      icon: <MessageCircle />,
-      title: "Live Chat",
-      desc: "Chat with our support team in real-time during business hours",
-      action: "Start Chat →",
-      color: "from-blue-500 to-blue-600",
-      onClick: onStartChat,
-    },
+    // {
+    //   icon: <MessageCircle />,
+    //   title: "Live Chat",
+    //   desc: "Chat with our support team in real-time during business hours",
+    //   action: "Start Chat →",
+    //   color: "from-blue-500 to-blue-600",
+    //   onClick: onStartChat,
+    // },
     {
       icon: <Mail />,
       title: "Email Support",
@@ -523,14 +523,14 @@ const Support: React.FC<{
       color: "from-green-500 to-green-600",
       onClick: onOpenHelpCenter,
     },
-    {
-      icon: <Users />,
-      title: "Community Forum",
-      desc: "Connect with other auto parts shop owners using Serve Spares",
-      action: "Join Forum →",
-      color: "from-orange-500 to-red-600",
-      onClick: onOpenForum,
-    },
+    // {
+    //   icon: <Users />,
+    //   title: "Community Forum",
+    //   desc: "Connect with other auto parts shop owners using Serve Spares",
+    //   action: "Join Forum →",
+    //   color: "from-orange-500 to-red-600",
+    //   onClick: onOpenForum,
+    // },
   ];
 
   return (
@@ -547,7 +547,7 @@ const Support: React.FC<{
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid md:grid-cols-2  gap-8 items-center justify-center mx-auto ">
           {supportOptions.map((option, index) => (
             <motion.div
               key={index}
@@ -736,8 +736,8 @@ const AIChatWidget: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
                           msg.sender === "user"
                             ? "bg-indigo-600 text-white"
                             : msg.sender === "agent"
-                            ? "bg-green-100 text-gray-800"
-                            : "bg-white text-gray-800"
+                              ? "bg-green-100 text-gray-800"
+                              : "bg-white text-gray-800"
                         } p-3 rounded-2xl shadow-sm`}
                       >
                         <p className="text-sm">{msg.message}</p>
@@ -1046,7 +1046,7 @@ const HelpCenterModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
       articles: cat.articles.filter(
         (article) =>
           article.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          cat.title.toLowerCase().includes(searchQuery.toLowerCase())
+          cat.title.toLowerCase().includes(searchQuery.toLowerCase()),
       ),
     }))
     .filter((cat) => cat.articles.length > 0);

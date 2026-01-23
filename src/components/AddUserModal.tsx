@@ -14,6 +14,11 @@ import {
 } from "lucide-react";
 import { User as UserType, Workspace } from "../types";
 import { getFromStorage, saveToStorage } from "../utils/mockData";
+import {
+  handlePhoneInput,
+  isValidNepalPhone,
+  NEPAL_COUNTRY_CODE,
+} from "../utils/phoneValidation";
 
 interface AddUserModalProps {
   isOpen: boolean;
@@ -31,7 +36,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    phone: "+977",
+    phone: NEPAL_COUNTRY_CODE,
     password: "",
     role: "cashier",
     workspaceId: workspaces[0]?.id || "",
@@ -280,9 +285,11 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                   type="tel"
                   value={formData.phone}
                   onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
+                    handlePhoneInput(e.target.value, (phone) =>
+                      setFormData({ ...formData, phone }),
+                    )
                   }
-                  placeholder="+977"
+                  placeholder="+977 98XXXXXXXX"
                   className={`w-full pl-11 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 ${
                     errors.phone
                       ? "border-red-500 focus:ring-red-500"
@@ -295,6 +302,9 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                   <AlertCircle className="w-4 h-4 mr-1" /> {errors.phone}
                 </p>
               )}
+              <p className="text-xs text-gray-500 mt-1">
+                Enter 10 digit number after +977
+              </p>
             </div>
 
             {/* Address */}

@@ -20,6 +20,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "../../utils/apiClient";
+import {
+  formatPhoneWithCode,
+  handlePhoneInput,
+  isValidNepalPhone,
+} from "../../utils/phoneValidation";
 
 interface CheckoutPageProps {
   cartItems: any[];
@@ -51,8 +56,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   const [deliveryAddress, setDeliveryAddress] = useState(
     customerData?.address || "",
   );
-  const [phone, setPhone] = useState(customerData?.phone || "+977");
+  const [phone, setPhone] = useState(formatPhoneWithCode(customerData?.phone));
+  const [phoneError, setPhoneError] = useState("");
   const [city, setCity] = useState("Pokhara");
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handlePhoneInput(e.target.value, setPhone, setPhoneError);
+  };
+
   const [deliveryState, setDeliveryState] = useState("Province 3");
   const [zipCode, setZipCode] = useState("");
   const [notes, setNotes] = useState("");
@@ -324,10 +335,18 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                     <input
                       type="tel"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+977"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      onChange={handlePhoneChange}
+                      placeholder="+977 98XXXXXXXX"
+                      className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                        phoneError ? "border-red-500" : "border-gray-300"
+                      }`}
                     />
+                    {phoneError && (
+                      <p className="text-red-500 text-sm mt-1">{phoneError}</p>
+                    )}
+                    <p className="text-gray-500 text-xs mt-1">
+                      Enter 10 digit number after +977
+                    </p>
                   </div>
 
                   {/* Address */}
@@ -442,12 +461,16 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   onClick={() => {
                     if (
                       !deliveryAddress ||
-                      !phone ||
                       !deliveryState ||
                       !deliveryDistrict ||
                       !city
                     ) {
                       toast.error("Please fill in all required fields");
+                      return;
+                    }
+                    if (!isValidNepalPhone(phone)) {
+                      toast.error("Please enter a valid 10-digit phone number");
+                      setPhoneError("Phone number must be exactly 10 digits");
                       return;
                     }
                     setStep(2);

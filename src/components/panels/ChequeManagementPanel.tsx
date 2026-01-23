@@ -33,6 +33,7 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { PopupContainer } from "../PopupContainer";
 import { useCustomPopup } from "../../hooks/useCustomPopup";
+import { Pagination } from "../common/Pagination";
 
 const API_URL = `${import.meta.env.VITE_API_BASE_URL}/cash-and-bank/cheques/`;
 
@@ -110,17 +111,21 @@ export const ChequeManagementPanel: React.FC = () => {
   const [cheques, setCheques] = useState<Cheque[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "issued" | "received">(
-    "all"
+    "all",
   );
   const [filterStatus, setFilterStatus] = useState<"all" | Cheque["status"]>(
-    "all"
+    "all",
   );
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editingCheque, setEditingCheque] = useState<Cheque | null>(null);
   const [viewingCheque, setViewingCheque] = useState<Cheque | null>(null);
   const [copiedChequeNumber, setCopiedChequeNumber] = useState<string | null>(
-    null
+    null,
   );
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
 
   const [formData, setFormData] = useState({
     chequeNumber: "",
@@ -144,6 +149,11 @@ export const ChequeManagementPanel: React.FC = () => {
   useEffect(() => {
     loadCheques();
   }, []);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterType, filterStatus]);
 
   const loadCheques = async () => {
     try {
@@ -213,7 +223,7 @@ export const ChequeManagementPanel: React.FC = () => {
       popup.showError(
         "Failed to load cheques",
         "Could not fetch data from server",
-        "error"
+        "error",
       );
     }
   };
@@ -233,7 +243,7 @@ export const ChequeManagementPanel: React.FC = () => {
     }: ${
       cheque.partyName
     }\nAmount: NPR ${cheque.amount.toLocaleString()}\nDue Date: ${new Date(
-      cheque.dueDate
+      cheque.dueDate,
     ).toLocaleDateString()}`;
 
     // Create a notification
@@ -249,7 +259,7 @@ export const ChequeManagementPanel: React.FC = () => {
     popup.showError(
       `${message}\n\n${details}`,
       "🔔 Cheque Reminder",
-      "warning"
+      "warning",
     );
   };
 
@@ -324,7 +334,7 @@ export const ChequeManagementPanel: React.FC = () => {
       popup.showError(
         "Please fill in all required fields: Cheque Number, Bank Name, Amount, Due Date, and Party Name.",
         "Missing Information",
-        "warning"
+        "warning",
       );
       return;
     }
@@ -369,7 +379,7 @@ export const ChequeManagementPanel: React.FC = () => {
         if (!response.ok) throw new Error("Failed to update cheque");
         popup.showSuccess(
           "Cheque Updated",
-          "The cheque has been successfully updated."
+          "The cheque has been successfully updated.",
         );
       } else {
         // Create new cheque
@@ -385,7 +395,7 @@ export const ChequeManagementPanel: React.FC = () => {
         if (!response.ok) throw new Error("Failed to create cheque");
         popup.showSuccess(
           "Cheque Added",
-          "The cheque has been successfully added to your records."
+          "The cheque has been successfully added to your records.",
         );
       }
 
@@ -396,7 +406,7 @@ export const ChequeManagementPanel: React.FC = () => {
       popup.showError(
         "Operation Failed",
         "Could not save cheque details.",
-        "error"
+        "error",
       );
     }
   };
@@ -425,17 +435,17 @@ export const ChequeManagementPanel: React.FC = () => {
           loadCheques();
           popup.showSuccess(
             "Cheque Deleted",
-            "The cheque record has been successfully deleted."
+            "The cheque record has been successfully deleted.",
           );
         } catch (error) {
           console.error("Error deleting cheque:", error);
           popup.showError(
             "Delete Failed",
             "Could not delete the cheque record.",
-            "error"
+            "error",
           );
         }
-      }
+      },
     );
   };
 
@@ -453,7 +463,7 @@ export const ChequeManagementPanel: React.FC = () => {
       popup.showError(
         "No cheques to export. Please add cheques first.",
         "No Data",
-        "warning"
+        "warning",
       );
       return;
     }
@@ -486,7 +496,7 @@ export const ChequeManagementPanel: React.FC = () => {
 
     popup.showSuccess(
       "Export Complete",
-      "Cheques have been exported successfully!"
+      "Cheques have been exported successfully!",
     );
   };
 
@@ -506,6 +516,13 @@ export const ChequeManagementPanel: React.FC = () => {
     const matchesStatus = filterStatus === "all" || c.status === filterStatus;
     return matchesSearch && matchesType && matchesStatus;
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredCheques.length / itemsPerPage);
+  const paginatedCheques = filteredCheques.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
 
   // Statistics
   const stats = {
@@ -531,7 +548,7 @@ export const ChequeManagementPanel: React.FC = () => {
     .map((c) => {
       const daysUntilDue = Math.floor(
         (new Date(c.dueDate).getTime() - new Date().getTime()) /
-          (1000 * 60 * 60 * 24)
+          (1000 * 60 * 60 * 24),
       );
       return { ...c, daysUntilDue };
     })
@@ -665,8 +682,8 @@ export const ChequeManagementPanel: React.FC = () => {
                         cheque.daysUntilDue === 0
                           ? "bg-red-500 text-white animate-pulse"
                           : cheque.daysUntilDue <= 3
-                          ? "bg-orange-500 text-white"
-                          : "bg-yellow-500 text-white"
+                            ? "bg-orange-500 text-white"
+                            : "bg-yellow-500 text-white"
                       }`}
                     >
                       {cheque.daysUntilDue === 0
@@ -731,251 +748,273 @@ export const ChequeManagementPanel: React.FC = () => {
       {/* Cheques Table */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         {filteredCheques.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Cheque #
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Party Name
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Bank
-                  </th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Amount (NPR)
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Issue Date
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Due Date
-                  </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Reminder
-                  </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredCheques.map((cheque) => {
-                  const StatusIcon = STATUS_CONFIG[cheque.status].icon;
-                  const TypeIcon = TYPE_CONFIG[cheque.type].icon;
-                  const daysUntilDue = Math.floor(
-                    (new Date(cheque.dueDate).getTime() -
-                      new Date().getTime()) /
-                      (1000 * 60 * 60 * 24)
-                  );
-                  const isOverdue =
-                    daysUntilDue < 0 && cheque.status === "pending";
-                  const isDueSoon =
-                    daysUntilDue >= 0 &&
-                    daysUntilDue <= 7 &&
-                    cheque.status === "pending";
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Cheque #
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Party Name
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Bank
+                    </th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Amount (NPR)
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Issue Date
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Due Date
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Reminder
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {paginatedCheques.map((cheque) => {
+                    const StatusIcon = STATUS_CONFIG[cheque.status].icon;
+                    const TypeIcon = TYPE_CONFIG[cheque.type].icon;
+                    const daysUntilDue = Math.floor(
+                      (new Date(cheque.dueDate).getTime() -
+                        new Date().getTime()) /
+                        (1000 * 60 * 60 * 24),
+                    );
+                    const isOverdue =
+                      daysUntilDue < 0 && cheque.status === "pending";
+                    const isDueSoon =
+                      daysUntilDue >= 0 &&
+                      daysUntilDue <= 7 &&
+                      cheque.status === "pending";
 
-                  return (
-                    <tr
-                      key={cheque.id}
-                      className={`hover:bg-gray-50 transition-colors ${
-                        isOverdue ? "bg-red-50" : isDueSoon ? "bg-amber-50" : ""
-                      }`}
-                    >
-                      {/* Cheque Number */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-2">
-                          <Hash className="w-4 h-4 text-gray-400" />
-                          <span className="font-mono font-semibold text-gray-900">
-                            {cheque.chequeNumber}
-                          </span>
-                          <button
-                            onClick={() =>
-                              copyToClipboard(
-                                cheque.chequeNumber,
-                                cheque.chequeNumber
-                              )
-                            }
-                            className="p-1 hover:bg-gray-200 rounded transition-colors"
-                            title="Copy cheque number"
-                          >
-                            {copiedChequeNumber === cheque.chequeNumber ? (
-                              <Check className="w-3 h-3 text-green-600" />
-                            ) : (
-                              <Copy className="w-3 h-3 text-gray-400" />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-
-                      {/* Type */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div
-                          className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${
-                            TYPE_CONFIG[cheque.type].color
-                          }`}
-                        >
-                          <TypeIcon className="w-3.5 h-3.5" />
-                          <span>
-                            {cheque.type === "issued" ? "Issued" : "Received"}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Party Name */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
-                          <User className="w-4 h-4 text-gray-400" />
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {cheque.partyName}
-                            </p>
-                            {cheque.partyPhone && (
-                              <p className="text-xs text-gray-500">
-                                {cheque.partyPhone}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Bank */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
-                          <Building className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-900">
-                            {cheque.bankName}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Amount */}
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end space-x-1">
-                          <DollarSign className="w-4 h-4 text-green-600" />
-                          <span className="font-bold text-gray-900">
-                            {cheque.amount.toLocaleString()}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Issue Date */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-2 text-sm text-gray-700">
-                          <Calendar className="w-4 h-4 text-gray-400" />
-                          <span>
-                            {new Date(cheque.issueDate).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Due Date */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-col">
+                    return (
+                      <tr
+                        key={cheque.id}
+                        className={`hover:bg-gray-50 transition-colors ${
+                          isOverdue
+                            ? "bg-red-50"
+                            : isDueSoon
+                              ? "bg-amber-50"
+                              : ""
+                        }`}
+                      >
+                        {/* Cheque Number */}
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center space-x-2">
-                            <Calendar
-                              className={`w-4 h-4 ${
-                                isOverdue
-                                  ? "text-red-600"
-                                  : isDueSoon
-                                  ? "text-amber-600"
-                                  : "text-gray-400"
-                              }`}
-                            />
-                            <span
-                              className={`text-sm font-medium ${
-                                isOverdue
-                                  ? "text-red-700"
-                                  : isDueSoon
-                                  ? "text-amber-700"
-                                  : "text-gray-700"
-                              }`}
+                            <Hash className="w-4 h-4 text-gray-400" />
+                            <span className="font-mono font-semibold text-gray-900">
+                              {cheque.chequeNumber}
+                            </span>
+                            <button
+                              onClick={() =>
+                                copyToClipboard(
+                                  cheque.chequeNumber,
+                                  cheque.chequeNumber,
+                                )
+                              }
+                              className="p-1 hover:bg-gray-200 rounded transition-colors"
+                              title="Copy cheque number"
                             >
-                              {new Date(cheque.dueDate).toLocaleDateString()}
+                              {copiedChequeNumber === cheque.chequeNumber ? (
+                                <Check className="w-3 h-3 text-green-600" />
+                              ) : (
+                                <Copy className="w-3 h-3 text-gray-400" />
+                              )}
+                            </button>
+                          </div>
+                        </td>
+
+                        {/* Type */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div
+                            className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${
+                              TYPE_CONFIG[cheque.type].color
+                            }`}
+                          >
+                            <TypeIcon className="w-3.5 h-3.5" />
+                            <span>
+                              {cheque.type === "issued" ? "Issued" : "Received"}
                             </span>
                           </div>
-                          {isOverdue && (
-                            <span className="text-xs font-bold text-red-600 mt-1 animate-pulse">
-                              OVERDUE!
+                        </td>
+
+                        {/* Party Name */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-2">
+                            <User className="w-4 h-4 text-gray-400" />
+                            <div>
+                              <p className="font-medium text-gray-900">
+                                {cheque.partyName}
+                              </p>
+                              {cheque.partyPhone && (
+                                <p className="text-xs text-gray-500">
+                                  {cheque.partyPhone}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Bank */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-2">
+                            <Building className="w-4 h-4 text-gray-400" />
+                            <span className="text-sm text-gray-900">
+                              {cheque.bankName}
                             </span>
+                          </div>
+                        </td>
+
+                        {/* Amount */}
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <div className="flex items-center justify-end space-x-1">
+                            <DollarSign className="w-4 h-4 text-green-600" />
+                            <span className="font-bold text-gray-900">
+                              {cheque.amount.toLocaleString()}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Issue Date */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center space-x-2 text-sm text-gray-700">
+                            <Calendar className="w-4 h-4 text-gray-400" />
+                            <span>
+                              {new Date(cheque.issueDate).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Due Date */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col">
+                            <div className="flex items-center space-x-2">
+                              <Calendar
+                                className={`w-4 h-4 ${
+                                  isOverdue
+                                    ? "text-red-600"
+                                    : isDueSoon
+                                      ? "text-amber-600"
+                                      : "text-gray-400"
+                                }`}
+                              />
+                              <span
+                                className={`text-sm font-medium ${
+                                  isOverdue
+                                    ? "text-red-700"
+                                    : isDueSoon
+                                      ? "text-amber-700"
+                                      : "text-gray-700"
+                                }`}
+                              >
+                                {new Date(cheque.dueDate).toLocaleDateString()}
+                              </span>
+                            </div>
+                            {isOverdue && (
+                              <span className="text-xs font-bold text-red-600 mt-1 animate-pulse">
+                                OVERDUE!
+                              </span>
+                            )}
+                            {isDueSoon && !isOverdue && (
+                              <span className="text-xs font-bold text-amber-600 mt-1">
+                                {daysUntilDue === 0
+                                  ? "DUE TODAY"
+                                  : `${daysUntilDue}d left`}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <div
+                            className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                              STATUS_CONFIG[cheque.status].color
+                            }`}
+                          >
+                            <StatusIcon className="w-3.5 h-3.5" />
+                            <span>{STATUS_CONFIG[cheque.status].label}</span>
+                          </div>
+                        </td>
+
+                        {/* Reminder */}
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          {cheque.reminders.enabled ? (
+                            <div className="inline-flex items-center space-x-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs">
+                              <Bell className="w-3 h-3" />
+                              <span>ON</span>
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center space-x-1 px-2 py-1 bg-gray-100 text-gray-500 rounded-lg text-xs">
+                              <BellOff className="w-3 h-3" />
+                              <span>OFF</span>
+                            </div>
                           )}
-                          {isDueSoon && !isOverdue && (
-                            <span className="text-xs font-bold text-amber-600 mt-1">
-                              {daysUntilDue === 0
-                                ? "DUE TODAY"
-                                : `${daysUntilDue}d left`}
-                            </span>
-                          )}
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Status */}
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div
-                          className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border ${
-                            STATUS_CONFIG[cheque.status].color
-                          }`}
-                        >
-                          <StatusIcon className="w-3.5 h-3.5" />
-                          <span>{STATUS_CONFIG[cheque.status].label}</span>
-                        </div>
-                      </td>
-
-                      {/* Reminder */}
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {cheque.reminders.enabled ? (
-                          <div className="inline-flex items-center space-x-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs">
-                            <Bell className="w-3 h-3" />
-                            <span>ON</span>
+                        {/* Actions */}
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <div className="flex items-center justify-center space-x-2">
+                            <button
+                              onClick={() => setViewingCheque(cheque)}
+                              className="p-2 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors"
+                              title="View Details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleOpenSidebar(cheque)}
+                              className="p-2 hover:bg-amber-100 text-amber-600 rounded-lg transition-colors"
+                              title="Edit"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(cheque.id)}
+                              className="p-2 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
-                        ) : (
-                          <div className="inline-flex items-center space-x-1 px-2 py-1 bg-gray-100 text-gray-500 rounded-lg text-xs">
-                            <BellOff className="w-3 h-3" />
-                            <span>OFF</span>
-                          </div>
-                        )}
-                      </td>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-                      {/* Actions */}
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="flex items-center justify-center space-x-2">
-                          <button
-                            onClick={() => setViewingCheque(cheque)}
-                            className="p-2 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors"
-                            title="View Details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleOpenSidebar(cheque)}
-                            className="p-2 hover:bg-amber-100 text-amber-600 rounded-lg transition-colors"
-                            title="Edit"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(cheque.id)}
-                            className="p-2 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between p-4 border-t border-gray-200">
+                <div className="text-sm text-gray-600">
+                  Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                  {Math.min(currentPage * itemsPerPage, filteredCheques.length)}{" "}
+                  of {filteredCheques.length} cheques
+                </div>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
+          </>
         ) : (
           <div className="bg-gray-50 rounded-xl p-12 text-center">
             <CreditCard className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -1414,7 +1453,7 @@ export const ChequeManagementPanel: React.FC = () => {
                   >
                     {React.createElement(
                       STATUS_CONFIG[viewingCheque.status].icon,
-                      { className: "w-4 h-4" }
+                      { className: "w-4 h-4" },
                     )}
                     <span className="font-medium">
                       {STATUS_CONFIG[viewingCheque.status].label}
@@ -1501,7 +1540,7 @@ export const ChequeManagementPanel: React.FC = () => {
                       .map((d) =>
                         d === 0
                           ? "on the due date"
-                          : `${d} day${d > 1 ? "s" : ""} before`
+                          : `${d} day${d > 1 ? "s" : ""} before`,
                       )
                       .join(", ")}
                   </p>

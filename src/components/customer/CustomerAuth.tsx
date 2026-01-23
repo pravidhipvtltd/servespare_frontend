@@ -22,6 +22,11 @@ import {
   Truck,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  handlePhoneInput,
+  isValidNepalPhone,
+  NEPAL_COUNTRY_CODE,
+} from "../../utils/phoneValidation";
 
 interface CustomerAuthProps {
   onAuthSuccess: (customer: any) => void;
@@ -43,7 +48,7 @@ export const CustomerAuth: React.FC<CustomerAuthProps> = ({
     name: "",
     email: "",
     password: "",
-    phone: "+977",
+    phone: NEPAL_COUNTRY_CODE,
     address: "",
   });
 
@@ -61,7 +66,7 @@ export const CustomerAuth: React.FC<CustomerAuthProps> = ({
       const customers = JSON.parse(localStorage.getItem("customers") || "[]");
       const customer = customers.find(
         (c: any) =>
-          c.email === loginData.email && c.password === loginData.password
+          c.email === loginData.email && c.password === loginData.password,
       );
 
       if (customer) {
@@ -97,7 +102,7 @@ export const CustomerAuth: React.FC<CustomerAuthProps> = ({
       const customers = JSON.parse(localStorage.getItem("customers") || "[]");
 
       const existingCustomer = customers.find(
-        (c: any) => c.email === signupData.email
+        (c: any) => c.email === signupData.email,
       );
       if (existingCustomer) {
         toast.error("Email already registered");
@@ -462,14 +467,16 @@ export const CustomerAuth: React.FC<CustomerAuthProps> = ({
                         type="tel"
                         value={signupData.phone}
                         onChange={(e) =>
-                          setSignupData({
-                            ...signupData,
-                            phone: e.target.value,
-                          })
+                          handlePhoneInput(e.target.value, (phone) =>
+                            setSignupData({ ...signupData, phone }),
+                          )
                         }
-                        placeholder="+977"
+                        placeholder="+977 98XXXXXXXX"
                         className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
                       />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Enter 10 digit number after +977
+                      </p>
                     </div>
 
                     {/* Address */}

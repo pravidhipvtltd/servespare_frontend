@@ -22,6 +22,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { CashDrawerShift, CashTransaction } from "../../types";
 import { PopupContainer } from "../PopupContainer";
 import { useCustomPopup } from "../../hooks/useCustomPopup";
+import { Pagination } from "../common/Pagination";
 
 const STATUS_COLORS = {
   open: "bg-blue-100 text-blue-700 border-blue-300",
@@ -52,6 +53,10 @@ export const CashDrawerMonitorPanel: React.FC = () => {
   const [flagModalOpen, setFlagModalOpen] = useState(false);
   const [flagReason, setFlagReason] = useState("");
   const [shiftToFlag, setShiftToFlag] = useState<CashDrawerShift | null>(null);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
 
   useEffect(() => {
     loadShifts(); // Keeps mock data for stats if needed
@@ -302,6 +307,18 @@ export const CashDrawerMonitorPanel: React.FC = () => {
     return String(shift.branchId) === String(selectedBranch);
   });
 
+  // Pagination logic
+  const totalPages = Math.ceil(tableShifts.length / itemsPerPage);
+  const paginatedShifts = tableShifts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedBranch]);
+
   const stats = {
     totalShifts: filteredShifts.length,
     openShifts: filteredShifts.filter((s) => s.status === "open").length,
@@ -489,7 +506,7 @@ export const CashDrawerMonitorPanel: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {tableShifts.map((shift) => (
+                  {paginatedShifts.map((shift) => (
                     <tr
                       key={shift.id}
                       className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${getShiftRowClass(shift)}`}
@@ -631,6 +648,22 @@ export const CashDrawerMonitorPanel: React.FC = () => {
               {tableShifts.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   No shifts found from API
+                </div>
+              )}
+              
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-6 px-4">
+                  <div className="text-sm text-gray-600">
+                    Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                    {Math.min(currentPage * itemsPerPage, tableShifts.length)} of{" "}
+                    {tableShifts.length} shifts
+                  </div>
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
                 </div>
               )}
             </>

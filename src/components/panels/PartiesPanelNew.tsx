@@ -25,6 +25,10 @@ import { getBranches } from "../../api/branch.api";
 import { Pagination } from "../common/Pagination";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { apiFetch } from "../../utils/apiClient";
+import {
+  handlePhoneInput,
+  NEPAL_COUNTRY_CODE,
+} from "../../utils/phoneValidation";
 interface BackendParty {
   id: string;
   tenantId: string;
@@ -148,7 +152,7 @@ export const PartiesPanel: React.FC = () => {
     type: "supplier",
     customerType: "retail",
     contactPerson: "",
-    phone: "+977",
+    phone: NEPAL_COUNTRY_CODE,
     email: "",
     address: "",
     city: "",
@@ -1008,11 +1012,16 @@ export const PartiesPanel: React.FC = () => {
                         required
                         value={formData.phone}
                         onChange={(e) =>
-                          setFormData({ ...formData, phone: e.target.value })
+                          handlePhoneInput(e.target.value, (phone) =>
+                            setFormData({ ...formData, phone }),
+                          )
                         }
                         className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="+977 9800000000"
+                        placeholder="+977 98XXXXXXXX"
                       />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Enter 10 digit number after +977
+                      </p>
                     </div>
                     <div>
                       <label className="block text-sm text-gray-700 mb-2">
@@ -1312,7 +1321,10 @@ export const PartiesPanel: React.FC = () => {
                 {transactions.length > 0 ? (
                   <div className="space-y-2">
                     {transactions.map((txn) => (
-                      <div key={txn.id} className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                      <div
+                        key={txn.id}
+                        className="bg-gray-50 border border-gray-200 rounded-lg p-3"
+                      >
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-gray-900 capitalize">
                             {txn.type}

@@ -18,6 +18,12 @@ import {
   Shield,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  formatPhoneWithCode,
+  handlePhoneInput,
+  isValidNepalPhone,
+  NEPAL_COUNTRY_CODE,
+} from "../../utils/phoneValidation";
 
 interface CustomerAuthProps {
   onLogin: (customer: any) => void;
@@ -170,7 +176,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
     name: "",
     email: "",
     username: "",
-    phone: "+977",
+    phone: NEPAL_COUNTRY_CODE,
     address: "",
     password: "",
     confirmPassword: "",
@@ -203,10 +209,10 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
         }
         break;
       case "phone":
-        if (!value.trim()) {
+        if (!value.trim() || value === NEPAL_COUNTRY_CODE) {
           error = "Phone number is required";
-        } else if (!/^\+\d{10,15}$/.test(value)) {
-          error = "Phone must start with + and contain 10-15 digits";
+        } else if (!isValidNepalPhone(value)) {
+          error = "Phone must be +977 followed by 10 digits";
         }
         break;
       case "password":
@@ -626,12 +632,14 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
       hasError = true;
     }
 
-    if (!registerData.phone.trim()) {
+    if (
+      !registerData.phone.trim() ||
+      registerData.phone === NEPAL_COUNTRY_CODE
+    ) {
       newErrors.phone = "Phone number is required";
       hasError = true;
-    } else if (!registerData.phone.match(/^\+\d{10,15}$/)) {
-      newErrors.phone =
-        "Phone must start with + and contain 10-15 digits (e.g., +1234567890)";
+    } else if (!isValidNepalPhone(registerData.phone)) {
+      newErrors.phone = "Phone must be +977 followed by 10 digits";
       hasError = true;
     }
 
@@ -690,7 +698,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
           name: "",
           email: "",
           username: "",
-          phone: "+977",
+          phone: NEPAL_COUNTRY_CODE,
           address: "",
           password: "",
           confirmPassword: "",
@@ -1112,10 +1120,9 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
                       required
                       value={registerData.phone}
                       onChange={(e) =>
-                        setRegisterData({
-                          ...registerData,
-                          phone: e.target.value,
-                        })
+                        handlePhoneInput(e.target.value, (phone) =>
+                          setRegisterData({ ...registerData, phone }),
+                        )
                       }
                       onBlur={(e) => validateField("phone", e.target.value)}
                       className={`w-full pl-11 pr-4 py-3 border-2 rounded-xl focus:ring-4 transition-all ${
@@ -1123,7 +1130,7 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
                           ? "border-red-300 focus:border-red-500 focus:ring-red-100"
                           : "border-gray-200 focus:border-purple-500 focus:ring-purple-100"
                       }`}
-                      placeholder="+977"
+                      placeholder="+977 98XXXXXXXX"
                     />
                   </div>
                   {registerErrors.phone && (
@@ -1131,6 +1138,9 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
                       {registerErrors.phone}
                     </p>
                   )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    Enter 10 digit number after +977
+                  </p>
                 </div>
 
                 {/* Address */}

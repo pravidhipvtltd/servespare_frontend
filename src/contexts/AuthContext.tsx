@@ -24,6 +24,36 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const isTokenExpired = (token: string): boolean => {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return Date.now() > payload.exp * 1000;
+  } catch {
+    return true;
+  }
+};
+
+const clearAuthData = () => {
+  const authKeys = [
+    "auth_token",
+    "accessToken",
+    "refreshToken",
+    "user",
+    "user_id",
+    "user_email",
+    "user_name",
+    "user_role",
+    "tenant_id",
+    "business_name",
+    "tenant_package",
+    "tenant_status",
+    "session_active",
+    "branch_id",
+    "user_branch",
+  ];
+  authKeys.forEach((key) => localStorage.removeItem(key));
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -33,23 +63,74 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check for existing session - prioritize backend tokens
-    const accessToken =
-      localStorage.getItem("accessToken") || localStorage.getItem("auth_token");
-    const userId = localStorage.getItem("user_id");
-    const userEmail = localStorage.getItem("user_email");
-    const userName = localStorage.getItem("user_name");
-    const userRole = localStorage.getItem("user_role") as any;
-    const storedUser = localStorage.getItem("user");
-    const tenantId = localStorage.getItem("tenant_id");
-    const businessName = localStorage.getItem("business_name");
-    const tenantPackage = localStorage.getItem("tenant_package");
-    const tenantStatus = localStorage.getItem("tenant_status");
-    const sessionActive = localStorage.getItem("session_active");
+    const validateAndRestoreSession = async () => {
+      const accessToken =
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("auth_token");
+      const refreshToken = localStorage.getItem("refreshToken");
+      const userId = localStorage.getItem("user_id");
+      const userEmail = localStorage.getItem("user_email");
+      const userName = localStorage.getItem("user_name");
+      const userRole = localStorage.getItem("user_role") as any;
+      const storedUser = localStorage.getItem("user");
+      const businessName = localStorage.getItem("business_name");
+      const tenantPackage = localStorage.getItem("tenant_package");
+      const tenantStatus = localStorage.getItem("tenant_status");
+      const sessionActive = localStorage.getItem("session_active");
 
-    // Only restore session if explicitly marked as active
-    if (accessToken && (userId || storedUser) && sessionActive === "true") {
-      // Try to parse stored user from backend
+      if (!accessToken || !(userId || storedUser) || sessionActive !== "true") {
+        if (accessToken && sessionActive !== "true") {
+          clearAuthData();
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      let validToken = accessToken;
+
+      if (isTokenExpired(accessToken)) {
+        if (!refreshToken) {
+          clearAuthData();
+          setIsLoading(false);
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            `${import.meta.env.VITE_API_BASE_URL}/token/refresh/`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "ngrok-skip-browser-warning": "true",
+              },
+              body: JSON.stringify({ refresh: refreshToken }),
+            },
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            validToken = data.access || data.accessToken;
+            if (validToken) {
+              localStorage.setItem("accessToken", validToken);
+              localStorage.setItem("auth_token", validToken);
+            } else {
+              clearAuthData();
+              setIsLoading(false);
+              return;
+            }
+          } else {
+            clearAuthData();
+            setIsLoading(false);
+            return;
+          }
+        } catch {
+          clearAuthData();
+          setIsLoading(false);
+          return;
+        }
+      }
+
       let parsedUser: any = null;
       if (storedUser) {
         try {
@@ -59,7 +140,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       }
 
-      // Reconstruct user object from localStorage
       const user: User = {
         id: userId || parsedUser?.id || parsedUser?.username || "",
         email: userEmail || parsedUser?.email || "",
@@ -87,31 +167,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         });
       }
 
-      console.log("✅ Session restored from localStorage");
-
-      // Store branch in localStorage for refreshUser
       if (parsedUser?.branch !== undefined) {
         localStorage.setItem("user_branch", String(parsedUser.branch));
       } else {
         localStorage.removeItem("user_branch");
       }
-    } else {
-      // Clear any stale session data if not active
-      if (accessToken && sessionActive !== "true") {
-        console.log("🧹 Clearing stale session data");
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("auth_token");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("user");
-        localStorage.removeItem("user_id");
-        localStorage.removeItem("user_email");
-        localStorage.removeItem("user_name");
-        const userBranch = localStorage.getItem("user_branch");
-        localStorage.removeItem("user_role");
-      }
-    }
 
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+
+    validateAndRestoreSession();
   }, []);
 
   // Refresh user data from localStorage
