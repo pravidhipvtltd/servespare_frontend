@@ -42,9 +42,9 @@ export const SmartBillingSystem: React.FC<SmartBillingSystemProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   
   // Billing Details
-  const [discount, setDiscount] = useState(0);
+  const [discount, setDiscount] = useState<number | string>(0);
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
-  const [taxRate, setTaxRate] = useState(13);
+  const [taxRate, setTaxRate] = useState<number | string>(13);
   const [notes, setNotes] = useState('');
   
   // Payment
@@ -161,11 +161,13 @@ export const SmartBillingSystem: React.FC<SmartBillingSystemProps> = ({
 
   const calculateTotals = () => {
     const subtotal = cart.reduce((sum, item) => sum + item.total, 0);
+    const discountVal = Number(discount) || 0;
+    const taxVal = Number(taxRate) || 0;
     const discountAmount = discountType === 'percentage' 
-      ? (subtotal * discount) / 100 
-      : discount;
+      ? (subtotal * discountVal) / 100 
+      : discountVal;
     const afterDiscount = subtotal - discountAmount;
-    const tax = (afterDiscount * taxRate) / 100;
+    const tax = (afterDiscount * taxVal) / 100;
     const total = afterDiscount + tax;
     
     return { subtotal, discountAmount, tax, total };
@@ -356,7 +358,17 @@ export const SmartBillingSystem: React.FC<SmartBillingSystemProps> = ({
                       <input
                         type="text"
                         value={walkInPhone}
-                        onChange={(e) => setWalkInPhone(e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value.startsWith("+977")) {
+                            if (value.length <= 14) {
+                              setWalkInPhone(value);
+                            }
+                          } else if (value.length <= 10) {
+                            setWalkInPhone(value);
+                          }
+                        }}
+                        maxLength={14}
                         placeholder="+977-XXXXXXXXXX"
                         className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
@@ -645,8 +657,8 @@ export const SmartBillingSystem: React.FC<SmartBillingSystemProps> = ({
                   <div className="flex items-center space-x-2">
                     <input
                       type="number"
-                      value={discount}
-                      onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                      value={discount === "" ? "" : discount}
+                      onChange={(e) => setDiscount(e.target.value === "" ? "" : parseFloat(e.target.value))}
                       className="flex-1 px-3 py-2 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="0"
                     />

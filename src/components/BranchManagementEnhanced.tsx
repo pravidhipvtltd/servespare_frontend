@@ -603,7 +603,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
                 {currentSubscription?.subscription_plan_detail.plan_name} plan.
                 Upgrade to add more branches.
               </p>
-              <button
+              {/* <button
                 onClick={() => {
                   setUpgradeMessage(
                     `Your current plan allows ${branchLimit} ${
@@ -616,7 +616,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
               >
                 <Crown size={16} className="mr-2" />
                 Upgrade Package
-              </button>
+              </button> */}
             </div>
           </div>
         </div>

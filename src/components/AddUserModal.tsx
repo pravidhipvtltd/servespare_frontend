@@ -279,9 +279,17 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                 <input
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value.startsWith("+977")) {
+                      if (value.length <= 14) {
+                        setFormData({ ...formData, phone: value });
+                      }
+                    } else if (value.length <= 10) {
+                      setFormData({ ...formData, phone: value });
+                    }
+                  }}
+                  maxLength={14}
                   placeholder="+977"
                   className={`w-full pl-11 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 ${
                     errors.phone
