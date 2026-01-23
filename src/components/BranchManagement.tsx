@@ -545,11 +545,19 @@ const BranchModal: React.FC<BranchModalProps> = ({
               <input
                 type="tel"
                 value={formData.phone}
-                onChange={handlePhoneChange}
-                className={`w-full px-4 py-2 border-2 rounded-lg focus:border-indigo-500 focus:outline-none ${
-                  phoneError ? "border-red-500" : "border-gray-300"
-                }`}
-                placeholder="+977 98XXXXXXXX"
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value.startsWith("+977")) {
+                    if (value.length <= 14) {
+                      setFormData({ ...formData, phone: value });
+                    }
+                  } else if (value.length <= 10) {
+                    setFormData({ ...formData, phone: value });
+                  }
+                }}
+                maxLength={14}
+                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
+                placeholder="+977"
                 required
               />
               {phoneError && (

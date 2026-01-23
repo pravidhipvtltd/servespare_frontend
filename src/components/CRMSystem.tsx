@@ -1169,9 +1169,17 @@ export const CRMSystem: React.FC = () => {
                   <input
                     type="tel"
                     value={contactForm.phone}
-                    onChange={(e) =>
-                      setContactForm({ ...contactForm, phone: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value.startsWith("+977")) {
+                        if (value.length <= 14) {
+                          setContactForm({ ...contactForm, phone: value });
+                        }
+                      } else if (value.length <= 10) {
+                        setContactForm({ ...contactForm, phone: value });
+                      }
+                    }}
+                    maxLength={14}
                     required
                     placeholder="+977"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"

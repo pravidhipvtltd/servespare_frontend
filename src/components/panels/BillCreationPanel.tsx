@@ -64,16 +64,18 @@ interface BillFormData {
   isWalkIn: boolean;
   items: BillItemWithWarranty[];
   subtotal: number;
-  discount: number;
+  discount: number | string;
   discountType: "percentage" | "fixed";
-  tax: number;
+  tax: number | string;
   total: number;
   paymentMethod: "cash" | "esewa" | "fonepay" | "bank" | "credit" | "cheque";
   bankAccountId?: string;
   notes: string;
 }
 
-interface BillItemWithWarranty extends BillItem {
+interface BillItemWithWarranty extends Omit<BillItem, 'quantity' | 'price'> {
+  quantity: number | string;
+  price: number | string;
   warranty?: string;
   barcode?: string;
 }
@@ -633,8 +635,8 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
 
     // Recalculate total for this item
     if (field === "quantity" || field === "price") {
-      const qty = updatedItems[index].quantity === "" ? 0 : updatedItems[index].quantity;
-      const prc = updatedItems[index].price === "" ? 0 : updatedItems[index].price;
+      const qty = Number(updatedItems[index].quantity) || 0;
+      const prc = Number(updatedItems[index].price) || 0;
       updatedItems[index].total = qty * prc;
     }
 
@@ -647,14 +649,15 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
   };
 
   const calculateTotals = () => {
-    const subtotal = formData.items.reduce((sum, item) => sum + item.total, 0);
-    const discountValue = formData.discount === "" ? 0 : formData.discount;
+    const subtotal = formData.items.reduce((sum, item) => sum + (item.total || 0), 0);
+    const discountValue = Number(formData.discount) || 0;
     const discountAmount =
       formData.discountType === "percentage"
         ? (subtotal * discountValue) / 100
         : discountValue;
     const afterDiscount = subtotal - discountAmount;
-    const taxAmount = (afterDiscount * formData.tax) / 100;
+    const taxVal = Number(formData.tax) || 0;
+    const taxAmount = (afterDiscount * taxVal) / 100;
     const total = afterDiscount + taxAmount;
 
     setFormData((prev) => ({

@@ -926,13 +926,19 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
                       <input
                         type="tel"
                         value={formData.phone}
-                        onChange={(e) =>
-                          handlePhoneInput(e.target.value, (phone) =>
-                            setFormData({ ...formData, phone }),
-                          )
-                        }
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value.startsWith("+977")) {
+                            if (value.length <= 14) {
+                              setFormData({ ...formData, phone: value });
+                            }
+                          } else if (value.length <= 10) {
+                            setFormData({ ...formData, phone: value });
+                          }
+                        }}
                         disabled={!isEditing}
-                        placeholder="+977 98XXXXXXXX"
+                        maxLength={14}
+                        placeholder="+977"
                         className={`w-full px-4 py-3 border rounded-xl transition-all ${
                           isEditing
                             ? "border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-500"

@@ -99,7 +99,14 @@ export const PurchaseOrdersPanel: React.FC = () => {
     grnGenerated: false,
   });
 
-  const [newItem, setNewItem] = useState<Partial<PurchaseOrderItem>>({
+  const [newItem, setNewItem] = useState<
+    Partial<PurchaseOrderItem> & {
+      orderedQuantity: string | number;
+      unitPrice: string | number;
+      taxPercent: string | number;
+      discount: string | number;
+    }
+  >({
     itemName: "",
     partNumber: "",
     description: "",
@@ -402,7 +409,11 @@ export const PurchaseOrdersPanel: React.FC = () => {
 
     const total = calculateItemTotal(newItem);
     const item: PurchaseOrderItem = {
-      ...(newItem as PurchaseOrderItem),
+      ...(newItem as any),
+      orderedQuantity: Number(newItem.orderedQuantity) || 0,
+      unitPrice: Number(newItem.unitPrice) || 0,
+      taxPercent: Number(newItem.taxPercent) || 0,
+      discount: Number(newItem.discount) || 0,
       id: Date.now().toString(),
       totalAmount: total,
     };
@@ -1254,7 +1265,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
       {sidebarOpen && (
         <>
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            className="fixed inset-0 bg-black/40 inset-0 z-40"
             onClick={handleCloseSidebar}
           />
 
@@ -1420,7 +1431,10 @@ export const PurchaseOrdersPanel: React.FC = () => {
                         onChange={(e) =>
                           setNewItem({
                             ...newItem,
-                            orderedQuantity: parseInt(e.target.value) || 0,
+                            orderedQuantity:
+                              e.target.value === ""
+                                ? ""
+                                : parseInt(e.target.value),
                           })
                         }
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1438,7 +1452,10 @@ export const PurchaseOrdersPanel: React.FC = () => {
                         onChange={(e) =>
                           setNewItem({
                             ...newItem,
-                            unitPrice: parseFloat(e.target.value) || 0,
+                            unitPrice:
+                              e.target.value === ""
+                                ? ""
+                                : parseFloat(e.target.value),
                           })
                         }
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1457,7 +1474,10 @@ export const PurchaseOrdersPanel: React.FC = () => {
                         onChange={(e) =>
                           setNewItem({
                             ...newItem,
-                            taxPercent: parseFloat(e.target.value) || 0,
+                            taxPercent:
+                              e.target.value === ""
+                                ? ""
+                                : parseFloat(e.target.value),
                           })
                         }
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1476,7 +1496,10 @@ export const PurchaseOrdersPanel: React.FC = () => {
                         onChange={(e) =>
                           setNewItem({
                             ...newItem,
-                            discount: parseFloat(e.target.value) || 0,
+                            discount:
+                              e.target.value === ""
+                                ? ""
+                                : parseFloat(e.target.value),
                           })
                         }
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1773,7 +1796,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
       {viewingSidebar && viewingPO && (
         <div className="fixed inset-0 z-[100] flex justify-end">
           <div
-            className="fixed inset-0 bg-black bg-opacity-50"
+            className="fixed inset-0 bg-black bg-opacity-20"
             onClick={handleCloseViewSidebar}
           />
 
@@ -2036,7 +2059,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
       {receivingSidebar && receivingPO && (
         <>
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            className="fixed inset-0 bg-black bg-opacity-20 z-40"
             onClick={handleCloseReceivingSidebar}
           />
 

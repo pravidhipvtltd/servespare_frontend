@@ -91,7 +91,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
   const [currentBranchId, setCurrentBranchId] = useState<number>(0);
 
   const [formData, setFormData] = useState<
-    Partial<InventoryItem> & { imageFiles?: File[] }
+    Partial<InventoryItem> & { imageFiles?: File[]; multipleImageFiles?: File[] }
   >({
     name: "",
     category: "local",
@@ -107,6 +107,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
     warrantyPeriod: "",
     image: "",
     imageFiles: [],
+    multipleImageFiles: [],
     bikeName: "",
     bikeModel: "",
     bikeType: "",
@@ -419,6 +420,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
       warrantyPeriod: "",
       image: "",
       imageFiles: [],
+      multipleImageFiles: [],
       bikeName: "",
       bikeModel: "",
       bikeType: "",
@@ -509,6 +511,22 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
           formDataPayload.append("images", file);
         });
       }
+
+      // TODO: Multiple images upload - API not available yet
+      // When the multiple image upload API becomes available, uncomment and implement:
+      // if (formData.multipleImageFiles && formData.multipleImageFiles.length > 0) {
+      //   const multipleImageFormData = new FormData();
+      //   formData.multipleImageFiles.forEach((file) => {
+      //     multipleImageFormData.append("images", file);
+      //   });
+      //   // Call the multiple image upload API endpoint here
+      //   // Example:
+      //   // await fetch(`${import.meta.env.VITE_API_BASE_URL}/stock-management/inventory/${itemId}/upload-multiple-images/`, {
+      //   //   method: "POST",
+      //   //   headers,
+      //   //   body: multipleImageFormData,
+      //   // });
+      // }
 
       let response;
       if (editingItem) {
@@ -1326,7 +1344,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
       {sidebarOpen && (
         <>
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300"
+            className="fixed inset-0 bg-black/40 inset-0 z-40 transition-opacity duration-300"
             onClick={handleCloseSidebar}
             style={{ animation: "fadeIn 0.3s ease-out" }}
           />

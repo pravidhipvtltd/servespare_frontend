@@ -335,18 +335,20 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                     <input
                       type="tel"
                       value={phone}
-                      onChange={handlePhoneChange}
-                      placeholder="+977 98XXXXXXXX"
-                      className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                        phoneError ? "border-red-500" : "border-gray-300"
-                      }`}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value.startsWith("+977")) {
+                          if (value.length <= 14) {
+                            setPhone(value);
+                          }
+                        } else if (value.length <= 10) {
+                          setPhone(value);
+                        }
+                      }}
+                      maxLength={14}
+                      placeholder="+977"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
-                    {phoneError && (
-                      <p className="text-red-500 text-sm mt-1">{phoneError}</p>
-                    )}
-                    <p className="text-gray-500 text-xs mt-1">
-                      Enter 10 digit number after +977
-                    </p>
                   </div>
 
                   {/* Address */}

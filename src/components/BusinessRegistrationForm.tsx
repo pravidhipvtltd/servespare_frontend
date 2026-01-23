@@ -540,11 +540,17 @@ Thank you for your patience!`);
                   <input
                     type="tel"
                     value={formData.businessPhone}
-                    onChange={(e) =>
-                      handlePhoneInput(e.target.value, (phone) =>
-                        handleInputChange("businessPhone", phone),
-                      )
-                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value.startsWith("+977")) {
+                        if (value.length <= 14) {
+                          handleInputChange("businessPhone", value);
+                        }
+                      } else if (value.length <= 10) {
+                        handleInputChange("businessPhone", value);
+                      }
+                    }}
+                    maxLength={14}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="+977 98XXXXXXXX"
                   />
