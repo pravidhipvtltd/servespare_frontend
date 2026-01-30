@@ -398,6 +398,12 @@ export const SuperAdminDashboardRefined: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
       <aside
         className={`${
           sidebarOpen ? "w-64" : "w-0"
@@ -563,7 +569,6 @@ const DashboardView: React.FC<{
         const token = localStorage.getItem("accessToken");
         const headers: HeadersInit = {
           "Content-Type": "application/json",
-         
         };
 
         if (token) {
@@ -1001,7 +1006,6 @@ const AdminAccountsView: React.FC<{
         {
           headers: {
             Authorization: `Bearer ${token}`,
-          
           },
         },
       );
@@ -1213,7 +1217,6 @@ const AdminAccountsView: React.FC<{
       const token = localStorage.getItem("accessToken");
       const headers: any = {
         "Content-Type": "application/json",
-      
       };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -1361,7 +1364,6 @@ const AdminAccountsView: React.FC<{
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
-          
           },
           body: JSON.stringify(payload),
         },

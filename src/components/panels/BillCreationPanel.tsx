@@ -73,7 +73,7 @@ interface BillFormData {
   notes: string;
 }
 
-interface BillItemWithWarranty extends Omit<BillItem, 'quantity' | 'price'> {
+interface BillItemWithWarranty extends Omit<BillItem, "quantity" | "price"> {
   quantity: number | string;
   price: number | string;
   warranty?: string;
@@ -116,7 +116,9 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
   const [filteredItems, setFilteredItems] = useState<InventoryItem[]>([]);
   const [selectedItemIndex, setSelectedItemIndex] = useState<number>(-1);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   // Customer auto-detect states
   const [nameSuggestions, setNameSuggestions] = useState<Party[]>([]);
@@ -353,9 +355,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
       setSearchLoading(true);
       try {
         const token = localStorage.getItem("accessToken");
-        const headers: HeadersInit = {
-          
-        };
+        const headers: HeadersInit = {};
 
         if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -475,9 +475,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
     // Try fetching inventory from remote API and replace/augment local list
     try {
       const token = localStorage.getItem("accessToken");
-      const headers: HeadersInit = {
-        
-      };
+      const headers: HeadersInit = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
       const res = await fetch(
@@ -590,10 +588,11 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
 
       if (existingItemIndex !== -1) {
         // Increment quantity of existing item
-        updatedItems[existingItemIndex].quantity += 1;
+        const newQuantity =
+          Number(updatedItems[existingItemIndex].quantity) + 1;
+        updatedItems[existingItemIndex].quantity = newQuantity;
         updatedItems[existingItemIndex].total =
-          updatedItems[existingItemIndex].quantity *
-          updatedItems[existingItemIndex].price;
+          newQuantity * Number(updatedItems[existingItemIndex].price);
       } else {
         // Add new item
         const newItem: BillItemWithWarranty = {
@@ -649,7 +648,10 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
   };
 
   const calculateTotals = () => {
-    const subtotal = formData.items.reduce((sum, item) => sum + (item.total || 0), 0);
+    const subtotal = formData.items.reduce(
+      (sum, item) => sum + (item.total || 0),
+      0,
+    );
     const discountValue = Number(formData.discount) || 0;
     const discountAmount =
       formData.discountType === "percentage"
@@ -713,14 +715,14 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
       items: formData.items.map((item) => ({
         itemId: item.itemId,
         itemName: item.itemName,
-        quantity: item.quantity,
-        price: item.price,
+        quantity: Number(item.quantity),
+        price: Number(item.price),
         total: item.total,
         warranty: item.warranty,
       })),
       subtotal: formData.subtotal,
-      tax: formData.tax,
-      discount: formData.discount,
+      tax: Number(formData.tax),
+      discount: Number(formData.discount),
       discountType: formData.discountType,
       total: formData.total,
       paymentMethod: formData.paymentMethod,
@@ -748,17 +750,16 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
       const token = localStorage.getItem("accessToken");
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-        
       };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
       const subtotal = formData.subtotal;
       const discountAmount =
         formData.discountType === "percentage"
-          ? (subtotal * formData.discount) / 100
+          ? (subtotal * Number(formData.discount)) / 100
           : formData.discount;
-      const afterDiscount = subtotal - discountAmount;
-      const taxAmount = (afterDiscount * formData.tax) / 100;
+      const afterDiscount = subtotal - Number(discountAmount);
+      const taxAmount = (afterDiscount * Number(formData.tax)) / 100;
       const totalAfterDiscount = afterDiscount;
 
       const payload = {
@@ -769,21 +770,21 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
         phone_numbers: formData.customerPhone,
         pan_vat_number: formData.customerPanVat,
         customer_type: formData.customerType,
-        price: formData.total.toFixed(2),
-        subtotal: subtotal.toFixed(2),
+        price: Number(formData.total).toFixed(2),
+        subtotal: Number(subtotal).toFixed(2),
         discount_method:
           formData.discountType === "percentage" ? "percentage" : "amount",
-        discount_value: formData.discount.toFixed(2),
-        discount_amount: discountAmount.toFixed(2),
-        total_after_discount: totalAfterDiscount.toFixed(2),
+        discount_value: Number(formData.discount).toFixed(2),
+        discount_amount: Number(discountAmount).toFixed(2),
+        total_after_discount: Number(totalAfterDiscount).toFixed(2),
         payment_method: formData.paymentMethod,
         status: status,
         purchase_items_data: formData.items.map((it) => ({
           inventory_id: it.itemId,
           product_name: it.itemName,
           quantity: Number(it.quantity),
-          price: it.price.toFixed(2),
-          total_price: it.total.toFixed(2),
+          price: Number(it.price).toFixed(2),
+          total_price: Number(it.total).toFixed(2),
         })),
         is_active: true,
       };
@@ -828,8 +829,8 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
         if (billItem) {
           return {
             ...item,
-            currentStock: (item.quantity || 0) - billItem.quantity,
-            quantity: (item.quantity || 0) - billItem.quantity, // Support both fields
+            currentStock: (item.quantity || 0) - Number(billItem.quantity),
+            quantity: (item.quantity || 0) - Number(billItem.quantity), // Support both fields
             lastUpdated: new Date().toISOString(),
           };
         }
@@ -1214,7 +1215,10 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
                     if (value.startsWith("+977") && value.length <= 14) {
                       setFormData({ ...formData, customerPhone: value });
                       setShowPhoneSuggestions(true);
-                    } else if (!value.startsWith("+977") && value.length <= 14) {
+                    } else if (
+                      !value.startsWith("+977") &&
+                      value.length <= 14
+                    ) {
                       // Allow typing even if doesn't start with +977 yet
                       setFormData({ ...formData, customerPhone: value });
                       setShowPhoneSuggestions(true);
@@ -1535,7 +1539,9 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
                               updateItem(
                                 index,
                                 "quantity",
-                                e.target.value === "" ? "" : parseInt(e.target.value),
+                                e.target.value === ""
+                                  ? ""
+                                  : parseInt(e.target.value),
                               )
                             }
                             className="w-20 text-center px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1551,7 +1557,9 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
                               updateItem(
                                 index,
                                 "price",
-                                e.target.value === "" ? "" : parseFloat(e.target.value),
+                                e.target.value === ""
+                                  ? ""
+                                  : parseFloat(e.target.value),
                               )
                             }
                             className="w-24 text-right px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1609,7 +1617,10 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        discount: e.target.value === "" ? "" : parseFloat(e.target.value),
+                        discount:
+                          e.target.value === ""
+                            ? ""
+                            : parseFloat(e.target.value),
                       })
                     }
                     className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1646,9 +1657,9 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
                   {(
                     ((formData.subtotal -
                       (formData.discountType === "percentage"
-                        ? (formData.subtotal * formData.discount) / 100
-                        : formData.discount)) *
-                      formData.tax) /
+                        ? (formData.subtotal * Number(formData.discount)) / 100
+                        : Number(formData.discount))) *
+                      Number(formData.tax)) /
                     100
                   ).toLocaleString()}
                 </span>
@@ -1805,6 +1816,1029 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
         confirmConfig={popup.confirmConfig}
         onConfirmCancel={popup.hideConfirm}
       />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      
     </div>
   );
 };

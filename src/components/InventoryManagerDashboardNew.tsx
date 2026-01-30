@@ -300,7 +300,7 @@ export const InventoryManagerDashboardNew: React.FC = () => {
 
         <div
           className="bg-white rounded-xl border-2 border-pink-200 p-4 hover:shadow-md transition-all cursor-pointer"
-          onClick={() => setActivePanel("brands")}
+          onClick={() => setActivePanel("automotive")}
         >
           <div className="flex items-center space-x-3">
             <div className="p-3 bg-pink-100 rounded-lg">

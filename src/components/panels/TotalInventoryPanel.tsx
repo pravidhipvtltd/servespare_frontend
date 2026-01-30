@@ -469,9 +469,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
         localStorage.getItem("access_token") ||
         localStorage.getItem("token");
 
-      const headers: Record<string, string> = {
-       
-      };
+      const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
       const formDataPayload = new FormData();
@@ -1916,7 +1914,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
       {viewingSidebar && viewingItem && (
         <>
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            className="fixed inset-0 bg-black/40 z-40"
             onClick={handleCloseViewSidebar}
           />
 
@@ -2191,7 +2189,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
       {scannerOpen && (
         <>
           <div
-            className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0  bg-opacity-70 z-50 flex items-center justify-center p-4"
             onClick={handleCloseScanner}
           />
 
