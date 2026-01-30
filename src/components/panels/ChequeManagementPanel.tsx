@@ -34,6 +34,12 @@ import { useAuth } from "../../contexts/AuthContext";
 import { PopupContainer } from "../PopupContainer";
 import { useCustomPopup } from "../../hooks/useCustomPopup";
 import { Pagination } from "../common/Pagination";
+import {
+  formatPhoneWithCode,
+  handlePhoneInput,
+  isValidNepalPhone,
+  getPhoneDigits,
+} from "../../utils/phoneValidation";
 
 const API_URL = `${import.meta.env.VITE_API_BASE_URL}/cash-and-bank/cheques/`;
 
@@ -136,7 +142,7 @@ export const ChequeManagementPanel: React.FC = () => {
     type: "received" as "issued" | "received",
     status: "pending" as Cheque["status"],
     partyName: "",
-    partyPhone: "",
+    partyPhone: formatPhoneWithCode(""),
     partyAddress: "",
     accountNumber: "",
     ifscCode: "",
@@ -145,6 +151,8 @@ export const ChequeManagementPanel: React.FC = () => {
     remindersEnabled: true,
     reminderDays: [7, 3, 1, 0] as number[],
   });
+
+  const [phoneError, setPhoneError] = useState("");
 
   useEffect(() => {
     loadCheques();
@@ -169,7 +177,7 @@ export const ChequeManagementPanel: React.FC = () => {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
+       
         },
       });
 
@@ -184,7 +192,7 @@ export const ChequeManagementPanel: React.FC = () => {
       const data = await response.json();
       console.log("✅ Received cheques data:", data);
 
-      // Handle paginated response - extract results array
+     
       const chequesList = data.results || data;
 
       const mappedCheques: Cheque[] = chequesList.map((item: any) => ({
@@ -882,7 +890,6 @@ export const ChequeManagementPanel: React.FC = () => {
                         {/* Amount */}
                         <td className="px-6 py-4 whitespace-nowrap text-right">
                           <div className="flex items-center justify-end space-x-1">
-                            <DollarSign className="w-4 h-4 text-green-600" />
                             <span className="font-bold text-gray-900">
                               {cheque.amount.toLocaleString()}
                             </span>

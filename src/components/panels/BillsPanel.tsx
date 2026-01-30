@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { getFromStorage, saveToStorage } from "../../utils/mockData";
 import { useAuth } from "../../contexts/AuthContext";
+import { useBranch } from "../../contexts/BranchContext";
 import { Bill, Party } from "../../types";
 import { BillCreationPanel } from "./BillCreationPanel";
 import { Pagination } from "../common/Pagination";
@@ -27,6 +28,7 @@ type BillStatus = "pending" | "paid" | "draft";
 
 export const BillsPanel: React.FC = () => {
   const { currentUser } = useAuth();
+  const { selectedBranchId } = useBranch();
   const popup = useCustomPopup();
   const [bills, setBills] = useState<Bill[]>([]);
   const [parties, setParties] = useState<Party[]>([]);
@@ -41,7 +43,7 @@ export const BillsPanel: React.FC = () => {
   useEffect(() => {
     loadBills();
     loadParties();
-  }, []);
+  }, [selectedBranchId]);
 
   const loadBills = async () => {
     // Try fetching from remote API first, fall back to local storage on error
@@ -58,13 +60,15 @@ export const BillsPanel: React.FC = () => {
       // Allow ngrok to bypass its browser warning for programmatic requests
       headers["ngrok-skip-browser-warning"] = "true";
 
-      const res = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/sales/bills/?is_active=true`,
-        { headers, cache: "no-store" }
-      );
+      let url = `${import.meta.env.VITE_API_BASE_URL}/sales/bills/?is_active=true`;
+      if (selectedBranchId) {
+        url += `&branch=${selectedBranchId}`;
+      }
+
+      const res = await fetch(url, { headers, cache: "no-store" });
       if (res.status === 401) {
         throw new Error(
-          "Unauthorized: Authentication credentials were not provided."
+          "Unauthorized: Authentication credentials were not provided.",
         );
       }
       if (!res.ok) throw new Error(`API responded with ${res.status}`);
@@ -76,15 +80,15 @@ export const BillsPanel: React.FC = () => {
         console.log(
           "BillsPanel: is_active values:",
           JSON.stringify(
-            results.map((r: any) => ({ id: r.id, is_active: r.is_active }))
-          )
+            results.map((r: any) => ({ id: r.id, is_active: r.is_active })),
+          ),
         );
       }
 
       const mapped: Bill[] = (results || [])
         .filter((it: any) => {
           const locallyDeleted = JSON.parse(
-            localStorage.getItem("locally_deleted_bills") || "[]"
+            localStorage.getItem("locally_deleted_bills") || "[]",
           );
           return (
             it.is_active === true && !locallyDeleted.includes(String(it.id))
@@ -124,14 +128,14 @@ export const BillsPanel: React.FC = () => {
 
       console.log(
         "BillsPanel: currentUser.workspaceId=",
-        currentUser?.workspaceId
+        currentUser?.workspaceId,
       );
       console.log("BillsPanel: token present=", !!token);
       console.log("BillsPanel: mapped length=", mapped.length);
       console.log("BillsPanel: sample mapped bill=", mapped[0] || null);
 
       const filteredByWorkspace = mapped.filter(
-        (b) => String(b.workspaceId) === String(currentUser?.workspaceId)
+        (b) => String(b.workspaceId) === String(currentUser?.workspaceId),
       );
 
       if (mapped.length > 0) {
@@ -145,7 +149,7 @@ export const BillsPanel: React.FC = () => {
         console.log(
           "BillsPanel: Using API-mapped bills (count=",
           mapped.length,
-          ") and persisted to local storage"
+          ") and persisted to local storage",
         );
 
         setBills(mapped);
@@ -157,14 +161,14 @@ export const BillsPanel: React.FC = () => {
       console.warn("Failed to fetch remote bills, using local storage", err);
       console.log(
         "BillsPanel: falling back to local storage. currentUser.workspaceId=",
-        currentUser?.workspaceId
+        currentUser?.workspaceId,
       );
     }
 
     // Fallback to local storage
     const allBills = getFromStorage("bills", []);
     setBills(
-      allBills.filter((b: Bill) => b.workspaceId === currentUser?.workspaceId)
+      allBills.filter((b: Bill) => b.workspaceId === currentUser?.workspaceId),
     );
   };
 
@@ -172,8 +176,8 @@ export const BillsPanel: React.FC = () => {
     const allParties = getFromStorage("parties", []);
     setParties(
       allParties.filter(
-        (p: Party) => p.workspaceId === currentUser?.workspaceId
-      )
+        (p: Party) => p.workspaceId === currentUser?.workspaceId,
+      ),
     );
   };
 
@@ -202,7 +206,7 @@ export const BillsPanel: React.FC = () => {
               method: "PATCH",
               headers,
               body: JSON.stringify({ status: "paid" }),
-            }
+            },
           );
 
           if (!response.ok) {
@@ -217,7 +221,7 @@ export const BillsPanel: React.FC = () => {
                   paymentStatus: "paid",
                   paidAt: new Date().toISOString(),
                 }
-              : b
+              : b,
           );
           saveToStorage("bills", updated);
           loadBills();
@@ -226,11 +230,11 @@ export const BillsPanel: React.FC = () => {
           console.error("Error marking bill as paid:", error);
           popup.showError(
             "Failed to update bill status on server",
-            "API Error"
+            "API Error",
           );
         }
       },
-      { type: "success" }
+      { type: "success" },
     );
   };
 
@@ -252,7 +256,7 @@ export const BillsPanel: React.FC = () => {
             {
               method: "DELETE",
               headers,
-            }
+            },
           );
 
           if (!response.ok) {
@@ -261,13 +265,13 @@ export const BillsPanel: React.FC = () => {
 
           // Track locally
           const deleted = JSON.parse(
-            localStorage.getItem("locally_deleted_bills") || "[]"
+            localStorage.getItem("locally_deleted_bills") || "[]",
           );
           if (!deleted.includes(billId)) {
             deleted.push(billId);
             localStorage.setItem(
               "locally_deleted_bills",
-              JSON.stringify(deleted)
+              JSON.stringify(deleted),
             );
           }
 
@@ -285,7 +289,7 @@ export const BillsPanel: React.FC = () => {
       {
         type: "danger",
         details: ["This action cannot be undone"],
-      }
+      },
     );
   };
 
@@ -317,7 +321,7 @@ export const BillsPanel: React.FC = () => {
             {
               method: "DELETE",
               headers,
-            }
+            },
           );
 
           console.log(`[Delete] Response status: ${response.status}`);
@@ -325,22 +329,22 @@ export const BillsPanel: React.FC = () => {
           if (!response.ok) {
             const errorText = await response.text();
             console.error(
-              `[Delete] Failed. Status: ${response.status}, Body: ${errorText}`
+              `[Delete] Failed. Status: ${response.status}, Body: ${errorText}`,
             );
             throw new Error(
-              `Server responded with ${response.status}: ${errorText}`
+              `Server responded with ${response.status}: ${errorText}`,
             );
           }
 
           // Track locally to ensure it disappears even if API returns it
           const deleted = JSON.parse(
-            localStorage.getItem("locally_deleted_bills") || "[]"
+            localStorage.getItem("locally_deleted_bills") || "[]",
           );
           if (!deleted.includes(billId)) {
             deleted.push(billId);
             localStorage.setItem(
               "locally_deleted_bills",
-              JSON.stringify(deleted)
+              JSON.stringify(deleted),
             );
           }
 
@@ -359,14 +363,14 @@ export const BillsPanel: React.FC = () => {
           console.error("Error deleting bill:", error);
           popup.showError(
             `Failed to delete bill: ${error.message}`,
-            "Delete Failed"
+            "Delete Failed",
           );
         }
       },
       {
         type: "danger",
         details: ["This action cannot be undone"],
-      }
+      },
     );
   };
 
@@ -380,7 +384,7 @@ export const BillsPanel: React.FC = () => {
 
   const toggleSelectBill = (id: string) => {
     setSelectedBills((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
   };
 
@@ -736,22 +740,22 @@ export const BillsPanel: React.FC = () => {
                           bill.paymentMethod === "cash"
                             ? "bg-green-100 text-green-700"
                             : bill.paymentMethod === "bank"
-                            ? "bg-blue-100 text-blue-700"
-                            : bill.paymentMethod === "esewa"
-                            ? "bg-purple-100 text-purple-700"
-                            : bill.paymentMethod === "fonepay"
-                            ? "bg-indigo-100 text-indigo-700"
-                            : bill.paymentMethod === "credit"
-                            ? "bg-orange-100 text-orange-700"
-                            : "bg-gray-100 text-gray-700"
+                              ? "bg-blue-100 text-blue-700"
+                              : bill.paymentMethod === "esewa"
+                                ? "bg-purple-100 text-purple-700"
+                                : bill.paymentMethod === "fonepay"
+                                  ? "bg-indigo-100 text-indigo-700"
+                                  : bill.paymentMethod === "credit"
+                                    ? "bg-orange-100 text-orange-700"
+                                    : "bg-gray-100 text-gray-700"
                         }`}
                       >
                         {bill.paymentMethod === "esewa"
                           ? "eSewa"
                           : bill.paymentMethod === "fonepay"
-                          ? "FonePay"
-                          : bill.paymentMethod.charAt(0).toUpperCase() +
-                            bill.paymentMethod.slice(1)}
+                            ? "FonePay"
+                            : bill.paymentMethod.charAt(0).toUpperCase() +
+                              bill.paymentMethod.slice(1)}
                       </span>
                     </td>
                     <td className="py-4 px-6">
@@ -867,15 +871,15 @@ export const BillsPanel: React.FC = () => {
                       viewingBill.paymentStatus === "paid"
                         ? "bg-green-100 text-green-700"
                         : viewingBill.paymentStatus === "draft"
-                        ? "bg-purple-100 text-purple-700"
-                        : "bg-orange-100 text-orange-700"
+                          ? "bg-purple-100 text-purple-700"
+                          : "bg-orange-100 text-orange-700"
                     }`}
                   >
                     {viewingBill.paymentStatus === "paid"
                       ? "Paid"
                       : viewingBill.paymentStatus === "draft"
-                      ? "Draft"
-                      : "Pending"}
+                        ? "Draft"
+                        : "Pending"}
                   </span>
                 </div>
 

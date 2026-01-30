@@ -64,6 +64,8 @@ interface Branch {
   address: string;
   city: string;
   state?: string;
+  district?: string;
+  province?: string;
   phone: string;
   email?: string;
   manager?: string;
@@ -190,7 +192,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+           
           },
         },
       );
@@ -203,7 +205,9 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
           code: apiBranch.branch_code,
           address: apiBranch.Address,
           city: apiBranch.city,
-          state: apiBranch.state,
+          state: apiBranch.province || apiBranch.state,
+          province: apiBranch.province || apiBranch.state,
+          district: apiBranch.district,
           phone: apiBranch.phone,
           email: apiBranch.Email,
           isActive: apiBranch.is_active,
@@ -245,7 +249,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
             {
               headers: {
                 Authorization: `Bearer ${token}`,
-                "ngrok-skip-browser-warning": "true",
+               
               },
             },
           );
@@ -354,7 +358,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
               headers: {
                 Authorization: `Bearer ${token}`,
                 "Content-Type": "application/json",
-                "ngrok-skip-browser-warning": "true",
+               
               },
             },
           );
@@ -392,7 +396,55 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
       const token =
         localStorage.getItem("accessToken") ||
         localStorage.getItem("auth_token");
-      const apiData = {
+
+      // Get tenant ID from multiple sources
+      let tenantId =
+        currentUser?.workspaceId ||
+        (currentUser as any)?.tenantId ||
+        localStorage.getItem("workspace_id") ||
+        localStorage.getItem("tenant_id");
+
+      // Try to get from existing branches if not found
+      if (!tenantId && branches.length > 0) {
+        tenantId = branches[0].workspaceId;
+      }
+
+      // Try to parse from user object in localStorage
+      if (!tenantId) {
+        try {
+          const userStr = localStorage.getItem("user");
+          if (userStr) {
+            const user = JSON.parse(userStr);
+            tenantId =
+              user.workspaceId ||
+              user.workspace_id ||
+              user.tenantId ||
+              user.tenant_id;
+          }
+        } catch (e) {
+          console.error("Failed to parse user from localStorage:", e);
+        }
+      }
+
+      console.log("🔍 [Branch Save] Current User:", currentUser);
+      console.log("🔍 [Branch Save] Tenant ID:", tenantId);
+      console.log("🔍 [Branch Save] Tenant Info:", tenantInfo);
+      console.log(
+        "🔍 [Branch Save] LocalStorage workspace_id:",
+        localStorage.getItem("workspace_id"),
+      );
+      console.log(
+        "🔍 [Branch Save] LocalStorage tenant_id:",
+        localStorage.getItem("tenant_id"),
+      );
+
+      if (!tenantId) {
+        throw new Error(
+          "Tenant ID is required but not found. Please log in again.",
+        );
+      }
+
+      const apiData: any = {
         is_removed: false,
         is_active:
           branchData.isActive !== undefined ? branchData.isActive : true,
@@ -401,9 +453,14 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
         Address: branchData.address || "",
         city: branchData.city || "",
         state: branchData.state || "",
+        province: branchData.state || "",
+        district: branchData.district || "",
         phone: branchData.phone || "",
         Email: branchData.email || "",
+        tenant: Number(tenantId),
       };
+
+      console.log("📤 [Branch Save] API Payload:", apiData);
 
       let response;
       if (editingBranch) {
@@ -415,7 +472,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
             headers: {
               Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
-              "ngrok-skip-browser-warning": "true",
+             
             },
             body: JSON.stringify(apiData),
           },
@@ -427,7 +484,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+           
           },
           body: JSON.stringify(apiData),
         });
@@ -516,7 +573,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
               method: "DELETE",
               headers: {
                 Authorization: `Bearer ${token}`,
-                "ngrok-skip-browser-warning": "true",
+               
               },
             },
           );
@@ -1291,7 +1348,7 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
             method: "PATCH",
             headers: {
               "Content-Type": "application/json",
-              "ngrok-skip-browser-warning": "true",
+             
               ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
             body: JSON.stringify(updatePayload),
@@ -1364,7 +1421,7 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "ngrok-skip-browser-warning": "true",
+             
               ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
             body: JSON.stringify(payload),
@@ -1426,7 +1483,7 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
                 headers: {
                   Authorization: `Bearer ${token}`,
                   "Content-Type": "application/json",
-                  "ngrok-skip-browser-warning": "true",
+                 
                 },
                 body: JSON.stringify(patchPayload),
               },

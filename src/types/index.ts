@@ -256,7 +256,14 @@ export interface Bill {
   discountType?: "percentage" | "fixed";
   discountHistory?: DiscountHistoryEntry[]; // Track all discounts applied
   total: number;
-  paymentMethod: "cash" | "esewa" | "fonepay" | "bank" | "credit" | "cheque";
+  paymentMethod:
+    | "cash"
+    | "card"
+    | "esewa"
+    | "fonepay"
+    | "bank"
+    | "credit"
+    | "cheque";
   bankAccountId?: string; // ID of the bank account/payment method used
   paymentStatus:
     | "paid"

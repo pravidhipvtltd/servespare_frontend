@@ -130,7 +130,7 @@ export const CashInHandPanel: React.FC = () => {
         {
           headers: {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+            
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
         }
@@ -240,7 +240,7 @@ export const CashInHandPanel: React.FC = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+           
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(payload),
@@ -312,7 +312,7 @@ export const CashInHandPanel: React.FC = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+            
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(payload),

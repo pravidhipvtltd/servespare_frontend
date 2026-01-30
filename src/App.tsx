@@ -22,6 +22,7 @@ import { InventoryManagerDashboardNew } from "./components/InventoryManagerDashb
 import { CashierDashboardNew } from "./components/CashierDashboardNew";
 import { ForcePasswordChangeModal } from "./components/modals/ForcePasswordChangeModal";
 import { OfflineStatusBar } from "./components/OfflineStatusBar";
+import { BranchProvider } from "./contexts/BranchContext";
 import "./utils/debugHelpers";
 
 export default function App() {
@@ -267,7 +268,9 @@ const AppContent: React.FC = () => {
           path="/admin/admin/*"
           element={
             currentUser.role === "admin" ? (
-              <AdminDashboardWorldClass />
+              <BranchProvider>
+                <AdminDashboardWorldClass />
+              </BranchProvider>
             ) : (
               <Navigate to={getDashboardRoute(currentUser.role)} replace />
             )

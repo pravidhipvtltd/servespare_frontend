@@ -27,6 +27,7 @@ import {
   formatPhoneWithCode,
   handlePhoneInput,
   isValidNepalPhone,
+  getPhoneDigits,
 } from "../../utils/phoneValidation";
 
 interface CustomerProfileProps {
@@ -56,7 +57,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
   const [formData, setFormData] = useState({
     name: customerData?.name || "",
     email: customerData?.email || "",
-    phone: customerData?.phone || "",
+    phone: formatPhoneWithCode(customerData?.phone || ""),
     address: customerData?.address || "",
     profileImage: customerData?.profileImage || "",
   });
@@ -82,6 +83,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
     new_password: "",
     new_password_confirm: "",
   });
+  const [phoneError, setPhoneError] = useState("");
 
   // Fetch customer status from API
   useEffect(() => {
@@ -201,15 +203,28 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
           formData.email,
         );
       }
-      if (formData.phone !== (customerData.phone || "")) {
-        updatePayload.phone = formData.phone;
+      const phoneDigits = getPhoneDigits(formData.phone);
+      const existingPhoneDigits = getPhoneDigits(customerData?.phone || "");
+      const normalizedPhone = phoneDigits
+        ? formatPhoneWithCode(formData.phone)
+        : "";
+
+      if (phoneDigits && !isValidNepalPhone(normalizedPhone)) {
+        setPhoneError("Phone number must be +977 followed by 10 digits");
+        toast.error("Enter a valid Nepal phone number");
+        return;
+      }
+
+      if (phoneDigits || existingPhoneDigits) {
+        updatePayload.phone = phoneDigits ? normalizedPhone : "";
         console.log(
           "✏️ [handleSave] Phone changed:",
           customerData.phone,
           "→",
-          formData.phone,
+          updatePayload.phone,
         );
       }
+      setPhoneError("");
       if (formData.address !== (customerData.address || "")) {
         updatePayload.location = formData.address;
         console.log(
@@ -226,9 +241,6 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
         console.log("✏️ [handleSave] Avatar changed (file):", imageFile.name);
       }
 
-      console.log("📦 [handleSave] Update payload:", updatePayload);
-      console.log("📦 [handleSave] Has image change:", hasImageChange);
-
       // Only make API call if there are changes
       if (Object.keys(updatePayload).length === 0 && !hasImageChange) {
         toast.info("No changes made");
@@ -236,10 +248,6 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
         setIsEditing(false);
         return;
       }
-
-      console.log(
-        `📡 [handleSave] Making PATCH request to /api/users/${userId}/`,
-      );
 
       // Build request headers and body based on whether we have a file
       let requestHeaders: HeadersInit = {
@@ -264,9 +272,6 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
 
         // Don't set Content-Type header when using FormData
         // Browser will set it automatically with boundary
-        console.log(
-          "📡 [handleSave] Sending as FormData (multipart/form-data) with file",
-        );
       } else {
         // Use JSON for text-only updates
         requestHeaders["Content-Type"] = "application/json";
@@ -299,15 +304,14 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
           profileImage: updatedData.avatar || formData.profileImage,
         };
 
-        // Update localStorage
+        // Update localStorage caches to keep subsequent sessions in sync
         const customers = JSON.parse(localStorage.getItem("customers") || "[]");
         const updatedCustomers = customers.map((c: any) =>
           c.id === customerData.id ? updatedCustomer : c,
         );
         localStorage.setItem("customers", JSON.stringify(updatedCustomers));
-
-        // Also update customer_user
         localStorage.setItem("customer_user", JSON.stringify(updatedCustomer));
+        localStorage.setItem("user", JSON.stringify(updatedCustomer));
 
         onUpdate(updatedCustomer);
         setIsEditing(false);
@@ -397,11 +401,12 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
     setFormData({
       name: customerData.name,
       email: customerData.email,
-      phone: customerData.phone || "",
+      phone: formatPhoneWithCode(customerData.phone || ""),
       address: customerData.address || "",
       profileImage: customerData.profileImage || "",
     });
     setProfileImagePreview(customerData.profileImage || "");
+    setPhoneError("");
     setIsEditing(false);
   };
 
@@ -926,16 +931,14 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
                       <input
                         type="tel"
                         value={formData.phone}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (value.startsWith("+977")) {
-                            if (value.length <= 14) {
-                              setFormData({ ...formData, phone: value });
-                            }
-                          } else if (value.length <= 10) {
-                            setFormData({ ...formData, phone: value });
-                          }
-                        }}
+                        onChange={(e) =>
+                          handlePhoneInput(
+                            e.target.value,
+                            (phone) =>
+                              setFormData((prev) => ({ ...prev, phone })),
+                            setPhoneError,
+                          )
+                        }
                         disabled={!isEditing}
                         maxLength={14}
                         placeholder="+977"
@@ -945,9 +948,13 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
                             : "border-gray-200 bg-gray-50"
                         }`}
                       />
-                      {isEditing && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          Enter 10 digit number after +977
+                      {(isEditing || phoneError) && (
+                        <p
+                          className={`text-xs mt-1 ${
+                            phoneError ? "text-red-600" : "text-gray-500"
+                          }`}
+                        >
+                          {phoneError || "Enter 10 digits after +977"}
                         </p>
                       )}
                     </div>

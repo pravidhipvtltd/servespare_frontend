@@ -685,7 +685,7 @@ export const BulkImportPanel: React.FC = () => {
         formData.append("file", uploadedFile);
 
         const headers: HeadersInit = {
-          "ngrok-skip-browser-warning": "true",
+         
         };
 
         if (token) {
@@ -732,7 +732,7 @@ export const BulkImportPanel: React.FC = () => {
 
         const headers: HeadersInit = {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
+         
         };
 
         if (token) {

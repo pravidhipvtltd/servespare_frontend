@@ -29,6 +29,7 @@ import {
   handlePhoneInput,
   NEPAL_COUNTRY_CODE,
 } from "../../utils/phoneValidation";
+import { useBranch } from "../../contexts/BranchContext";
 interface BackendParty {
   id: string;
   tenantId: string;
@@ -118,6 +119,7 @@ const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL}/stock-management`;
 
 export const PartiesPanel: React.FC = () => {
   const { currentUser } = useAuth();
+  const { selectedBranchId } = useBranch();
   const [parties, setParties] = useState<BackendParty[]>([]);
   const [activeTab, setActiveTab] = useState<"suppliers" | "customers">(
     "suppliers",
@@ -135,6 +137,7 @@ export const PartiesPanel: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const itemsPerPage = 20;
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
@@ -211,7 +214,7 @@ export const PartiesPanel: React.FC = () => {
 
   useEffect(() => {
     loadParties();
-  }, [activeTab]);
+  }, [activeTab, selectedBranchId]);
 
   const loadParties = async () => {
     setIsLoading(true);
@@ -220,7 +223,11 @@ export const PartiesPanel: React.FC = () => {
     try {
       const endpoint =
         activeTab === "suppliers" ? "parties/suppliers/" : "parties/customers/";
-      const response = await apiFetch(`${API_BASE_URL}/${endpoint}`, {
+      let url = `${API_BASE_URL}/${endpoint}`;
+      if (selectedBranchId) {
+        url += `?branch=${selectedBranchId}`;
+      }
+      const response = await apiFetch(url, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -327,6 +334,24 @@ export const PartiesPanel: React.FC = () => {
     return mapping[appTerm] || "cash";
   };
 
+  const formatApiError = (data: any, status?: number): string => {
+    if (!data) return status ? `Request failed (${status})` : "Request failed";
+    if (typeof data === "string") return data;
+    if (data.detail) return data.detail;
+    if (data.message) return data.message;
+    if (data.non_field_errors?.length) return data.non_field_errors.join("\n");
+    if (typeof data === "object") {
+      const parts = Object.entries(data).map(([key, value]) => {
+        const formattedKey =
+          key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, " ");
+        const val = Array.isArray(value) ? value.join(", ") : String(value);
+        return `${formattedKey}: ${val}`;
+      });
+      if (parts.length) return parts.join("\n");
+    }
+    return status ? `Request failed (${status})` : "Request failed";
+  };
+
   const loadPartyTransactions = async (partyId: string) => {
     try {
       const transactions = JSON.parse(
@@ -379,6 +404,7 @@ export const PartiesPanel: React.FC = () => {
     setViewingSidebar(false);
     setEditingParty(null);
     setViewingParty(null);
+    setFormError(null);
   };
 
   const handleViewParty = async (party: BackendParty) => {
@@ -391,7 +417,7 @@ export const PartiesPanel: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null);
+    setFormError(null);
 
     try {
       if (currentBranchId === 0) {
@@ -435,8 +461,8 @@ export const PartiesPanel: React.FC = () => {
         );
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Failed to update party");
+          const errorData = await response.json().catch(() => null);
+          throw new Error(formatApiError(errorData, response.status));
         }
 
         handleCloseSidebar();
@@ -452,15 +478,15 @@ export const PartiesPanel: React.FC = () => {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Failed to create party");
+          const errorData = await response.json().catch(() => null);
+          throw new Error(formatApiError(errorData, response.status));
         }
 
         handleCloseSidebar();
         loadParties();
       }
     } catch (err: any) {
-      setError(err.message || "Failed to save party");
+      setFormError(err.message || "Failed to save party");
     } finally {
       setIsLoading(false);
     }
@@ -905,6 +931,11 @@ export const PartiesPanel: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              {formError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 whitespace-pre-line">
+                  {formError}
+                </div>
+              )}
               {/* Basic Information */}
               <div>
                 <h4 className="text-gray-900 mb-4 flex items-center gap-2 font-medium">

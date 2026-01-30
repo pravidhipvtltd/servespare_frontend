@@ -86,7 +86,7 @@ export const PricingControlPanel: React.FC = () => {
 
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "true",
+       
       };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -182,13 +182,11 @@ export const PricingControlPanel: React.FC = () => {
         localStorage.getItem("access_token") ||
         localStorage.getItem("token");
 
-      const headers: Record<string, string> = {
-        "ngrok-skip-browser-warning": "true",
-      };
+      const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
       const formDataPayload = new FormData();
-      // Only include the price related fields as per request
+     
       formDataPayload.append("price", (selectedItem.costPrice || 0).toString());
       formDataPayload.append("mrp", pricing.mrp.toString());
       formDataPayload.append("retail_pricing", pricing.retail.toString());

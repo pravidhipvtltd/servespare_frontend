@@ -360,7 +360,7 @@ export const CashierDashboardNew: React.FC = () => {
         {
           headers: {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+           
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
         },
@@ -483,7 +483,7 @@ export const CashierDashboardNew: React.FC = () => {
         {
           headers: {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+           
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
         },
@@ -639,7 +639,7 @@ export const CashierDashboardNew: React.FC = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+           
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(payload),
@@ -811,7 +811,7 @@ export const CashierDashboardNew: React.FC = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+           
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(payload),
@@ -955,7 +955,7 @@ export const CashierDashboardNew: React.FC = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+           
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(payload),
@@ -1031,7 +1031,7 @@ export const CashierDashboardNew: React.FC = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+           
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(payload),
@@ -1115,7 +1115,7 @@ export const CashierDashboardNew: React.FC = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+           
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(payload),
@@ -1209,7 +1209,7 @@ export const CashierDashboardNew: React.FC = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+           
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(payload),

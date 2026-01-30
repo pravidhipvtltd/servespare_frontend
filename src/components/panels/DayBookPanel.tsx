@@ -20,31 +20,57 @@ import {
 } from "lucide-react";
 import { getFromStorage } from "../../utils/mockData";
 import { useAuth } from "../../contexts/AuthContext";
-import {
-  Bill,
-  CustomerOrder,
-  InventoryItem,
-  CashTransaction,
-} from "../../types";
+import { useBranch } from "../../contexts/BranchContext";
+import { Bill, CustomerOrder, InventoryItem } from "../../types";
+
+type DayBookCashTransaction = {
+  id: string;
+  type: string;
+  amount: number;
+  workspaceId?: string;
+  branchId?: string | number;
+  branch?: string | number;
+  createdAt?: string;
+  timestamp?: string;
+};
 
 export const DayBookPanel: React.FC = () => {
   const { currentUser } = useAuth();
+  const { selectedBranchId } = useBranch();
   const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0]
+    new Date().toISOString().split("T")[0],
   );
   const [bills, setBills] = useState<Bill[]>([]);
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [cashTransactions, setCashTransactions] = useState<CashTransaction[]>(
-    []
-  );
+  const [cashTransactions, setCashTransactions] = useState<
+    DayBookCashTransaction[]
+  >([]);
   const [expandedSection, setExpandedSection] = useState<string | null>(
-    "overview"
+    "overview",
   );
 
   useEffect(() => {
     loadData();
-  }, [selectedDate]);
+  }, [selectedDate, selectedBranchId]);
+
+  const matchesSelectedBranch = (recordBranchId: unknown) => {
+    if (!selectedBranchId) return true;
+    if (recordBranchId === null || recordBranchId === undefined) return false;
+    return String(recordBranchId) === selectedBranchId;
+  };
+
+  const getTxDate = (tx: DayBookCashTransaction) => {
+    return tx.createdAt || tx.timestamp || "";
+  };
+
+  const isCashInType = (type: string) => {
+    return type === "in" || type === "cash_in" || type === "sale";
+  };
+
+  const isCashOutType = (type: string) => {
+    return type === "out" || type === "cash_out" || type === "refund";
+  };
 
   const loadData = () => {
     const allBills = getFromStorage("bills", []);
@@ -53,22 +79,32 @@ export const DayBookPanel: React.FC = () => {
     const allCashTransactions = getFromStorage("cashTransactions", []);
 
     setBills(
-      allBills.filter((b: Bill) => b.workspaceId === currentUser?.workspaceId)
+      allBills.filter(
+        (b: Bill) =>
+          b.workspaceId === currentUser?.workspaceId &&
+          matchesSelectedBranch((b as any).branchId),
+      ),
     );
     setOrders(
       allOrders.filter(
-        (o: CustomerOrder) => o.workspaceId === currentUser?.workspaceId
-      )
+        (o: CustomerOrder) => o.workspaceId === currentUser?.workspaceId,
+      ),
     );
     setInventory(
       allInventory.filter(
-        (i: InventoryItem) => i.workspaceId === currentUser?.workspaceId
-      )
+        (i: InventoryItem) =>
+          i.workspaceId === currentUser?.workspaceId &&
+          matchesSelectedBranch((i as any).branchId),
+      ),
     );
     setCashTransactions(
-      allCashTransactions.filter(
-        (ct: CashTransaction) => ct.workspaceId === currentUser?.workspaceId
-      )
+      allCashTransactions.filter((ct: DayBookCashTransaction) => {
+        const matchesWorkspace = ct.workspaceId === currentUser?.workspaceId;
+        if (!matchesWorkspace) return false;
+
+        const branchValue = (ct as any).branchId ?? (ct as any).branch;
+        return matchesSelectedBranch(branchValue);
+      }),
     );
   };
 
@@ -82,13 +118,13 @@ export const DayBookPanel: React.FC = () => {
   const todayBills = bills.filter((b) => isToday(b.createdAt));
   const todayOrders = orders.filter((o) => isToday(o.createdAt));
   const todayInventory = inventory.filter(
-    (i) => i.lastRestocked && isToday(i.lastRestocked)
+    (i) => i.lastRestocked && isToday(i.lastRestocked),
   );
   const todayCashIn = cashTransactions.filter(
-    (ct) => ct.type === "in" && isToday(ct.createdAt)
+    (ct) => isCashInType(ct.type) && isToday(getTxDate(ct)),
   );
   const todayCashOut = cashTransactions.filter(
-    (ct) => ct.type === "out" && isToday(ct.createdAt)
+    (ct) => isCashOutType(ct.type) && isToday(getTxDate(ct)),
   );
 
   // Calculate metrics
@@ -103,7 +139,7 @@ export const DayBookPanel: React.FC = () => {
   const totalProductEntry = todayInventory.length;
 
   const lowStockProducts = inventory.filter(
-    (i) => i.quantity <= i.minStockLevel
+    (i) => i.quantity <= i.minStockLevel,
   );
 
   const totalOrdersToday = todayBills.length + todayOrders.length;
@@ -111,17 +147,17 @@ export const DayBookPanel: React.FC = () => {
   const totalItemsToday =
     todayBills.reduce(
       (sum, b) => sum + b.items.reduce((s, i) => s + i.quantity, 0),
-      0
+      0,
     ) +
     todayOrders.reduce(
       (sum, o) => sum + o.items.reduce((s, i) => s + i.quantity, 0),
-      0
+      0,
     );
 
   const cashOrders =
     todayBills.filter((b) => b.paymentMethod === "cash").length +
     todayOrders.filter(
-      (o) => o.paymentMethod === "cod" || o.paymentMethod === "paid"
+      (o) => o.paymentMethod === "cod" || o.paymentMethod === "paid",
     ).length;
 
   const creditOrders =
@@ -129,13 +165,13 @@ export const DayBookPanel: React.FC = () => {
     todayOrders.filter((o) => o.paymentMethod === "credit").length;
 
   const cardOrders = todayBills.filter(
-    (b) => b.paymentMethod === "card"
+    (b) => b.paymentMethod === "card",
   ).length;
   const esewaOrders = todayBills.filter(
-    (b) => b.paymentMethod === "esewa"
+    (b) => b.paymentMethod === "esewa",
   ).length;
   const fonepayOrders = todayBills.filter(
-    (b) => b.paymentMethod === "fonepay"
+    (b) => b.paymentMethod === "fonepay",
   ).length;
 
   const totalCashReceived = todayBills
@@ -454,10 +490,10 @@ export const DayBookPanel: React.FC = () => {
                           index === 0
                             ? "bg-yellow-500"
                             : index === 1
-                            ? "bg-gray-400"
-                            : index === 2
-                            ? "bg-orange-600"
-                            : "bg-blue-500"
+                              ? "bg-gray-400"
+                              : index === 2
+                                ? "bg-orange-600"
+                                : "bg-blue-500"
                         }`}
                       >
                         #{index + 1}
@@ -514,7 +550,7 @@ export const DayBookPanel: React.FC = () => {
                   .sort(
                     (a, b) =>
                       new Date(b.createdAt).getTime() -
-                      new Date(a.createdAt).getTime()
+                      new Date(a.createdAt).getTime(),
                   )
                   .map((bill) => (
                     <div
@@ -543,7 +579,7 @@ export const DayBookPanel: React.FC = () => {
                                   hour: "2-digit",
                                   minute: "2-digit",
                                   hour12: true,
-                                }
+                                },
                               )}
                             </p>
                           </div>
@@ -564,7 +600,7 @@ export const DayBookPanel: React.FC = () => {
                   .sort(
                     (a, b) =>
                       new Date(b.createdAt).getTime() -
-                      new Date(a.createdAt).getTime()
+                      new Date(a.createdAt).getTime(),
                   )
                   .map((order) => (
                     <div
@@ -593,7 +629,7 @@ export const DayBookPanel: React.FC = () => {
                                   hour: "2-digit",
                                   minute: "2-digit",
                                   hour12: true,
-                                }
+                                },
                               )}
                             </p>
                           </div>
@@ -719,7 +755,7 @@ export const DayBookPanel: React.FC = () => {
                   Rs
                   {totalOrdersToday > 0
                     ? Math.round(
-                        totalIncome / totalOrdersToday
+                        totalIncome / totalOrdersToday,
                       ).toLocaleString()
                     : 0}
                 </span>

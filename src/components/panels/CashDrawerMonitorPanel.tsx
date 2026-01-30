@@ -78,7 +78,7 @@ export const CashDrawerMonitorPanel: React.FC = () => {
         localStorage.getItem("token");
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "true",
+       
       };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 

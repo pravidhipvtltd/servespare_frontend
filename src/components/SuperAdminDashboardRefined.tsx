@@ -563,7 +563,7 @@ const DashboardView: React.FC<{
         const token = localStorage.getItem("accessToken");
         const headers: HeadersInit = {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
+         
         };
 
         if (token) {
@@ -1001,7 +1001,7 @@ const AdminAccountsView: React.FC<{
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "ngrok-skip-browser-warning": "true",
+          
           },
         },
       );
@@ -1213,7 +1213,7 @@ const AdminAccountsView: React.FC<{
       const token = localStorage.getItem("accessToken");
       const headers: any = {
         "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "true",
+      
       };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -1361,7 +1361,7 @@ const AdminAccountsView: React.FC<{
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
-            "ngrok-skip-browser-warning": "true",
+          
           },
           body: JSON.stringify(payload),
         },

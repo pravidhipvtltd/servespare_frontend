@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { getFromStorage, saveToStorage } from "../../utils/mockData";
 import { useAuth } from "../../contexts/AuthContext";
+import { useBranch } from "../../contexts/BranchContext";
 import { InventoryItem, Party, VehicleType, ItemCategory } from "../../types";
 import { Pagination } from "../common/Pagination";
 import { InventoryFilterPanel } from "./InventoryFilterPanel";
@@ -61,6 +62,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
   filter,
 }) => {
   const { currentUser } = useAuth();
+  const { selectedBranchId } = useBranch();
   const popup = useCustomPopup();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [filteredInventory, setFilteredInventory] = useState<InventoryItem[]>(
@@ -91,7 +93,10 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
   const [currentBranchId, setCurrentBranchId] = useState<number>(0);
 
   const [formData, setFormData] = useState<
-    Partial<InventoryItem> & { imageFiles?: File[]; multipleImageFiles?: File[] }
+    Partial<InventoryItem> & {
+      imageFiles?: File[];
+      multipleImageFiles?: File[];
+    }
   >({
     name: "",
     category: "local",
@@ -146,7 +151,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
       cleanup2();
       cleanup3();
     };
-  }, [currentUser]);
+  }, [currentUser, selectedBranchId]);
 
   useEffect(() => {
     const fetchBranchId = async () => {
@@ -182,9 +187,11 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
         localStorage.getItem("token");
 
       if (token) {
-        const res = await apiFetch(
-          `${import.meta.env.VITE_API_BASE_URL}/stock-management/inventory/`,
-        );
+        let url = `${import.meta.env.VITE_API_BASE_URL}/stock-management/inventory/`;
+        if (selectedBranchId) {
+          url += `?branch=${selectedBranchId}`;
+        }
+        const res = await apiFetch(url);
         if (res.status === 401) {
           throw new Error(
             "Unauthorized: Authentication credentials were not provided.",
@@ -240,6 +247,12 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
           lastRestocked: it.modified || it.lastRestocked || undefined,
         }));
 
+        const filteredBySelectedBranch = selectedBranchId
+          ? mapped.filter(
+              (it: any) => String(it.branchId) === String(selectedBranchId),
+            )
+          : mapped;
+
         console.log(
           "TotalInventoryPanel: currentUser.workspaceId=",
           currentUser?.workspaceId,
@@ -259,7 +272,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
           mapped.map((m) => m.workspaceId),
         );
 
-        const filteredByWorkspace = mapped.filter(
+        const filteredByWorkspace = filteredBySelectedBranch.filter(
           (i) => String(i.workspaceId) === String(currentUser?.workspaceId),
         );
 
@@ -272,17 +285,17 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
           console.warn("Failed to persist mapped inventory to storage:", e);
         }
 
-        if (mapped.length > 0) {
+        if (filteredByWorkspace.length > 0) {
           // eslint-disable-next-line no-console
           console.log(
             "TotalInventoryPanel: Using API-mapped items (count=",
-            mapped.length,
+            filteredByWorkspace.length,
             ") and persisted to local storage",
           );
 
-          setInventory(mapped);
-        } else {
           setInventory(filteredByWorkspace);
+        } else {
+          setInventory([]);
         }
       }
       return;
@@ -300,10 +313,15 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
 
     const allInventory = getFromStorage("products", []);
     setInventory(
-      allInventory.filter(
-        (i: InventoryItem) =>
-          String(i.workspaceId) === String(currentUser?.workspaceId),
-      ),
+      allInventory.filter((i: InventoryItem) => {
+        const matchesWorkspace =
+          String(i.workspaceId) === String(currentUser?.workspaceId);
+        if (!matchesWorkspace) return false;
+        if (!selectedBranchId) return true;
+        const branchValue = (i as any).branchId ?? (i as any).branch;
+        if (branchValue === undefined || branchValue === null) return false;
+        return String(branchValue) === String(selectedBranchId);
+      }),
     );
   };
 
@@ -311,11 +329,13 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
     try {
       const token = localStorage.getItem("accessToken");
       if (token) {
-        const response = await apiFetch(
-          `${
-            import.meta.env.VITE_API_BASE_URL
-          }/stock-management/parties/suppliers/`,
-        );
+        let url = `${
+          import.meta.env.VITE_API_BASE_URL
+        }/stock-management/parties/suppliers/`;
+        if (selectedBranchId) {
+          url += `?branch=${selectedBranchId}`;
+        }
+        const response = await apiFetch(url);
 
         if (response.ok) {
           const data = await response.json();
@@ -450,7 +470,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
         localStorage.getItem("token");
 
       const headers: Record<string, string> = {
-        "ngrok-skip-browser-warning": "true",
+       
       };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -472,12 +492,18 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
       );
       formDataPayload.append("price", (formData.price || 0).toString());
       formDataPayload.append("mrp", (formData.mrp || 0).toString());
-      if (formData.distributorPrice !== undefined && formData.distributorPrice !== 0)
+      if (
+        formData.distributorPrice !== undefined &&
+        formData.distributorPrice !== 0
+      )
         formDataPayload.append(
           "distributor_price",
           formData.distributorPrice.toString(),
         );
-      if (formData.wholesalePrice !== undefined && formData.wholesalePrice !== 0)
+      if (
+        formData.wholesalePrice !== undefined &&
+        formData.wholesalePrice !== 0
+      )
         formDataPayload.append(
           "wholesale_price",
           formData.wholesalePrice.toString(),
@@ -500,7 +526,9 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
         formDataPayload.append("model", formData.bikeModel);
       if (formData.bikeType) formDataPayload.append("type", formData.bikeType);
 
-      const branchId = editingItem?.branchId || currentBranchId;
+      const branchId = selectedBranchId
+        ? parseInt(selectedBranchId)
+        : editingItem?.branchId || currentBranchId;
       if (branchId) formDataPayload.append("branch", branchId.toString());
 
       formDataPayload.append("is_active", "true");
@@ -531,13 +559,13 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
       let response;
       if (editingItem) {
         // Appending branch param to ensure context for editing
-        const branchParam = editingItem.branchId
-          ? `?branch=${editingItem.branchId}`
-          : "";
+        const branchParam = selectedBranchId
+          ? `?branch=${selectedBranchId}`
+          : editingItem.branchId
+            ? `?branch=${editingItem.branchId}`
+            : "";
         response = await apiFetch(
-          `${import.meta.env.VITE_API_BASE_URL}/stock-management/inventory/${
-            editingItem.id
-          }/`,
+          `${import.meta.env.VITE_API_BASE_URL}/stock-management/inventory/${editingItem.id}/${branchParam}`,
           {
             method: "PATCH",
             body: formDataPayload,
@@ -559,7 +587,6 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
         console.error("Server API Error:", responseData);
         let errorMsg = responseData.detail || responseData.message;
 
-     
         if (!errorMsg && typeof responseData === "object") {
           const fieldErrors = Object.entries(responseData).map(
             ([field, messages]) => {
@@ -583,7 +610,6 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
 
       const savedId = responseData.id;
 
-     
       loadInventory();
       handleCloseSidebar();
       popup.showSuccess(
@@ -610,12 +636,16 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
           const itemToDelete =
             inventory.find((i) => i.id === itemId) ||
             filteredInventory.find((i) => i.id === itemId);
-          const targetBranchId = itemToDelete?.branchId || currentBranchId;
+          const targetBranchId = selectedBranchId
+            ? parseInt(selectedBranchId)
+            : itemToDelete?.branchId || currentBranchId;
 
           try {
             const apiUrl = `${
               import.meta.env.VITE_API_BASE_URL
-            }/stock-management/inventory/${itemId}/`;
+            }/stock-management/inventory/${itemId}/${
+              targetBranchId ? `?branch=${targetBranchId}` : ""
+            }`;
             const res = await apiFetch(apiUrl, {
               method: "DELETE",
               headers: {
@@ -629,7 +659,6 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
               res.status === 200 ||
               res.status === 202
             ) {
-              // Only update local state if server delete succeeds
               setSelectedItems([]);
               emitItemDeleted(itemId);
               loadInventory();
@@ -1782,9 +1811,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                       </label>
                       <input
                         type="number"
-                        value={
-                          formData.retailPrice || ""
-                        }
+                        value={formData.retailPrice || ""}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
@@ -1810,9 +1837,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                       </label>
                       <input
                         type="number"
-                        value={
-                          formData.wholesalePrice || ""
-                        }
+                        value={formData.wholesalePrice || ""}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
@@ -1836,9 +1861,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                       </label>
                       <input
                         type="number"
-                        value={
-                          formData.distributorPrice || ""
-                        }
+                        value={formData.distributorPrice || ""}
                         onChange={(e) =>
                           setFormData({
                             ...formData,

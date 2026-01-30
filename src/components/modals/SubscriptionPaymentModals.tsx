@@ -77,7 +77,7 @@ export const RenewSubscriptionModal: React.FC<{
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
-            "ngrok-skip-browser-warning": "true",
+           
           },
           body: JSON.stringify({
             months: months,
@@ -521,7 +521,7 @@ export const ManagePlanModal: React.FC<{
           {
             headers: {
               Authorization: `Bearer ${token}`,
-              "ngrok-skip-browser-warning": "true",
+             
             },
           }
         );
@@ -582,7 +582,7 @@ export const ManagePlanModal: React.FC<{
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "ngrok-skip-browser-warning": "true",
+           
           },
         }
       );
@@ -621,7 +621,7 @@ export const ManagePlanModal: React.FC<{
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
-            "ngrok-skip-browser-warning": "true",
+           
           },
           body: JSON.stringify({
             tenant_id: tenantId,

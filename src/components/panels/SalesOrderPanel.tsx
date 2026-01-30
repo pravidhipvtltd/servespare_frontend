@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { getFromStorage, saveToStorage } from "../../utils/mockData";
 import { useAuth } from "../../contexts/AuthContext";
+import { useBranch } from "../../contexts/BranchContext";
 import { Pagination } from "../common/Pagination";
 import { PopupContainer } from "../PopupContainer";
 import { useCustomPopup } from "../../hooks/useCustomPopup";
@@ -155,6 +156,7 @@ interface SalesStats {
 
 export const SalesOrderPanel: React.FC = () => {
   const { currentUser } = useAuth();
+  const { selectedBranchId } = useBranch();
   const popup = useCustomPopup();
   const [orders, setOrders] = useState<SalesOrder[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -169,7 +171,7 @@ export const SalesOrderPanel: React.FC = () => {
   useEffect(() => {
     loadOrders();
     fetchStats();
-  }, []);
+  }, [selectedBranchId]);
 
   const fetchStats = async () => {
     try {
@@ -177,14 +179,15 @@ export const SalesOrderPanel: React.FC = () => {
         localStorage.getItem("accessToken") ||
         localStorage.getItem("auth_token");
       if (token) {
-        const response = await apiFetch(
-          `${import.meta.env.VITE_API_BASE_URL}/sales/orders/stats/`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
+        let url = `${import.meta.env.VITE_API_BASE_URL}/sales/orders/stats/`;
+        if (selectedBranchId) {
+          url += `?branch=${selectedBranchId}`;
+        }
+        const response = await apiFetch(url, {
+          headers: {
+            "Content-Type": "application/json",
           },
-        );
+        });
         if (response.ok) {
           const data = await response.json();
           setApiStats(data);
@@ -201,14 +204,15 @@ export const SalesOrderPanel: React.FC = () => {
         localStorage.getItem("accessToken") ||
         localStorage.getItem("auth_token");
       if (token) {
-        const response = await apiFetch(
-          `${import.meta.env.VITE_API_BASE_URL}/sales/orders/`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
+        let url = `${import.meta.env.VITE_API_BASE_URL}/sales/orders/`;
+        if (selectedBranchId) {
+          url += `?branch=${selectedBranchId}`;
+        }
+        const response = await apiFetch(url, {
+          headers: {
+            "Content-Type": "application/json",
           },
-        );
+        });
         if (response.ok) {
           const data = await response.json();
           const mappedOrders: SalesOrder[] = data.results.map(

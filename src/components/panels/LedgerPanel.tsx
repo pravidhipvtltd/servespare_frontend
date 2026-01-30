@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { getFromStorage } from "../../utils/mockData";
 import { useAuth } from "../../contexts/AuthContext";
+import { useBranch } from "../../contexts/BranchContext";
 import { Pagination } from "../common/Pagination";
 import { Party, Bill } from "../../types";
 import {
@@ -69,6 +70,7 @@ interface Transaction {
 
 export const LedgerPanel: React.FC = () => {
   const { currentUser } = useAuth();
+  const { selectedBranchId } = useBranch();
   const [activeTab, setActiveTab] = useState<LedgerType>("purchase");
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -96,7 +98,7 @@ export const LedgerPanel: React.FC = () => {
   useEffect(() => {
     loadLedgerData();
     loadLedgerStatistics();
-  }, [activeTab]);
+  }, [activeTab, selectedBranchId]);
 
   // Reset pagination when search query or tab changes
   useEffect(() => {
@@ -114,17 +116,19 @@ export const LedgerPanel: React.FC = () => {
       const endpoint =
         activeTab === "purchase" ? "purchase-statistics" : "sales-statistics";
 
-      const response = await fetch(
-        `${
-          import.meta.env.VITE_API_BASE_URL
-        }/cash-and-bank/account-ledger/${endpoint}/`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "ngrok-skip-browser-warning": "true",
-          },
+      let url = `${
+        import.meta.env.VITE_API_BASE_URL
+      }/cash-and-bank/account-ledger/${endpoint}/`;
+      if (selectedBranchId) {
+        url += `?branch=${selectedBranchId}`;
+      }
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+         
         },
-      );
+      });
 
       if (response.ok) {
         const data = await response.json();
@@ -152,7 +156,9 @@ export const LedgerPanel: React.FC = () => {
       console.log(`🔵 Fetching ${activeTab} ledger data from API...`);
 
       // Fetch ledger data from API
-      const apiData = await fetchLedger(activeTab as "sales" | "purchase");
+      const apiData = await fetchLedger(activeTab as "sales" | "purchase", {
+        branch: selectedBranchId || undefined,
+      });
 
       console.log(`✅ Received ${apiData.length} ledger entries:`, apiData);
 
@@ -396,7 +402,9 @@ export const LedgerPanel: React.FC = () => {
       console.log(`🔵 Fetching transactions for party: ${party.partyName}`);
 
       // Fetch filtered data from API
-      const apiData = await fetchLedger(activeTab as "sales" | "purchase");
+      const apiData = await fetchLedger(activeTab as "sales" | "purchase", {
+        branch: selectedBranchId || undefined,
+      });
 
       // Filter transactions for this specific party
       const partyTransactions = apiData.filter(

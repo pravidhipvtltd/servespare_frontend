@@ -72,11 +72,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: true,
         rewrite: (path) => path,
-        configure: (proxy, _options) => {
-          proxy.on("proxyReq", (proxyReq, req, _res) => {
-            proxyReq.setHeader("ngrok-skip-browser-warning", "true");
-          });
-        },
+        // configure: (proxy, _options) => {
+        //   proxy.on("proxyReq", (proxyReq, req, _res) => {
+        //     proxyReq.setHeader("ngrok-skip-browser-warning", "true");
+        //   });
+        // },
       },
     },
   },

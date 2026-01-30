@@ -39,6 +39,7 @@ import {
 } from "recharts";
 import { getFromStorage } from "../../utils/mockData";
 import { useAuth } from "../../contexts/AuthContext";
+import { useBranch } from "../../contexts/BranchContext";
 import { InventoryItem, Bill, Party } from "../../types";
 
 // Date validation utilities - Version 2.0
@@ -87,6 +88,7 @@ interface AIAlert {
 
 export const DashboardPanel: React.FC = () => {
   const { currentUser } = useAuth();
+  const { selectedBranchId } = useBranch();
   const [stats, setStats] = useState<DashboardStats>({
     totalItems: 0,
     totalValue: 0,
@@ -111,7 +113,7 @@ export const DashboardPanel: React.FC = () => {
     migrateBillsData(); // Run migration first
     loadDashboardData();
     generateAIAlerts();
-  }, []);
+  }, [selectedBranchId]);
 
   // Migration function to fix existing bills without createdAt
   const migrateBillsData = () => {
@@ -153,7 +155,7 @@ export const DashboardPanel: React.FC = () => {
       if (migratedCount > 0) {
         localStorage.setItem("bills", JSON.stringify(migratedBills));
         console.log(
-          `✅ Successfully migrated ${migratedCount} bills to include createdAt field`
+          `✅ Successfully migrated ${migratedCount} bills to include createdAt field`,
         );
       }
     } catch (error) {
@@ -167,22 +169,35 @@ export const DashboardPanel: React.FC = () => {
     const storedExpenses = localStorage.getItem("expenses");
     const storedParties = localStorage.getItem("parties");
 
-    const inventory: InventoryItem[] = storedInventory
+    const allInventory: InventoryItem[] = storedInventory
       ? JSON.parse(storedInventory)
       : [];
     const allBills: Bill[] = storedBills ? JSON.parse(storedBills) : [];
-    const expenses: any[] = storedExpenses ? JSON.parse(storedExpenses) : [];
-    const parties: any[] = storedParties ? JSON.parse(storedParties) : [];
+    const allExpenses: any[] = storedExpenses ? JSON.parse(storedExpenses) : [];
+    const allParties: any[] = storedParties ? JSON.parse(storedParties) : [];
+
+    const matchesSelectedBranch = (item: any) => {
+      if (!selectedBranchId) return true;
+      const branchValue =
+        item?.branchId ?? item?.branch ?? item?.branch_id ?? item?.branchId;
+      if (branchValue === undefined || branchValue === null) return false;
+      return String(branchValue) === String(selectedBranchId);
+    };
+
+    const inventory = allInventory.filter(matchesSelectedBranch);
+    const expenses = allExpenses.filter(matchesSelectedBranch);
+    const parties = allParties.filter(matchesSelectedBranch);
 
     // Filter out bills with invalid dates to prevent crashes
     // After migration, this should not filter out any bills
-    const bills = allBills.filter((b) => {
+    const bills = allBills.filter((b: any) => {
+      if (!matchesSelectedBranch(b)) return false;
       if (!b.createdAt) {
         // This should rarely happen after migration
         console.error(
           "⚠️ Bill still missing createdAt after migration:",
           b.id,
-          "This bill will be excluded from reports"
+          "This bill will be excluded from reports",
         );
         return false;
       }
@@ -191,7 +206,7 @@ export const DashboardPanel: React.FC = () => {
           "⚠️ Bill has invalid createdAt date:",
           b.id,
           b.createdAt,
-          "This bill will be excluded from reports"
+          "This bill will be excluded from reports",
         );
         return false;
       }
@@ -202,7 +217,7 @@ export const DashboardPanel: React.FC = () => {
       console.warn(
         `⚠️ ${
           allBills.length - bills.length
-        } bills were excluded due to missing/invalid dates`
+        } bills were excluded due to missing/invalid dates`,
       );
     }
 
@@ -210,16 +225,16 @@ export const DashboardPanel: React.FC = () => {
     const totalItems = inventory.length;
     const totalValue = inventory.reduce(
       (sum, item) => sum + item.quantity * item.price,
-      0
+      0,
     );
     const lowStock = inventory.filter(
-      (item) => item.quantity <= item.minStockLevel
+      (item) => item.quantity <= item.minStockLevel,
     ).length;
 
     // Today's sales
     const today = new Date().toISOString().split("T")[0];
     const todaysBills = bills.filter(
-      (b) => getDateString(b.createdAt) === today
+      (b) => getDateString(b.createdAt) === today,
     );
     const todaysSales = todaysBills.reduce((sum, bill) => sum + bill.total, 0);
 
@@ -248,7 +263,7 @@ export const DashboardPanel: React.FC = () => {
     });
     const monthlySales = monthlyBills.reduce(
       (sum, bill) => sum + bill.total,
-      0
+      0,
     );
 
     // Last month for comparison
@@ -275,12 +290,12 @@ export const DashboardPanel: React.FC = () => {
 
     // Pending orders
     const pendingOrders = bills.filter(
-      (b) => b.paymentStatus === "pending"
+      (b) => b.paymentStatus === "pending",
     ).length;
 
     // Active customers (unique this month)
     const activeCustomers = new Set(
-      monthlyBills.map((b) => b.customerPhone || b.customerName)
+      monthlyBills.map((b) => b.customerPhone || b.customerName),
     ).size;
 
     setStats({
@@ -344,11 +359,11 @@ export const DashboardPanel: React.FC = () => {
       const items = inventory.filter(
         (i) =>
           i.vehicleType ===
-          (cat === "Two Wheeler" ? "two_wheeler" : "four_wheeler")
+          (cat === "Two Wheeler" ? "two_wheeler" : "four_wheeler"),
       );
       const inStock = items.filter((i) => i.quantity > i.minStockLevel).length;
       const lowStock = items.filter(
-        (i) => i.quantity <= i.minStockLevel && i.quantity > 0
+        (i) => i.quantity <= i.minStockLevel && i.quantity > 0,
       ).length;
       const outOfStock = items.filter((i) => i.quantity === 0).length;
 
@@ -363,7 +378,7 @@ export const DashboardPanel: React.FC = () => {
 
   const generateInventoryHeatmap = (
     inventory: InventoryItem[],
-    bills: Bill[]
+    bills: Bill[],
   ): InventoryHeatItem[] => {
     const itemSales = new Map<string, number>();
 
@@ -474,7 +489,9 @@ export const DashboardPanel: React.FC = () => {
             <h1 className="text-3xl text-white mb-2">Business Overview</h1>
             <p className="text-gray-400">
               Real-time insights and analytics for{" "}
-              {currentUser?.workspace || "your business"}
+              {currentUser?.businessName ||
+                currentUser?.workspaceId ||
+                "your business"}
             </p>
           </div>
           <div className="flex items-center space-x-3">
@@ -704,7 +721,7 @@ export const DashboardPanel: React.FC = () => {
                   <div
                     key={item.id}
                     className={`group relative ${getVelocityColor(
-                      item.velocity
+                      item.velocity,
                     )} rounded-xl p-4 cursor-pointer hover:scale-105 transition-all duration-300 overflow-hidden`}
                   >
                     {/* Hover overlay */}
@@ -879,7 +896,7 @@ export const DashboardPanel: React.FC = () => {
                           panel: "order-management",
                           filter: "pending",
                         },
-                      })
+                      }),
                     );
                   }}
                   className="w-full group flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-400 transition-all duration-300 cursor-pointer"
@@ -906,7 +923,7 @@ export const DashboardPanel: React.FC = () => {
                     window.dispatchEvent(
                       new CustomEvent("quickStatClick", {
                         detail: { panel: "parties", filter: "customer" },
-                      })
+                      }),
                     );
                   }}
                   className="w-full group flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-green-400 transition-all duration-300 cursor-pointer"
@@ -936,7 +953,7 @@ export const DashboardPanel: React.FC = () => {
                           panel: "financial-reports",
                           filter: "monthly",
                         },
-                      })
+                      }),
                     );
                   }}
                   className="w-full group flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-purple-400 transition-all duration-300 cursor-pointer"
@@ -973,7 +990,7 @@ export const DashboardPanel: React.FC = () => {
                     window.dispatchEvent(
                       new CustomEvent("quickStatClick", {
                         detail: { panel: "total-inventory", filter: "all" },
-                      })
+                      }),
                     );
                   }}
                   className="w-full group flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-orange-400 transition-all duration-300 cursor-pointer"

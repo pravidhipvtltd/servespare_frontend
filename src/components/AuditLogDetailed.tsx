@@ -121,7 +121,7 @@ export const AuditLogDetailed: React.FC<{ users: any[] }> = ({ users }) => {
         `${import.meta.env.VITE_API_BASE_URL}/audit-logs/?page=${currentPage}`,
         {
           headers: {
-            "ngrok-skip-browser-warning": "true",
+            
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },

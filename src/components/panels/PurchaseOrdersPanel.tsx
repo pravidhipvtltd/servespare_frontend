@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { getFromStorage, saveToStorage } from "../../utils/mockData";
 import { useAuth } from "../../contexts/AuthContext";
+import { useBranch } from "../../contexts/BranchContext";
 import {
   PurchaseOrder,
   PurchaseOrderItem,
@@ -59,6 +60,7 @@ import { apiFetch } from "../../utils/apiClient";
 
 export const PurchaseOrdersPanel: React.FC = () => {
   const { currentUser } = useAuth();
+  const { selectedBranchId } = useBranch();
   const popup = useCustomPopup();
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Party[]>([]);
@@ -99,14 +101,19 @@ export const PurchaseOrdersPanel: React.FC = () => {
     grnGenerated: false,
   });
 
-  const [newItem, setNewItem] = useState<
-    Partial<PurchaseOrderItem> & {
-      orderedQuantity: string | number;
-      unitPrice: string | number;
-      taxPercent: string | number;
-      discount: string | number;
-    }
-  >({
+  type NewItemForm = {
+    itemName: string;
+    partNumber?: string;
+    description?: string;
+    orderedQuantity: number;
+    receivedQuantity: number;
+    unitPrice: number;
+    taxPercent: number;
+    discount: number;
+    totalAmount: number;
+  };
+
+  const [newItem, setNewItem] = useState<NewItemForm>({
     itemName: "",
     partNumber: "",
     description: "",
@@ -122,7 +129,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
     loadPurchaseOrders();
     loadSuppliers();
     loadInventoryItems();
-  }, []);
+  }, [selectedBranchId]);
 
   useEffect(() => {
     const fetchBranchId = async () => {
@@ -150,16 +157,15 @@ export const PurchaseOrdersPanel: React.FC = () => {
         localStorage.getItem("accessToken") ||
         localStorage.getItem("auth_token");
       if (token) {
-        const response = await apiFetch(
-          `${
-            import.meta.env.VITE_API_BASE_URL
-          }/stock-management/purchase-orders/`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
+        let url = `${import.meta.env.VITE_API_BASE_URL}/stock-management/purchase-orders/`;
+        if (selectedBranchId) {
+          url += `?branch=${selectedBranchId}`;
+        }
+        const response = await apiFetch(url, {
+          headers: {
+            "Content-Type": "application/json",
           },
-        );
+        });
 
         if (response.ok) {
           const data = await response.json();
@@ -228,16 +234,15 @@ export const PurchaseOrdersPanel: React.FC = () => {
         localStorage.getItem("accessToken") ||
         localStorage.getItem("auth_token");
       if (token) {
-        const response = await apiFetch(
-          `${
-            import.meta.env.VITE_API_BASE_URL
-          }/stock-management/parties/suppliers/`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
+        let url = `${import.meta.env.VITE_API_BASE_URL}/stock-management/parties/suppliers/`;
+        if (selectedBranchId) {
+          url += `?branch=${selectedBranchId}`;
+        }
+        const response = await apiFetch(url, {
+          headers: {
+            "Content-Type": "application/json",
           },
-        );
+        });
 
         if (response.ok) {
           const data = await response.json();
@@ -301,9 +306,14 @@ export const PurchaseOrdersPanel: React.FC = () => {
   const loadInventoryItems = () => {
     const allItems = getFromStorage("inventory", []);
     setInventoryItems(
-      allItems.filter(
-        (item: InventoryItem) => item.workspaceId === currentUser?.workspaceId,
-      ),
+      allItems.filter((item: InventoryItem) => {
+        const matchesWorkspace = item.workspaceId === currentUser?.workspaceId;
+        if (!matchesWorkspace) return false;
+        if (!selectedBranchId) return true;
+        const branchValue = (item as any).branchId ?? (item as any).branch;
+        if (branchValue === undefined || branchValue === null) return false;
+        return String(branchValue) === String(selectedBranchId);
+      }),
     );
   };
 
@@ -435,7 +445,6 @@ export const PurchaseOrdersPanel: React.FC = () => {
   };
 
   const handleRemoveItem = async (itemId: string) => {
-    // Check if we are editing an existing PO and if the item exists on the server
     if (editingPO) {
       const originalItem = editingPO.items.find((i) => i.id === itemId);
 
@@ -517,19 +526,14 @@ export const PurchaseOrdersPanel: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.supplierId) {
+    if (
+      !formData.supplierId ||
+      !formData.items ||
+      formData.items.length === 0
+    ) {
       popup.showError(
-        "Please select a supplier before creating the purchase order.",
-        "Supplier Required",
-        "warning",
-      );
-      return;
-    }
-
-    if (!formData.items || formData.items.length === 0) {
-      popup.showError(
-        "Please add at least one item to the purchase order.",
-        "Items Required",
+        "Supplier and at least one item are required.",
+        "Missing Fields",
         "warning",
       );
       return;
@@ -541,127 +545,93 @@ export const PurchaseOrdersPanel: React.FC = () => {
         localStorage.getItem("auth_token");
 
       if (token) {
-        const formDataPayload = new FormData();
-        formDataPayload.append("po_number", formData.poNumber || "");
-        formDataPayload.append(
-          "status",
-          formData.status || (editingPO ? "draft" : "pending"),
-        );
-        formDataPayload.append(
-          "supplier",
-          formData.supplierId?.toString() || "",
-        );
-        formDataPayload.append("order_date", formData.orderDate || "");
-
-        if (formData.expectedDeliveryDate) {
-          formDataPayload.append(
-            "expected_delivery_date",
-            formData.expectedDeliveryDate,
-          );
-        }
-
-        if (selectedInvoiceFile) {
-          formDataPayload.append("purchase_invoice", selectedInvoiceFile);
-        }
-
-        formDataPayload.append("notes", formData.notes || "");
-        formDataPayload.append("terms_and_condition", formData.terms || "");
-        formDataPayload.append("branch", currentBranchId.toString());
-
-        if (editingPO) {
-          formDataPayload.append("is_active", "true");
-        }
-
-        const items = (formData.items || []).map((item) => {
-          if (editingPO) {
-            return {
-              item_name: item.itemName,
-              part_number: item.partNumber,
-              description: item.description,
-              ordered_quantity: item.orderedQuantity,
-              unit_price: item.unitPrice,
-              tax_percent: item.taxPercent,
-              discount: item.discount,
-            };
-          } else {
-            return {
-              item_name: item.itemName,
-              part_number: item.partNumber,
-              quantity: item.orderedQuantity || 0,
-              unit_price: item.unitPrice || 0,
-              tax: item.taxPercent || 13,
-            };
-          }
-        });
-
-        formDataPayload.append(
-          "items",
-          new Blob([JSON.stringify(items)], { type: "application/json" }),
-        );
+        const branchForRequest = selectedBranchId || currentBranchId;
 
         const url = editingPO
           ? `${import.meta.env.VITE_API_BASE_URL}/stock-management/purchase-orders/${editingPO.id}/`
-          : `${import.meta.env.VITE_API_BASE_URL}/stock-management/purchase-orders/create-with-items/`;
+          : `${import.meta.env.VITE_API_BASE_URL}/stock-management/purchase-orders/`; // Create without items
 
-        const response = await apiFetch(url, {
+        const jsonPayload = {
+          po_number: formData.poNumber,
+          status: formData.status,
+          supplier: parseInt(formData.supplierId),
+          order_date: formData.orderDate,
+          expected_delivery_date: formData.expectedDeliveryDate,
+          notes: formData.notes,
+          terms_and_condition: formData.terms,
+          branch: branchForRequest
+            ? parseInt(branchForRequest.toString())
+            : null,
+        };
+
+        const response = await fetch(url, {
           method: editingPO ? "PUT" : "POST",
-          body: formDataPayload,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(jsonPayload),
         });
 
         if (response.ok) {
+          const poData = await response.json(); // ASSUME YOUR BACKEND RETURNS the newly created PO WITH an ID in the response
+          const purchaseOrderId = poData.id;
+
+          // Loop through items and create them separately
+          for (const item of formData.items) {
+            const itemPayload = {
+              purchase_order: purchaseOrderId, // ID of PO
+              item_name: item.itemName,
+              part_number: item.partNumber || "",
+              description: item.description || "",
+              quantity: Number(item.orderedQuantity),
+              unit_price: Number(item.unitPrice),
+              tax_percent: Number(item.taxPercent || 13),
+              discount: Number(item.discount || 0),
+            };
+
+            const itemResponse = await fetch(
+              `${import.meta.env.VITE_API_BASE_URL}/stock-management/purchase-order-items/`,
+              {
+                // API endpoint to CREATE items
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(itemPayload),
+              },
+            );
+
+            if (!itemResponse.ok) {
+              const itemError = await itemResponse.json();
+              console.error("Item creation failed:", itemError);
+              popup.showError(
+                `Item creation failed: ${JSON.stringify(itemError)}`,
+                "Item Creation Error",
+              );
+              return; // Exit if a single item fails (or handle errors gracefully)
+            }
+          }
+
           loadPurchaseOrders();
           handleCloseSidebar();
           popup.showSuccess(
-            editingPO ? "Purchase Order Updated" : "Purchase Order Created",
-            `The purchase order has been successfully ${
-              editingPO ? "updated" : "created"
-            }.`,
+            "Success",
+            `Purchase Order ${editingPO ? "updated" : "created"} successfully.`,
           );
         } else {
           const errorData = await response.json();
-          throw new Error(
-            errorData.detail ||
-              errorData.message ||
-              "Failed to save purchase order",
+          console.error("PO creation failed:", errorData);
+          popup.showError(
+            `PO creation failed: ${JSON.stringify(errorData)}`,
+            "PO Creation Error",
           );
         }
-      } else {
-        // Fallback to local storage
-        const allPOs = getFromStorage("purchaseOrders", []);
-
-        if (editingPO) {
-          const updated = allPOs.map((po: PurchaseOrder) =>
-            po.id === editingPO.id
-              ? { ...po, ...formData, updatedAt: new Date().toISOString() }
-              : po,
-          );
-          saveToStorage("purchaseOrders", updated);
-        } else {
-          const newPO: PurchaseOrder = {
-            ...(formData as PurchaseOrder),
-            id: Date.now().toString(),
-            workspaceId: currentUser?.workspaceId,
-            createdAt: new Date().toISOString(),
-            createdBy: currentUser?.id,
-            updatedAt: new Date().toISOString(),
-          };
-          saveToStorage("purchaseOrders", [...allPOs, newPO]);
-        }
-
-        loadPurchaseOrders();
-        handleCloseSidebar();
-        popup.showSuccess(
-          editingPO ? "Purchase Order Updated" : "Purchase Order Created",
-          "Saved locally (offline mode)",
-        );
       }
     } catch (error: any) {
-      console.error("Error saving purchase order:", error);
-      popup.showError(
-        error.message || "An error occurred while saving the purchase order.",
-        "Save Failed",
-        "error",
-      );
+      console.error("Error:", error);
+      popup.showError("An unexpected error occurred.");
     }
   };
 
@@ -1433,8 +1403,8 @@ export const PurchaseOrdersPanel: React.FC = () => {
                             ...newItem,
                             orderedQuantity:
                               e.target.value === ""
-                                ? ""
-                                : parseInt(e.target.value),
+                                ? 0
+                                : parseInt(e.target.value, 10),
                           })
                         }
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1454,7 +1424,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
                             ...newItem,
                             unitPrice:
                               e.target.value === ""
-                                ? ""
+                                ? 0
                                 : parseFloat(e.target.value),
                           })
                         }
@@ -1476,7 +1446,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
                             ...newItem,
                             taxPercent:
                               e.target.value === ""
-                                ? ""
+                                ? 0
                                 : parseFloat(e.target.value),
                           })
                         }
@@ -1498,7 +1468,7 @@ export const PurchaseOrdersPanel: React.FC = () => {
                             ...newItem,
                             discount:
                               e.target.value === ""
-                                ? ""
+                                ? 0
                                 : parseFloat(e.target.value),
                           })
                         }

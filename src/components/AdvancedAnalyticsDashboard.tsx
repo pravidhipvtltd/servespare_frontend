@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 import { getFromStorage } from "../utils/mockData";
 import { Bill, InventoryItem, Party } from "../types";
+import { useBranch } from "../contexts/BranchContext";
 
 interface AnalyticsData {
   revenue: {
@@ -76,13 +77,20 @@ interface AdvancedAnalyticsDashboardProps {
 export const AdvancedAnalyticsDashboard: React.FC<
   AdvancedAnalyticsDashboardProps
 > = ({ workspaceId, timeRange = "week" }) => {
+  const { selectedBranchId } = useBranch();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState(timeRange);
 
   useEffect(() => {
     calculateAnalytics();
-  }, [workspaceId, selectedPeriod]);
+  }, [workspaceId, selectedPeriod, selectedBranchId]);
+
+  const matchesSelectedBranch = (recordBranchId: unknown) => {
+    if (!selectedBranchId) return true;
+    if (recordBranchId === null || recordBranchId === undefined) return false;
+    return String(recordBranchId) === selectedBranchId;
+  };
 
   const calculateAnalytics = () => {
     setLoading(true);
@@ -92,13 +100,20 @@ export const AdvancedAnalyticsDashboard: React.FC<
     });
 
     const bills: Bill[] = getFromStorage("bills", []).filter(
-      (b: Bill) => b.workspaceId === workspaceId && b.paymentStatus === "paid",
+      (b: Bill) =>
+        b.workspaceId === workspaceId &&
+        b.paymentStatus === "paid" &&
+        matchesSelectedBranch((b as any).branchId),
     );
     const inventory: InventoryItem[] = getFromStorage("products", []).filter(
-      (i: InventoryItem) => i.workspaceId === workspaceId,
+      (i: InventoryItem) =>
+        i.workspaceId === workspaceId &&
+        matchesSelectedBranch((i as any).branchId ?? (i as any).branch),
     );
     const parties: Party[] = getFromStorage("parties", []).filter(
-      (p: Party) => p.workspaceId === workspaceId,
+      (p: Party) =>
+        p.workspaceId === workspaceId &&
+        matchesSelectedBranch((p as any).branchId ?? (p as any).branch),
     );
 
     // Filter bills by time range
@@ -171,11 +186,11 @@ export const AdvancedAnalyticsDashboard: React.FC<
 
     // Calculate inventory value
     const inventoryValue = inventory.reduce(
-      (sum, item) => sum + (item.sellingPrice || 0) * (item.currentStock || 0),
+      (sum, item) => sum + (item.price || 0) * (item.quantity || 0),
       0,
     );
     const lowStockItems = inventory.filter(
-      (item) => (item.currentStock || 0) <= (item.reorderLevel || 0),
+      (item) => (item.quantity || 0) <= (item.minStockLevel || 0),
     ).length;
 
     // Top products

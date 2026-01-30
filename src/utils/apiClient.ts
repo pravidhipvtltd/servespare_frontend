@@ -37,7 +37,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
+         
         },
         body: JSON.stringify({
           refresh: refreshToken,
@@ -97,7 +97,7 @@ export const apiFetch = async (
   // Add authorization header if token exists
   const headers: HeadersInit = {
     ...options.headers,
-    "ngrok-skip-browser-warning": "true",
+   
   };
 
   if (token) {
@@ -128,7 +128,7 @@ export const apiFetch = async (
           // Retry the original request with new token
           const newHeaders: HeadersInit = {
             ...options.headers,
-            "ngrok-skip-browser-warning": "true",
+          
             Authorization: `Bearer ${newToken}`,
           };
 
@@ -150,7 +150,7 @@ export const apiFetch = async (
           .then((token) => {
             const newHeaders: HeadersInit = {
               ...options.headers,
-              "ngrok-skip-browser-warning": "true",
+            
               Authorization: `Bearer ${token}`,
             };
 

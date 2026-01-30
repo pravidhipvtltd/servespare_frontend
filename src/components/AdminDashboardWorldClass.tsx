@@ -81,6 +81,7 @@ import { getBranches, getCurrentTenantId } from "../api/branch.api";
 import { getCurrentUserSubscription } from "../api/subscription.api";
 import { getPermissionForPanel } from "../utils/permissionMapping";
 import InventoryChatbot from "./chatbot/InventoryChatbot";
+import { useBranch } from "../contexts/BranchContext";
 
 // Import panel components
 import { DashboardPanel } from "./panels/DashboardPanel";
@@ -289,6 +290,7 @@ export const AdminDashboard: React.FC = () => {
   const { language } = useLanguage();
   const { lastUpdate } = useSync();
   const { hasPermission } = usePermissions();
+  const { selectedBranchId, setSelectedBranchId } = useBranch();
   const navigate = useNavigate();
   const location = useLocation();
   const [activePanel, setActivePanel] = useState("dashboard");
@@ -357,7 +359,7 @@ export const AdminDashboard: React.FC = () => {
   const [showThemeCustomizer, setShowThemeCustomizer] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
-  const [selectedBranch, setSelectedBranch] = useState("all");
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [branches, setBranches] = useState<any[]>([
     {
       id: "all",
@@ -685,62 +687,52 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const renderPanel = () => {
-    // Pass selectedBranch to all panels except dashboard
-    const branchFilter = selectedBranch !== "all" ? selectedBranch : undefined;
-
     switch (activePanel) {
       case "dashboard":
-        // Dashboard shows all branches data
         return <DashboardPanel />;
       case "parties":
-        return <PartiesPanel branchId={branchFilter} />;
+        return <PartiesPanel />;
       case "total-inventory":
-        return (
-          <TotalInventoryPanel
-            filter={inventoryFilter}
-            branchId={branchFilter}
-          />
-        );
+        return <TotalInventoryPanel filter={inventoryFilter} />;
       case "bills":
-        return <BillsPanel branchId={branchFilter} />;
+        return <BillsPanel />;
       case "daybook":
-        return <DayBookPanel branchId={branchFilter} />;
+        return <DayBookPanel />;
       case "ledger":
-        return <LedgerPanel branchId={branchFilter} />;
+        return <LedgerPanel />;
       case "return":
-        return <ReturnPanel branchId={branchFilter} />;
+        return <ReturnPanel />;
       case "bill-creation":
-        return <BillCreationPanel branchId={branchFilter} />;
+        return <BillCreationPanel />;
       case "bank-accounts":
-        return <BankAccountsPanel branchId={branchFilter} />;
+        return <BankAccountsPanel />;
       case "pricing-control":
-        return <PricingControlPanel branchId={branchFilter} />;
+        return <PricingControlPanel />;
       case "purchase-orders":
-        return <PurchaseOrdersPanel branchId={branchFilter} />;
+        return <PurchaseOrdersPanel />;
       case "return-refund":
-        return <ReturnRefundPanel branchId={branchFilter} />;
+        return <ReturnRefundPanel />;
       case "financial-reports":
-        return <FinancialReportsPanel branchId={branchFilter} />;
+        return <FinancialReportsPanel />;
       case "sales-order":
-        return <SalesOrderPanel branchId={branchFilter} />;
+        return <SalesOrderPanel />;
       case "cash-in-hand":
-        return <CashInHandPanel branchId={branchFilter} />;
+        return <CashInHandPanel />;
       case "bulk-import":
-        return <BulkImportPanel branchId={branchFilter} />;
+        return <BulkImportPanel />;
       case "sales-invoices":
-        return <SalesInvoicesPanel branchId={branchFilter} />;
+        return <SalesInvoicesPanel />;
       case "cash-drawer-monitor":
-        return <CashDrawerMonitorPanel branchId={branchFilter} />;
+        return <CashDrawerMonitorPanel />;
       case "account-ledger":
-        return <AccountLedgerPanel branchId={branchFilter} />;
+        return <AccountLedgerPanel />;
       case "cheque-management":
-        return <ChequeManagementPanel branchId={branchFilter} />;
+        return <ChequeManagementPanel />;
       case "advanced-analytics":
         return (
           <AdvancedAnalyticsDashboard
             workspaceId={currentUser?.workspaceId || ""}
             timeRange="week"
-            branchId={branchFilter}
           />
         );
       case "branch-management":
@@ -1164,8 +1156,9 @@ export const AdminDashboard: React.FC = () => {
                     >
                       <Building2 className="w-5 h-5" />
                       <span className="text-sm font-semibold">
-                        {branches.find((b) => b.id === selectedBranch)?.name ||
-                          "All Branches"}
+                        {branches.find(
+                          (b) => b.id === (selectedBranchId || "all"),
+                        )?.name || "All Branches"}
                       </span>
                       <ChevronDown
                         className={`w-4 h-4 transition-transform ${
@@ -1201,11 +1194,14 @@ export const AdminDashboard: React.FC = () => {
                               <button
                                 key={branch.id}
                                 onClick={() => {
-                                  setSelectedBranch(branch.id);
+                                  setSelectedBranchId(
+                                    branch.id === "all" ? null : branch.id,
+                                  );
                                   setShowBranchDropdown(false);
                                 }}
                                 className={`w-full p-2 border-b border-gray-100 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all text-left group ${
-                                  selectedBranch === branch.id
+                                  selectedBranchId === branch.id ||
+                                  (!selectedBranchId && branch.id === "all")
                                     ? "bg-gradient-to-r from-blue-50 to-purple-50 border-l-4 border-l-blue-500"
                                     : ""
                                 }`}
@@ -1234,7 +1230,9 @@ export const AdminDashboard: React.FC = () => {
                                       </p>
                                     </div>
                                   </div>
-                                  {selectedBranch === branch.id && (
+                                  {(selectedBranchId === branch.id ||
+                                    (!selectedBranchId &&
+                                      branch.id === "all")) && (
                                     <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
                                   )}
                                 </div>
@@ -1333,7 +1331,21 @@ export const AdminDashboard: React.FC = () => {
                     )}
                   </div>
 
-                  <GlobalSearch />
+                  <button
+                    onClick={() => setShowGlobalSearch(true)}
+                    className="hidden md:flex items-center space-x-2 px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl border border-white/20 transition-colors"
+                    title="Search (Global)"
+                  >
+                    <Search className="w-4 h-4" />
+                    <span className="text-sm">Search</span>
+                  </button>
+
+                  <GlobalSearch
+                    workspaceId={currentUser?.workspaceId || ""}
+                    onSelect={handleSearchSelect}
+                    isOpen={showGlobalSearch}
+                    onClose={() => setShowGlobalSearch(false)}
+                  />
 
                   {/* Time Display */}
                   <div className="hidden lg:flex items-center space-x-3 px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200/50">
@@ -1422,7 +1434,7 @@ export const AdminDashboard: React.FC = () => {
         packageName={expiryInfo?.packageName || "basic"}
       />
 
-      <style jsx>{`
+      <style>{`
         @keyframes gradient {
           0%,
           100% {
