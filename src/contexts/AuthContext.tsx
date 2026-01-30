@@ -102,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                 "ngrok-skip-browser-warning": "true",
+                 
               },
               body: JSON.stringify({ refresh: refreshToken }),
             },
@@ -378,7 +378,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
-            "ngrok-skip-browser-warning": "true",
+            
           },
           body: JSON.stringify({
             refresh_token: refreshToken,
@@ -451,7 +451,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+            
           },
           body: JSON.stringify({
             refresh: refreshToken,

@@ -129,7 +129,7 @@ export const ShoppingCartPanel: React.FC<ShoppingCartPanelProps> = ({
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
-          "ngrok-skip-browser-warning": "true",
+          
         },
         body: JSON.stringify({
           quantity: newQuantity,
@@ -172,7 +172,7 @@ export const ShoppingCartPanel: React.FC<ShoppingCartPanelProps> = ({
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
-            "ngrok-skip-browser-warning": "true",
+            
           },
           body: JSON.stringify({
             inventory_id: parseInt(item.id, 10),

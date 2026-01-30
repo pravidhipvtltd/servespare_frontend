@@ -354,7 +354,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
       try {
         const token = localStorage.getItem("accessToken");
         const headers: HeadersInit = {
-          "ngrok-skip-browser-warning": "true",
+          
         };
 
         if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -476,7 +476,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
     try {
       const token = localStorage.getItem("accessToken");
       const headers: HeadersInit = {
-        "ngrok-skip-browser-warning": "true",
+        
       };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -548,8 +548,8 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
         i.itemId === item.id
           ? {
               ...i,
-              quantity: i.quantity + 1,
-              total: (i.quantity + 1) * i.price,
+              quantity: Number(i.quantity) + 1,
+              total: (Number(i.quantity) + 1) * i.price,
             }
           : i,
       );
@@ -748,7 +748,7 @@ export const BillCreationPanel: React.FC<BillCreationPanelProps> = ({
       const token = localStorage.getItem("accessToken");
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "true",
+        
       };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 

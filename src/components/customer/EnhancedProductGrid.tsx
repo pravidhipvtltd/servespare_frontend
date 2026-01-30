@@ -49,7 +49,7 @@ export const EnhancedProductGrid: React.FC<EnhancedProductGridProps> = ({
           {
             headers: {
               Authorization: `Bearer ${token}`,
-              'ngrok-skip-browser-warning': 'true',
+              
             },
           }
         );
@@ -100,7 +100,7 @@ export const EnhancedProductGrid: React.FC<EnhancedProductGridProps> = ({
             method: 'DELETE',
             headers: {
               Authorization: `Bearer ${token}`,
-              'ngrok-skip-browser-warning': 'true',
+              
             },
           }
         );
@@ -123,7 +123,7 @@ export const EnhancedProductGrid: React.FC<EnhancedProductGridProps> = ({
             headers: {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${token}`,
-              'ngrok-skip-browser-warning': 'true',
+              
             },
             body: JSON.stringify({
               inventory_id: parseInt(product.id, 10),

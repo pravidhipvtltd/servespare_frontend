@@ -106,7 +106,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
         setLoading(true);
         const token = localStorage.getItem("accessToken");
         const headers: HeadersInit = {
-          "ngrok-skip-browser-warning": "true",
+ 
         };
 
         if (token) {
@@ -192,7 +192,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
           {
             headers: {
               Authorization: `Bearer ${token}`,
-              "ngrok-skip-browser-warning": "true",
+     
             },
           },
         );
@@ -239,7 +239,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
             method: "DELETE",
             headers: {
               Authorization: `Bearer ${token}`,
-              "ngrok-skip-browser-warning": "true",
+     
             },
           },
         );
@@ -264,7 +264,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
-              "ngrok-skip-browser-warning": "true",
+     
             },
             body: JSON.stringify({
               inventory_id: parseInt(product.id, 10),

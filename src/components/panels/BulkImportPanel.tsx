@@ -1120,36 +1120,36 @@ export const BulkImportPanel: React.FC = () => {
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gray-50 border-b">
                       <tr>
-                        <th className="px-2 py-2 text-left">#</th>
-                        <th className="px-2 py-2 text-left">Item Name*</th>
-                        <th className="px-2 py-2 text-left">Part Number*</th>
-                        <th className="px-2 py-2 text-left">Category*</th>
-                        <th className="px-2 py-2 text-left">Vehicle Type*</th>
-                        <th className="px-2 py-2 text-left">Vehicle Name</th>
-                        <th className="px-2 py-2 text-left">Model</th>
-                        <th className="px-2 py-2 text-left">Type</th>
-                        <th className="px-2 py-2 text-left">HSN Code</th>
-                        <th className="px-2 py-2 text-left">Barcode</th>
-                        <th className="px-2 py-2 text-left">Qty*</th>
-                        <th className="px-2 py-2 text-left">Min Stock*</th>
-                        <th className="px-2 py-2 text-left">Price*</th>
-                        <th className="px-2 py-2 text-left">MRP*</th>
-                        <th className="px-2 py-2 text-left">Retail</th>
-                        <th className="px-2 py-2 text-left">Wholesale</th>
-                        <th className="px-2 py-2 text-left">Distributor</th>
-                        <th className="px-2 py-2 text-left">Supplier</th>
-                        <th className="px-2 py-2 text-left">Location</th>
-                        <th className="px-2 py-2 text-left">Warranty</th>
-                        <th className="px-2 py-2 text-left">Actions</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">#</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Item Name*</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Part Number*</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Category*</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Vehicle Type*</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Vehicle Name</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Model</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Type</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">HSN Code</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Barcode</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Qty*</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Min Stock*</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Price*</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">MRP*</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Retail</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Wholesale</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Distributor</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Supplier</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Location</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Warranty</th>
+                        <th className="px-2 py-2 text-left sticky left-0 bg-gray-50 z-10 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Actions</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-gray-100">
                       {quickEntryRows.map((row, index) => (
                         <tr key={index} className="border-b border-gray-200">
-                          <td className="px-2 py-2">{index + 1}</td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">{index + 1}</td>
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">
                             <input
                               type="text"
                               value={row.name}
@@ -1164,7 +1164,7 @@ export const BulkImportPanel: React.FC = () => {
                               placeholder="Brake Pad"
                             />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">
                             <input
                               type="text"
                               value={row.partNumber}
@@ -1179,7 +1179,7 @@ export const BulkImportPanel: React.FC = () => {
                               placeholder="BP-001"
                             />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">
                             <select
                               value={row.category}
                               onChange={(e) =>
@@ -1195,7 +1195,7 @@ export const BulkImportPanel: React.FC = () => {
                               <option value="original">original</option>
                             </select>
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">
                             <select
                               value={row.vehicleType}
                               onChange={(e) =>
@@ -1211,7 +1211,7 @@ export const BulkImportPanel: React.FC = () => {
                               <option value="four_wheeler">four_wheeler</option>
                             </select>
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">
                             <input
                               type="text"
                               value={row.vehicleName || ""}
@@ -1226,7 +1226,7 @@ export const BulkImportPanel: React.FC = () => {
                               placeholder="Splendor"
                             />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">
                             <input
                               type="text"
                               value={row.bikeModel || ""}
@@ -1241,7 +1241,7 @@ export const BulkImportPanel: React.FC = () => {
                               placeholder="Plus"
                             />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">
                             <input
                               type="text"
                               value={row.bikeType || ""}
@@ -1256,7 +1256,7 @@ export const BulkImportPanel: React.FC = () => {
                               placeholder="Commuter"
                             />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">
                             <input
                               type="text"
                               value={row.hsnCode || ""}
@@ -1271,7 +1271,7 @@ export const BulkImportPanel: React.FC = () => {
                               placeholder="8708"
                             />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">
                             <input
                               type="text"
                               value={row.barcode || ""}
@@ -1286,7 +1286,7 @@ export const BulkImportPanel: React.FC = () => {
                               placeholder="BP001"
                             />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">
                             <input
                               type="number"
                               value={row.quantity === "" ? "" : row.quantity}
@@ -1301,7 +1301,7 @@ export const BulkImportPanel: React.FC = () => {
                               min="0"
                             />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">
                             <input
                               type="number"
                               value={row.minStockLevel === "" ? "" : row.minStockLevel}
@@ -1316,7 +1316,7 @@ export const BulkImportPanel: React.FC = () => {
                               min="0"
                             />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">
                             <input
                               type="number"
                               value={row.price === "" ? "" : row.price}
@@ -1332,7 +1332,7 @@ export const BulkImportPanel: React.FC = () => {
                               step="0.01"
                             />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">
                             <input
                               type="number"
                               value={row.mrp === "" ? "" : row.mrp}
@@ -1348,7 +1348,7 @@ export const BulkImportPanel: React.FC = () => {
                               step="0.01"
                             />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">
                             <input
                               type="number"
                               value={row.retailPrice || ""}
@@ -1367,7 +1367,7 @@ export const BulkImportPanel: React.FC = () => {
                               placeholder="Optional"
                             />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">
                             <input
                               type="number"
                               value={row.wholesalePrice || ""}
@@ -1386,7 +1386,7 @@ export const BulkImportPanel: React.FC = () => {
                               placeholder="Optional"
                             />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">
                             <input
                               type="number"
                               value={row.distributorPrice || ""}
@@ -1405,7 +1405,7 @@ export const BulkImportPanel: React.FC = () => {
                               placeholder="Optional"
                             />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">
                             <input
                               type="text"
                               value={row.partyName || ""}
@@ -1420,7 +1420,7 @@ export const BulkImportPanel: React.FC = () => {
                               placeholder="Supplier ID"
                             />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">
                             <input
                               type="text"
                               value={row.location || ""}
@@ -1435,7 +1435,7 @@ export const BulkImportPanel: React.FC = () => {
                               placeholder="Shelf A-12"
                             />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 sticky left-0 bg-white z-10 border-r">
                             <input
                               type="text"
                               value={row.warrantyPeriod || ""}
@@ -1450,7 +1450,7 @@ export const BulkImportPanel: React.FC = () => {
                               placeholder="6"
                             />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-2 ">
                             <button
                               onClick={() => removeQuickEntryRow(index)}
                               className="text-red-600 hover:text-red-700"

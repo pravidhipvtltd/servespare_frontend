@@ -196,9 +196,7 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
     const fetchProducts = async () => {
       try {
         const token = localStorage.getItem("accessToken");
-        const headers: HeadersInit = {
-          "ngrok-skip-browser-warning": "true",
-        };
+        const headers: HeadersInit = {};
 
         if (token) {
           headers["Authorization"] = `Bearer ${token}`;
@@ -301,7 +299,7 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+           
           },
           body: JSON.stringify({ email: subscriptionEmail }),
         },

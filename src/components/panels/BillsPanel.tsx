@@ -56,10 +56,10 @@ export const BillsPanel: React.FC = () => {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      // Allow ngrok to bypass its browser warning for programmatic requests
-      headers["ngrok-skip-browser-warning"] = "true";
-
+          if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+     
       let url = `${import.meta.env.VITE_API_BASE_URL}/sales/bills/?is_active=true`;
       if (selectedBranchId) {
         url += `&branch=${selectedBranchId}`;
@@ -196,7 +196,7 @@ export const BillsPanel: React.FC = () => {
           const token = localStorage.getItem("accessToken");
           const headers: Record<string, string> = {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+         
           };
           if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -247,7 +247,7 @@ export const BillsPanel: React.FC = () => {
           const token = localStorage.getItem("accessToken");
           const headers: Record<string, string> = {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+         
           };
           if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -310,7 +310,7 @@ export const BillsPanel: React.FC = () => {
           const token = localStorage.getItem("accessToken");
           const headers: Record<string, string> = {
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+         
           };
           if (token) headers["Authorization"] = `Bearer ${token}`;
 

@@ -86,7 +86,7 @@ export const InventoryManagerDashboardNew: React.FC = () => {
   // Debug log to verify component is loaded
   console.log(
     "InventoryManagerDashboardNew loaded - AlertCircle imported:",
-    typeof AlertCircle
+    typeof AlertCircle,
   );
 
   const [activePanel, setActivePanel] = useState("overview");
@@ -119,24 +119,25 @@ export const InventoryManagerDashboardNew: React.FC = () => {
 
   const loadDashboardData = () => {
     const products = getFromStorage("products", []).filter(
-      (p: any) => p.workspaceId === currentUser?.workspaceId
+      (p: any) => p.workspaceId === currentUser?.workspaceId,
     );
 
     const categories = getFromStorage("categories", []).filter(
-      (c: any) => c.workspaceId === currentUser?.workspaceId
+      (c: any) => c.workspaceId === currentUser?.workspaceId,
     );
 
     const brands = getFromStorage("brands", []).filter(
-      (b: any) => b.workspaceId === currentUser?.workspaceId
+      (b: any) => b.workspaceId === currentUser?.workspaceId,
     );
 
     const purchaseOrders = getFromStorage("purchaseOrders", []).filter(
-      (po: any) => po.workspaceId === currentUser?.workspaceId
+      (po: any) => po.workspaceId === currentUser?.workspaceId,
     );
 
     // Calculate stats
     const lowStock = products.filter(
-      (p: any) => p.currentStock <= (p.minimumStock || 10) && p.currentStock > 0
+      (p: any) =>
+        p.currentStock <= (p.minimumStock || 10) && p.currentStock > 0,
     );
 
     const outOfStock = products.filter((p: any) => p.currentStock === 0);
@@ -144,16 +145,16 @@ export const InventoryManagerDashboardNew: React.FC = () => {
     const totalStockValue = products.reduce(
       (sum: number, p: any) =>
         sum + (p.currentStock || 0) * (p.purchasePrice || 0),
-      0
+      0,
     );
 
     const today = new Date().toISOString().split("T")[0];
     const todayPurchases = purchaseOrders.filter((po: any) =>
-      po.createdAt?.startsWith(today)
+      po.createdAt?.startsWith(today),
     ).length;
 
     const pendingOrders = purchaseOrders.filter(
-      (po: any) => po.status === "pending" || po.status === "approved"
+      (po: any) => po.status === "pending" || po.status === "approved",
     ).length;
 
     setStats({
@@ -174,7 +175,7 @@ export const InventoryManagerDashboardNew: React.FC = () => {
       .sort(
         (a: any, b: any) =>
           new Date(b.lastUpdated || b.createdAt).getTime() -
-          new Date(a.lastUpdated || a.createdAt).getTime()
+          new Date(a.lastUpdated || a.createdAt).getTime(),
       )
       .slice(0, 5);
 
@@ -423,7 +424,7 @@ export const InventoryManagerDashboardNew: React.FC = () => {
                       <p className="text-xs text-gray-500">
                         {item.lastUpdated ? "Updated" : "Added"}{" "}
                         {new Date(
-                          item.lastUpdated || item.createdAt
+                          item.lastUpdated || item.createdAt,
                         ).toLocaleString("en-NP")}
                       </p>
                     </div>
@@ -649,7 +650,7 @@ export const InventoryManagerDashboardNew: React.FC = () => {
                 Rs
                 {stats.totalProducts > 0
                   ? Math.round(
-                      stats.totalStockValue / stats.totalProducts
+                      stats.totalStockValue / stats.totalProducts,
                     ).toLocaleString()
                   : 0}
               </span>
@@ -778,7 +779,7 @@ export const InventoryManagerDashboardNew: React.FC = () => {
           )}
 
           {/* Main Content */}
-          <div className="flex-1 p-6">
+          <div className="flex-1 p-6 min-w-0 overflow-hidden">
             {activePanel === "overview" && renderOverview()}
             {activePanel === "products" && <TotalInventoryPanel />}
             {activePanel === "categories" && <EnhancedCategoriesPanel />}

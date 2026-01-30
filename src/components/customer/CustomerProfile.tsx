@@ -107,7 +107,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+          
           },
         },
       );
@@ -252,7 +252,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
       // Build request headers and body based on whether we have a file
       let requestHeaders: HeadersInit = {
         Authorization: `Bearer ${token}`,
-        "ngrok-skip-browser-warning": "true",
+       
       };
       let requestBody: any;
 
@@ -502,7 +502,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+           
           },
           body: JSON.stringify(passwordData),
         },
@@ -576,7 +576,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
+           
           },
           body: JSON.stringify({
             two_factor_enabled: !customerData?.two_factor_enabled,

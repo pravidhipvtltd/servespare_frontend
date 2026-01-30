@@ -135,7 +135,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           {
             headers: {
               Authorization: `Bearer ${token}`,
-              "ngrok-skip-browser-warning": "true",
+             
             },
           },
         );
@@ -222,7 +222,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             method: "DELETE",
             headers: {
               Authorization: `Bearer ${token}`,
-              "ngrok-skip-browser-warning": "true",
+             
             },
           }
         );
@@ -244,7 +244,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
-              "ngrok-skip-browser-warning": "true",
+             
             },
             body: JSON.stringify({
               inventory_id: parseInt(product.id, 10),

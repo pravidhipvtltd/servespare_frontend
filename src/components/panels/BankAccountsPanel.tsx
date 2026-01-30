@@ -98,7 +98,7 @@ export const BankAccountsPanel: React.FC = () => {
 
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "true",
+       
       };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -227,7 +227,7 @@ export const BankAccountsPanel: React.FC = () => {
 
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
+         
         };
         if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -654,8 +654,6 @@ export const BankAccountsPanel: React.FC = () => {
       {/* Pagination */}
       {filteredAccounts.length > itemsPerPage && (
         <Pagination
-          totalItems={filteredAccounts.length}
-          itemsPerPage={itemsPerPage}
           currentPage={currentPage}
           totalPages={Math.ceil(filteredAccounts.length / itemsPerPage)}
           onPageChange={setCurrentPage}

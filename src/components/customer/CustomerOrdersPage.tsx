@@ -129,7 +129,7 @@ export const CustomerOrdersPage: React.FC<CustomerOrdersPageProps> = ({
           {
             headers: {
               Authorization: `Bearer ${token}`,
-              "ngrok-skip-browser-warning": "true",
+             
             },
           }
         );
@@ -168,7 +168,7 @@ export const CustomerOrdersPage: React.FC<CustomerOrdersPageProps> = ({
           {
             headers: {
               Authorization: `Bearer ${token}`,
-              "ngrok-skip-browser-warning": "true",
+              
             },
           }
         );

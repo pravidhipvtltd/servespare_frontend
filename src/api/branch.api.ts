@@ -4,7 +4,7 @@ const getHeaders = (): Record<string, string> => {
   const token = localStorage.getItem("accessToken");
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "ngrok-skip-browser-warning": "true",
+   
   };
 
   if (token) {
