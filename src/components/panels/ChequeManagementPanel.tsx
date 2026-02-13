@@ -31,6 +31,7 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { useBranch } from "../../contexts/BranchContext";
 import { PopupContainer } from "../PopupContainer";
 import { useCustomPopup } from "../../hooks/useCustomPopup";
 import { Pagination } from "../common/Pagination";
@@ -113,6 +114,7 @@ const TYPE_CONFIG = {
 
 export const ChequeManagementPanel: React.FC = () => {
   const { currentUser } = useAuth();
+  const { selectedBranchId } = useBranch();
   const popup = useCustomPopup();
   const [cheques, setCheques] = useState<Cheque[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -156,7 +158,7 @@ export const ChequeManagementPanel: React.FC = () => {
 
   useEffect(() => {
     loadCheques();
-  }, []);
+  }, [selectedBranchId]);
 
   // Reset pagination when filters change
   useEffect(() => {
@@ -173,11 +175,15 @@ export const ChequeManagementPanel: React.FC = () => {
       console.log("🔵 Fetching cheques from:", API_URL);
       console.log("🔑 Using token:", token ? "Present" : "Missing");
 
-      const response = await fetch(API_URL, {
+      let url = API_URL;
+      if (selectedBranchId) {
+        url += `?branch=${selectedBranchId}`;
+      }
+
+      const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
-       
         },
       });
 
@@ -192,7 +198,6 @@ export const ChequeManagementPanel: React.FC = () => {
       const data = await response.json();
       console.log("✅ Received cheques data:", data);
 
-     
       const chequesList = data.results || data;
 
       const mappedCheques: Cheque[] = chequesList.map((item: any) => ({
@@ -366,6 +371,7 @@ export const ChequeManagementPanel: React.FC = () => {
           ? formData.reminderDays[0].toString()
           : "0",
       status: formData.status,
+      branch: selectedBranchId ? selectedBranchId : undefined,
     };
 
     try {

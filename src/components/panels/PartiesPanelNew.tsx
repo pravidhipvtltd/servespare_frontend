@@ -420,14 +420,19 @@ export const PartiesPanel: React.FC = () => {
     setFormError(null);
 
     try {
-      if (currentBranchId === 0) {
+      // Use selected branch ID from context if available, otherwise fall back to currentBranchId
+      const targetBranchId = selectedBranchId
+        ? parseInt(selectedBranchId)
+        : currentBranchId;
+
+      if (!targetBranchId || targetBranchId === 0) {
         throw new Error(
-          "No valid branch found. Please ensure a branch is created.",
+          "No valid branch selected. Please select a branch from the top menu.",
         );
       }
 
       const apiData = {
-        branch: currentBranchId,
+        branch: targetBranchId,
         party_type: formData.type,
         customer_type:
           formData.type === "customer" && formData.customerType
