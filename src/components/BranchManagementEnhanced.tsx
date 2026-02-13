@@ -36,7 +36,9 @@ import { useCustomPopup } from "../hooks/useCustomPopup";
 // Backend API removed - using localStorage only
 import {
   getCurrentUserSubscription,
+  getSubscriptionPlans,
   Subscription,
+  SubscriptionPlanDetail,
 } from "../api/subscription.api";
 
 // Branch limits are now fetched from API only - no hardcoded values
@@ -192,7 +194,6 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-           
           },
         },
       );
@@ -249,7 +250,6 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
             {
               headers: {
                 Authorization: `Bearer ${token}`,
-               
               },
             },
           );
@@ -358,13 +358,13 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
               headers: {
                 Authorization: `Bearer ${token}`,
                 "Content-Type": "application/json",
-               
               },
             },
           );
 
           if (response.ok) {
             loadBranches();
+            window.dispatchEvent(new CustomEvent("nav-branch-updated"));
             popup.showSuccess("Branch deleted successfully!");
           } else {
             console.error("Failed to delete branch:", response.statusText);
@@ -472,7 +472,6 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
             headers: {
               Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
-             
             },
             body: JSON.stringify(apiData),
           },
@@ -484,7 +483,6 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-           
           },
           body: JSON.stringify(apiData),
         });
@@ -524,6 +522,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
       setShowAddBranchModal(false);
       setEditingBranch(null);
       loadBranches();
+      window.dispatchEvent(new CustomEvent("nav-branch-updated"));
       popup.showSuccess(
         editingBranch
           ? "Branch updated successfully"
@@ -573,7 +572,6 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
               method: "DELETE",
               headers: {
                 Authorization: `Bearer ${token}`,
-               
               },
             },
           );
@@ -1077,7 +1075,7 @@ const BranchModal: React.FC<BranchModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/40 bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
           <h3 className="text-xl font-bold text-gray-900">
@@ -1348,7 +1346,7 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
             method: "PATCH",
             headers: {
               "Content-Type": "application/json",
-             
+
               ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
             body: JSON.stringify(updatePayload),
@@ -1421,7 +1419,7 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-             
+
               ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
             body: JSON.stringify(payload),
@@ -1483,7 +1481,6 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
                 headers: {
                   Authorization: `Bearer ${token}`,
                   "Content-Type": "application/json",
-                 
                 },
                 body: JSON.stringify(patchPayload),
               },
@@ -1702,11 +1699,27 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
   onClose,
   onPaymentSuccess,
 }) => {
+  const [plans, setPlans] = useState<SubscriptionPlanDetail[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPackageForPayment, setSelectedPackageForPayment] = useState<{
     name: string;
     price: number;
   } | null>(null);
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const data = await getSubscriptionPlans();
+        setPlans(data);
+      } catch (err) {
+        console.error("Failed to fetch plans:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPlans();
+  }, []);
 
   const handleUpgrade = (packageName: string, price: number) => {
     setSelectedPackageForPayment({ name: packageName, price });
@@ -1723,7 +1736,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="fixed inset-0 bg-black/40 bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-2xl max-w-3xl w-full">
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
@@ -1742,115 +1755,93 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
           </div>
 
           <div className="p-6">
-            <div className="grid md:grid-cols-3 gap-4">
-              {/* Basic Package */}
-              <div className="border-2 border-gray-300 rounded-xl p-4">
-                <div className="text-center mb-4">
-                  <h4 className="font-bold text-gray-900 text-lg">Basic</h4>
-                  <div className="text-3xl font-bold text-gray-900 mt-2">
-                    NPR 15,000
-                  </div>
-                  <div className="text-gray-500 text-sm">/year</div>
-                </div>
-                <ul className="space-y-2 mb-4">
-                  <li className="flex items-center text-sm">
-                    <Check className="text-green-600 mr-2" size={16} />1 Branch
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <Check className="text-green-600 mr-2" size={16} />
-                    Basic Features
-                  </li>
-                </ul>
-                {currentPackage === "basic" && (
-                  <div className="text-center text-sm text-gray-600 font-medium">
-                    Current Plan
-                  </div>
-                )}
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mb-4" />
+                <p className="text-gray-500">
+                  Loading available plans from server...
+                </p>
               </div>
+            ) : plans.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <p>No subscription plans found. Please try again later.</p>
+              </div>
+            ) : (
+              <div
+                className={`grid gap-4 ${plans.length >= 3 ? "md:grid-cols-3" : plans.length === 2 ? "md:grid-cols-2" : "md:grid-cols-1"}`}
+              >
+                {plans.map((plan) => {
+                  const isCurrent =
+                    currentPackage?.toLowerCase() ===
+                    plan.plan_name.toLowerCase();
+                  const price = parseFloat(plan.plan_price);
+                  const isPopular =
+                    plan.plan_name.toLowerCase() === "professional";
 
-              {/* Professional Package */}
-              <div className="border-2 border-indigo-600 rounded-xl p-4 relative">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-medium">
-                    Popular
-                  </span>
-                </div>
-                <div className="text-center mb-4">
-                  <h4 className="font-bold text-gray-900 text-lg">
-                    Professional
-                  </h4>
-                  <div className="text-3xl font-bold text-indigo-600 mt-2">
-                    NPR 25,000
-                  </div>
-                  <div className="text-gray-500 text-sm">/year</div>
-                </div>
-                <ul className="space-y-2 mb-4">
-                  <li className="flex items-center text-sm">
-                    <Check className="text-green-600 mr-2" size={16} />5
-                    Branches
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <Check className="text-green-600 mr-2" size={16} />
-                    Advanced Features
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <Check className="text-green-600 mr-2" size={16} />
-                    Priority Support
-                  </li>
-                </ul>
-                {currentPackage !== "professional" &&
-                  currentPackage !== "enterprise" && (
-                    <button
-                      onClick={() => handleUpgrade("professional", 25000)}
-                      className="mt-2 w-full bg-indigo-600 text-white py-1.5 rounded-lg text-sm hover:bg-indigo-700"
+                  return (
+                    <div
+                      key={plan.id}
+                      className={`border-2 rounded-xl p-4 relative ${
+                        isPopular ? "border-indigo-600" : "border-gray-300"
+                      }`}
                     >
-                      Upgrade
-                    </button>
-                  )}
-                {currentPackage === "professional" && (
-                  <div className="text-center text-sm text-gray-600 font-medium">
-                    Current Plan
-                  </div>
-                )}
+                      {isPopular && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                          <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+                            Popular
+                          </span>
+                        </div>
+                      )}
+                      <div className="text-center mb-4">
+                        <h4 className="font-bold text-gray-900 text-lg">
+                          {plan.plan_name}
+                        </h4>
+                        <div
+                          className={`text-3xl font-bold mt-2 ${isPopular ? "text-indigo-600" : "text-gray-900"}`}
+                        >
+                          NPR {price.toLocaleString()}
+                        </div>
+                        <div className="text-gray-500 text-sm">/year</div>
+                      </div>
+                      <ul className="space-y-2 mb-4">
+                        <li className="flex items-center text-sm">
+                          <Check className="text-green-600 mr-2" size={16} />
+                          {plan.no_of_branch === "unlimited"
+                            ? "Unlimited Branches"
+                            : `${plan.no_of_branch} Branch${parseInt(plan.no_of_branch) > 1 ? "es" : ""}`}
+                        </li>
+                        <li className="flex items-center text-sm">
+                          <Check className="text-green-600 mr-2" size={16} />
+                          {plan.no_of_user === "unlimited"
+                            ? "Unlimited Users"
+                            : `${plan.no_of_user} Users`}
+                        </li>
+                        <li className="flex items-center text-sm">
+                          <Check className="text-green-600 mr-2" size={16} />
+                          {plan.no_of_product === "unlimited"
+                            ? "Unlimited Products"
+                            : `${plan.no_of_product} Products`}
+                        </li>
+                      </ul>
+                      {isCurrent ? (
+                        <div className="text-center text-sm text-gray-600 font-medium">
+                          Current Plan
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleUpgrade(plan.plan_name, price)}
+                          className="mt-2 w-full bg-indigo-600 text-white py-1.5 rounded-lg text-sm hover:bg-indigo-700"
+                        >
+                          Upgrade
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
+            )}
 
-              {/* Enterprise Package */}
-              <div className="border-2 border-orange-500 rounded-xl p-4">
-                <div className="text-center mb-4">
-                  <h4 className="font-bold text-gray-900 text-lg">
-                    Enterprise
-                  </h4>
-                  <div className="text-3xl font-bold text-orange-600 mt-2">
-                    NPR 35,000
-                  </div>
-                  <div className="text-gray-500 text-sm">/year</div>
-                </div>
-                <ul className="space-y-2 mb-4">
-                  <li className="flex items-center text-sm">
-                    <Check className="text-green-600 mr-2" size={16} />
-                    Unlimited Branches
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <Check className="text-green-600 mr-2" size={16} />
-                    All Features
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <Check className="text-green-600 mr-2" size={16} />
-                    24/7 Support
-                  </li>
-                </ul>
-                {currentPackage !== "enterprise" && (
-                  <button
-                    onClick={() => handleUpgrade("enterprise", 35000)}
-                    className="mt-2 w-full bg-indigo-600 text-white py-1.5 rounded-lg text-sm hover:bg-indigo-700"
-                  >
-                    Upgrade
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-center">
+            <div className="flex justify-center mt-6">
               <button
                 onClick={onClose}
                 className="px-6 py-2 border-2 border-gray-300 rounded-lg hover:bg-gray-50"

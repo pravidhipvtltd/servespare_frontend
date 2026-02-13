@@ -375,10 +375,7 @@ export const AdminDashboard: React.FC = () => {
   // Fetch branches from centralized API
   const fetchBranches = async () => {
     setIsLoadingBranches(true);
-    toast.error("apiii", {
-      description: "Backend data required for full dashboard experience",
-      duration: 10000,
-    });
+
     try {
       const tenantId = currentUser?.workspaceId || getCurrentTenantId();
 
@@ -448,6 +445,13 @@ export const AdminDashboard: React.FC = () => {
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
+    // Listen for branch updates
+    const handleBranchUpdate = () => {
+      console.log("🔄 Global branch list refreshing...");
+      fetchBranches();
+    };
+    window.addEventListener("nav-branch-updated", handleBranchUpdate);
+
     // Keyboard shortcuts
     const handleKeyDown = (e: KeyboardEvent) => {
       // Cmd/Ctrl + K for command palette
@@ -482,6 +486,7 @@ export const AdminDashboard: React.FC = () => {
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("nav-branch-updated", handleBranchUpdate);
       window.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("mousedown", handleClickOutside);
     };
@@ -1101,11 +1106,6 @@ export const AdminDashboard: React.FC = () => {
           {/* World-Class Header */}
           <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm relative ">
             {/* Animated background pattern */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute inset-0 opacity-5">
-                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 animate-gradient"></div>
-              </div>
-            </div>
 
             <div className="relative px-6 py-4">
               <div className="flex items-center justify-between">
@@ -1245,7 +1245,7 @@ export const AdminDashboard: React.FC = () => {
                   </div>
 
                   {/* Online Status */}
-                  <div
+                  {/* <div
                     className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg ${
                       isOnline
                         ? "bg-green-100 text-green-700"
@@ -1260,10 +1260,10 @@ export const AdminDashboard: React.FC = () => {
                     <span className="text-xs font-semibold">
                       {isOnline ? "Online" : "Offline"}
                     </span>
-                  </div>
+                  </div> */}
 
                   {/* Notifications */}
-                  <div className="relative" ref={notificationRef}>
+                  {/* <div className="relative" ref={notificationRef}>
                     <button
                       onClick={() => setShowNotifications(!showNotifications)}
                       className="relative p-2 hover:bg-gray-100 rounded-xl transition-all hover:scale-110"
@@ -1276,7 +1276,7 @@ export const AdminDashboard: React.FC = () => {
                       )}
                     </button>
 
-                    {/* Notifications Dropdown */}
+                   
                     {showNotifications && (
                       <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 overflow-hidden">
                         <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 text-white">
@@ -1329,23 +1329,7 @@ export const AdminDashboard: React.FC = () => {
                         </div>
                       </div>
                     )}
-                  </div>
-
-                  <button
-                    onClick={() => setShowGlobalSearch(true)}
-                    className="hidden md:flex items-center space-x-2 px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl border border-white/20 transition-colors"
-                    title="Search (Global)"
-                  >
-                    <Search className="w-4 h-4" />
-                    <span className="text-sm">Search</span>
-                  </button>
-
-                  <GlobalSearch
-                    workspaceId={currentUser?.workspaceId || ""}
-                    onSelect={handleSearchSelect}
-                    isOpen={showGlobalSearch}
-                    onClose={() => setShowGlobalSearch(false)}
-                  />
+                  </div> */}
 
                   {/* Time Display */}
                   <div className="hidden lg:flex items-center space-x-3 px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200/50">

@@ -78,14 +78,6 @@ interface InventoryHeatItem {
   vehicleType: string;
 }
 
-interface AIAlert {
-  id: string;
-  type: "warning" | "trending" | "insight";
-  message: string;
-  icon: any;
-  color: string;
-}
-
 export const DashboardPanel: React.FC = () => {
   const { currentUser } = useAuth();
   const { selectedBranchId } = useBranch();
@@ -106,13 +98,11 @@ export const DashboardPanel: React.FC = () => {
   const [revenueData, setRevenueData] = useState<any[]>([]);
   const [stockFlowData, setStockFlowData] = useState<any[]>([]);
   const [inventoryHeat, setInventoryHeat] = useState<InventoryHeatItem[]>([]);
-  const [aiAlerts, setAiAlerts] = useState<AIAlert[]>([]);
   const [branchPerformance, setBranchPerformance] = useState<any[]>([]);
 
   useEffect(() => {
     migrateBillsData(); // Run migration first
     loadDashboardData();
-    generateAIAlerts();
   }, [selectedBranchId]);
 
   // Migration function to fix existing bills without createdAt
@@ -416,40 +406,6 @@ export const DashboardPanel: React.FC = () => {
           vehicleType: item.vehicleType === "two_wheeler" ? "2W" : "4W",
         };
       });
-  };
-
-  const generateAIAlerts = () => {
-    const alerts: AIAlert[] = [
-      {
-        id: "1",
-        type: "warning",
-        message: "Brake Pads A123 running out in 4 days",
-        icon: AlertTriangle,
-        color: "text-orange-600",
-      },
-      {
-        id: "2",
-        type: "trending",
-        message: "Engine Oil sales increased by 45% this week",
-        icon: Flame,
-        color: "text-red-600",
-      },
-      {
-        id: "3",
-        type: "insight",
-        message: "Consider restocking Air Filters - High demand predicted",
-        icon: Lightbulb,
-        color: "text-yellow-600",
-      },
-      {
-        id: "4",
-        type: "warning",
-        message: "5 items below minimum stock level",
-        icon: AlertCircle,
-        color: "text-red-600",
-      },
-    ];
-    setAiAlerts(alerts);
   };
 
   const generateBranchPerformance = (bills: Bill[]) => {
@@ -830,58 +786,8 @@ export const DashboardPanel: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Column - AI Alerts */}
+          {/* Right Column */}
           <div className="space-y-6">
-            {/* AI Alerts Panel */}
-            <div className="rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 p-6">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-white">AI Insights</h3>
-                  <p className="text-gray-400 text-xs">
-                    Real-time alerts & predictions
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {aiAlerts.map((alert) => {
-                  const Icon = alert.icon;
-                  return (
-                    <div
-                      key={alert.id}
-                      className="group bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-4 transition-all duration-300 cursor-pointer"
-                    >
-                      <div className="flex items-start space-x-3">
-                        <div
-                          className={`w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0 ${
-                            alert.type === "warning" ? "animate-pulse" : ""
-                          }`}
-                        >
-                          <Icon className={`w-4 h-4 ${alert.color}`} />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-white text-sm leading-relaxed">
-                            {alert.message}
-                          </p>
-                          <div className="mt-2 text-xs text-gray-500">
-                            Just now
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <button className="mt-4 w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 flex items-center justify-center space-x-2">
-                <span>View All Insights</span>
-                <ArrowUpRight className="w-4 h-4" />
-              </button>
-            </div>
-
             {/* Quick Stats */}
             <div className="rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 p-6">
               <h3 className="text-white mb-4">Quick Stats</h3>

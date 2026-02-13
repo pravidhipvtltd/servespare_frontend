@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { getFromStorage, saveToStorage } from "../../utils/mockData";
 import { useAuth } from "../../contexts/AuthContext";
+import { useBranch } from "../../contexts/BranchContext";
 import { Bill, CustomerOrder, InventoryItem, Order, Party } from "../../types";
 import { PopupContainer } from "../PopupContainer";
 import { useCustomPopup } from "../../hooks/useCustomPopup";
@@ -64,6 +65,7 @@ const WARRANTY_PERIODS = [
 
 export const ReturnPanel: React.FC = () => {
   const { currentUser } = useAuth();
+  const { selectedBranchId } = useBranch();
   const popup = useCustomPopup();
   const [activeTab, setActiveTab] = useState<ReturnType>("sales");
   const [searchQuery, setSearchQuery] = useState("");
@@ -94,7 +96,7 @@ export const ReturnPanel: React.FC = () => {
   const [parties, setParties] = useState<Party[]>([]);
   const [selectedParty, setSelectedParty] = useState<Party | null>(null);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
@@ -566,7 +568,7 @@ export const ReturnPanel: React.FC = () => {
   const totalPages = Math.ceil(filteredReturns.length / itemsPerPage);
   const paginatedReturns = filteredReturns.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
   const isLoadingReturns =
@@ -1124,14 +1126,17 @@ export const ReturnPanel: React.FC = () => {
                           </div>
                         </div>
                       ))}
-                    
+
                     {/* Pagination */}
                     {totalPages > 1 && (
                       <div className="flex items-center justify-between mt-6 px-4">
                         <div className="text-sm text-gray-600">
                           Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                          {Math.min(currentPage * itemsPerPage, filteredReturns.length)} of{" "}
-                          {filteredReturns.length} returns
+                          {Math.min(
+                            currentPage * itemsPerPage,
+                            filteredReturns.length,
+                          )}{" "}
+                          of {filteredReturns.length} returns
                         </div>
                         <Pagination
                           currentPage={currentPage}

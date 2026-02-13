@@ -23,6 +23,7 @@ import { BillCreationPanel } from "./BillCreationPanel";
 import { Pagination } from "../common/Pagination";
 import { PopupContainer } from "../PopupContainer";
 import { useCustomPopup } from "../../hooks/useCustomPopup";
+import { apiFetch } from "../../utils/apiClient";
 
 type BillStatus = "pending" | "paid" | "draft";
 
@@ -56,10 +57,10 @@ export const BillsPanel: React.FC = () => {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
-          if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-     
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       let url = `${import.meta.env.VITE_API_BASE_URL}/sales/bills/?is_active=true`;
       if (selectedBranchId) {
         url += `&branch=${selectedBranchId}`;
@@ -168,17 +169,101 @@ export const BillsPanel: React.FC = () => {
     // Fallback to local storage
     const allBills = getFromStorage("bills", []);
     setBills(
-      allBills.filter((b: Bill) => b.workspaceId === currentUser?.workspaceId),
+      allBills.filter((b: Bill) => {
+        const matchesWorkspace =
+          String(b.workspaceId) === String(currentUser?.workspaceId);
+        if (!matchesWorkspace) return false;
+        if (!selectedBranchId) return true;
+        const branchValue = (b as any).branchId ?? (b as any).branch;
+        if (branchValue === undefined || branchValue === null) return false;
+        return String(branchValue) === String(selectedBranchId);
+      }),
     );
   };
 
-  const loadParties = () => {
-    const allParties = getFromStorage("parties", []);
-    setParties(
-      allParties.filter(
-        (p: Party) => p.workspaceId === currentUser?.workspaceId,
-      ),
-    );
+  const loadParties = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (token) {
+        let url = `${
+          import.meta.env.VITE_API_BASE_URL
+        }/stock-management/parties/customers/`;
+        if (selectedBranchId) {
+          url += `?branch=${selectedBranchId}`;
+        }
+        const response = await apiFetch(url);
+
+        if (response.ok) {
+          const data = await response.json();
+          let results: any[] = [];
+          if (Array.isArray(data)) {
+            results = data;
+          } else if (data.results && Array.isArray(data.results)) {
+            results = data.results;
+          }
+
+          const mappedParties: Party[] = results.map((party: any) => ({
+            id: party.id.toString(),
+            name: party.party_name,
+            type: "customer",
+            contactPerson: party.contact_person || "",
+            phone: party.phone || "",
+            email: party.email || "",
+            address: party.address || "",
+            city: party.city || "",
+            paymentTerms: party.payment_terms || "cash",
+            openingBalance: parseFloat(party.opening_balance) || 0,
+            currentBalance: parseFloat(party.opening_balance) || 0,
+            isActive: party.is_active,
+            createdAt: party.created || new Date().toISOString(),
+            workspaceId: currentUser?.workspaceId,
+          }));
+          setParties(mappedParties);
+        } else {
+          // Fallback to local storage if API fails
+          const allParties = getFromStorage("parties", []);
+          setParties(
+            allParties.filter((p: Party) => {
+              const matchesWorkspace =
+                String(p.workspaceId) === String(currentUser?.workspaceId);
+              if (!matchesWorkspace) return false;
+              if (!selectedBranchId) return true;
+              const branchValue = (p as any).branchId ?? (p as any).branch;
+              if (branchValue === undefined || branchValue === null)
+                return false;
+              return String(branchValue) === String(selectedBranchId);
+            }),
+          );
+        }
+      } else {
+        const allParties = getFromStorage("parties", []);
+        setParties(
+          allParties.filter((p: Party) => {
+            const matchesWorkspace =
+              String(p.workspaceId) === String(currentUser?.workspaceId);
+            if (!matchesWorkspace) return false;
+            if (!selectedBranchId) return true;
+            const branchValue = (p as any).branchId ?? (p as any).branch;
+            if (branchValue === undefined || branchValue === null) return false;
+            return String(branchValue) === String(selectedBranchId);
+          }),
+        );
+      }
+    } catch (err) {
+      console.error("Error loading parties:", err);
+      const allParties = getFromStorage("parties", []);
+      setParties(
+        allParties.filter((p: Party) => {
+          const matchesWorkspace =
+            String(p.workspaceId) === String(currentUser?.workspaceId);
+          if (!matchesWorkspace) return false;
+          if (!selectedBranchId) return true;
+          const branchValue = (p as any).branchId ?? (p as any).branch;
+          if (branchValue === undefined || branchValue === null) return false;
+          return String(branchValue) === String(selectedBranchId);
+        }),
+      );
+    }
   };
 
   const getPartyName = (customerId?: string) => {
@@ -196,7 +281,6 @@ export const BillsPanel: React.FC = () => {
           const token = localStorage.getItem("accessToken");
           const headers: Record<string, string> = {
             "Content-Type": "application/json",
-         
           };
           if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -247,7 +331,6 @@ export const BillsPanel: React.FC = () => {
           const token = localStorage.getItem("accessToken");
           const headers: Record<string, string> = {
             "Content-Type": "application/json",
-         
           };
           if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -310,7 +393,6 @@ export const BillsPanel: React.FC = () => {
           const token = localStorage.getItem("accessToken");
           const headers: Record<string, string> = {
             "Content-Type": "application/json",
-         
           };
           if (token) headers["Authorization"] = `Bearer ${token}`;
 

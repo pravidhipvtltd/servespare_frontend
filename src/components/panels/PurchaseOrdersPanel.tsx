@@ -203,27 +203,45 @@ export const PurchaseOrdersPanel: React.FC = () => {
           // Fallback to local storage if API fails
           const allPOs = getFromStorage("purchaseOrders", []);
           setPurchaseOrders(
-            allPOs.filter(
-              (po: PurchaseOrder) =>
-                po.workspaceId === currentUser?.workspaceId,
-            ),
+            allPOs.filter((po: PurchaseOrder) => {
+              const matchesWorkspace =
+                String(po.workspaceId) === String(currentUser?.workspaceId);
+              if (!matchesWorkspace) return false;
+              if (!selectedBranchId) return true;
+              const branchValue = (po as any).branchId ?? (po as any).branch;
+              if (branchValue === undefined || branchValue === null)
+                return false;
+              return String(branchValue) === String(selectedBranchId);
+            }),
           );
         }
       } else {
         const allPOs = getFromStorage("purchaseOrders", []);
         setPurchaseOrders(
-          allPOs.filter(
-            (po: PurchaseOrder) => po.workspaceId === currentUser?.workspaceId,
-          ),
+          allPOs.filter((po: PurchaseOrder) => {
+            const matchesWorkspace =
+              String(po.workspaceId) === String(currentUser?.workspaceId);
+            if (!matchesWorkspace) return false;
+            if (!selectedBranchId) return true;
+            const branchValue = (po as any).branchId ?? (po as any).branch;
+            if (branchValue === undefined || branchValue === null) return false;
+            return String(branchValue) === String(selectedBranchId);
+          }),
         );
       }
     } catch (error) {
       console.error("Error loading purchase orders:", error);
       const allPOs = getFromStorage("purchaseOrders", []);
       setPurchaseOrders(
-        allPOs.filter(
-          (po: PurchaseOrder) => po.workspaceId === currentUser?.workspaceId,
-        ),
+        allPOs.filter((po: PurchaseOrder) => {
+          const matchesWorkspace =
+            String(po.workspaceId) === String(currentUser?.workspaceId);
+          if (!matchesWorkspace) return false;
+          if (!selectedBranchId) return true;
+          const branchValue = (po as any).branchId ?? (po as any).branch;
+          if (branchValue === undefined || branchValue === null) return false;
+          return String(branchValue) === String(selectedBranchId);
+        }),
       );
     }
   };
@@ -274,31 +292,45 @@ export const PurchaseOrdersPanel: React.FC = () => {
           // Fallback to local storage
           const allParties = getFromStorage("parties", []);
           setSuppliers(
-            allParties.filter(
-              (p: Party) =>
-                p.type === "supplier" &&
-                p.workspaceId === currentUser?.workspaceId,
-            ),
+            allParties.filter((p: Party) => {
+              const matchesWorkspace =
+                String(p.workspaceId) === String(currentUser?.workspaceId);
+              if (!matchesWorkspace || p.type !== "supplier") return false;
+              if (!selectedBranchId) return true;
+              const branchValue = (p as any).branchId ?? (p as any).branch;
+              if (branchValue === undefined || branchValue === null)
+                return false;
+              return String(branchValue) === String(selectedBranchId);
+            }),
           );
         }
       } else {
         const allParties = getFromStorage("parties", []);
         setSuppliers(
-          allParties.filter(
-            (p: Party) =>
-              p.type === "supplier" &&
-              p.workspaceId === currentUser?.workspaceId,
-          ),
+          allParties.filter((p: Party) => {
+            const matchesWorkspace =
+              String(p.workspaceId) === String(currentUser?.workspaceId);
+            if (!matchesWorkspace || p.type !== "supplier") return false;
+            if (!selectedBranchId) return true;
+            const branchValue = (p as any).branchId ?? (p as any).branch;
+            if (branchValue === undefined || branchValue === null) return false;
+            return String(branchValue) === String(selectedBranchId);
+          }),
         );
       }
     } catch (error) {
       console.error("Error loading suppliers:", error);
       const allParties = getFromStorage("parties", []);
       setSuppliers(
-        allParties.filter(
-          (p: Party) =>
-            p.type === "supplier" && p.workspaceId === currentUser?.workspaceId,
-        ),
+        allParties.filter((p: Party) => {
+          const matchesWorkspace =
+            String(p.workspaceId) === String(currentUser?.workspaceId);
+          if (!matchesWorkspace || p.type !== "supplier") return false;
+          if (!selectedBranchId) return true;
+          const branchValue = (p as any).branchId ?? (p as any).branch;
+          if (branchValue === undefined || branchValue === null) return false;
+          return String(branchValue) === String(selectedBranchId);
+        }),
       );
     }
   };
@@ -332,6 +364,13 @@ export const PurchaseOrdersPanel: React.FC = () => {
   };
 
   const handleOpenSidebar = (po?: PurchaseOrder) => {
+    if (!po && !selectedBranchId) {
+      popup.showError(
+        "Branch Selection Required",
+        "Please select a specific branch from the top selection menu before creating a new Purchase Order.",
+      );
+      return;
+    }
     setSelectedInvoiceFile(null);
     if (po) {
       setEditingPO(po);

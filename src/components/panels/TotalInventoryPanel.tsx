@@ -367,19 +367,45 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
           // Fallback to local storage if API fails
           const allParties = getFromStorage("parties", []);
           setParties(
-            allParties.filter(
-              (p: Party) => p.workspaceId === currentUser?.workspaceId,
-            ),
+            allParties.filter((p: Party) => {
+              const matchesWorkspace =
+                String(p.workspaceId) === String(currentUser?.workspaceId);
+              if (!matchesWorkspace) return false;
+              if (!selectedBranchId) return true;
+              const branchValue = (p as any).branchId ?? (p as any).branch;
+              if (branchValue === undefined || branchValue === null)
+                return false;
+              return String(branchValue) === String(selectedBranchId);
+            }),
           );
         }
+      } else {
+        const allParties = getFromStorage("parties", []);
+        setParties(
+          allParties.filter((p: Party) => {
+            const matchesWorkspace =
+              String(p.workspaceId) === String(currentUser?.workspaceId);
+            if (!matchesWorkspace) return false;
+            if (!selectedBranchId) return true;
+            const branchValue = (p as any).branchId ?? (p as any).branch;
+            if (branchValue === undefined || branchValue === null) return false;
+            return String(branchValue) === String(selectedBranchId);
+          }),
+        );
       }
     } catch (err) {
       console.error("Error loading parties:", err);
       const allParties = getFromStorage("parties", []);
       setParties(
-        allParties.filter(
-          (p: Party) => p.workspaceId === currentUser?.workspaceId,
-        ),
+        allParties.filter((p: Party) => {
+          const matchesWorkspace =
+            String(p.workspaceId) === String(currentUser?.workspaceId);
+          if (!matchesWorkspace) return false;
+          if (!selectedBranchId) return true;
+          const branchValue = (p as any).branchId ?? (p as any).branch;
+          if (branchValue === undefined || branchValue === null) return false;
+          return String(branchValue) === String(selectedBranchId);
+        }),
       );
     }
   };
@@ -391,6 +417,14 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
   };
 
   const handleOpenSidebar = (item?: InventoryItem) => {
+    if (!item && !selectedBranchId) {
+      popup.showError(
+        "Branch Selection Required",
+        "Please select a specific branch from the top selection menu before adding new items to the inventory.",
+      );
+      return;
+    }
+
     if (item) {
       setEditingItem(item);
       setFormData(item);
@@ -524,9 +558,30 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
         formDataPayload.append("model", formData.bikeModel);
       if (formData.bikeType) formDataPayload.append("type", formData.bikeType);
 
-      const branchId = selectedBranchId
-        ? parseInt(selectedBranchId)
-        : editingItem?.branchId || currentBranchId;
+      // Strict branch assignment logic
+      let branchId: number | undefined;
+
+      if (editingItem) {
+        // For editing, preserve the existing branch ID
+        branchId = editingItem.branchId
+          ? parseInt(String(editingItem.branchId))
+          : undefined;
+        // Fallback to selected branch if item has no branch (unlikely)
+        if (!branchId && selectedBranchId) {
+          branchId = parseInt(selectedBranchId);
+        }
+      } else {
+        // For adding, STRICTLY require selectedBranchId
+        if (!selectedBranchId) {
+          popup.showError(
+            "Branch Selection Required",
+            "Please select a specific branch from the top menu to add items.",
+          );
+          return;
+        }
+        branchId = parseInt(selectedBranchId);
+      }
+
       if (branchId) formDataPayload.append("branch", branchId.toString());
 
       formDataPayload.append("is_active", "true");
