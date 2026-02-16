@@ -7,6 +7,7 @@ import {
   X,
   Search,
   Plus,
+  
   Minus,
   Trash2,
   CreditCard,
@@ -46,6 +47,12 @@ import {
   Send,
   AlertTriangle,
   FileEdit,
+  ChevronRight,
+  ChevronLeft,
+  Star,
+  Sparkles,
+  Settings,
+  Wrench,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { fetchLedger, LedgerEntry } from "../api/ledger.api";
@@ -190,6 +197,71 @@ export const CashierDashboardNew: React.FC = () => {
   };
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [menuSearchQuery, setMenuSearchQuery] = useState("");
+  const [favorites, setFavorites] = useState<string[]>([]);
+
+  const menuItemsList: MenuItem[] = [
+    { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+    { id: "bill-creation", label: "Create Bill", icon: FileEdit },
+    { id: "cash-drawer", label: "Cash Drawer", icon: Wallet },
+    { id: "sales", label: "Sales History", icon: History },
+    { id: "returns", label: "Sales Returns", icon: RotateCcw },
+    { id: "ledger", label: "Account Ledger", icon: FileText },
+  ];
+
+  const menuStructure = [
+    {
+      id: "main",
+      label: "MAIN MENU",
+      children: menuItemsList.map((item) => ({ ...item, panel: item.id })),
+    },
+  ];
+
+  const [filteredMenuStructure, setFilteredMenuStructure] =
+    useState(menuStructure);
+
+  useEffect(() => {
+    if (!menuSearchQuery.trim()) {
+      setFilteredMenuStructure(menuStructure);
+      return;
+    }
+
+    const query = menuSearchQuery.toLowerCase();
+    const filtered = menuStructure
+      .map((section) => {
+        const filteredChildren = section.children?.filter((item) =>
+          item.label.toLowerCase().includes(query),
+        );
+
+        if (filteredChildren && filteredChildren.length > 0) {
+          return {
+            ...section,
+            children: filteredChildren,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean) as any[];
+
+    setFilteredMenuStructure(filtered);
+  }, [menuSearchQuery]);
+
+  const toggleFavorite = (panelId: string) => {
+    const updated = favorites.includes(panelId)
+      ? favorites.filter((f) => f !== panelId)
+      : [...favorites, panelId];
+    setFavorites(updated);
+    localStorage.setItem(
+      "cashier_dashboard_favorites",
+      JSON.stringify(updated),
+    );
+  };
+
+  const clearSearch = () => {
+    setMenuSearchQuery("");
+  };
+
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Shift Management
@@ -360,7 +432,7 @@ export const CashierDashboardNew: React.FC = () => {
         {
           headers: {
             "Content-Type": "application/json",
-           
+
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
         },
@@ -483,7 +555,7 @@ export const CashierDashboardNew: React.FC = () => {
         {
           headers: {
             "Content-Type": "application/json",
-           
+
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
         },
@@ -639,7 +711,7 @@ export const CashierDashboardNew: React.FC = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-           
+
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(payload),
@@ -811,7 +883,7 @@ export const CashierDashboardNew: React.FC = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-           
+
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(payload),
@@ -955,7 +1027,7 @@ export const CashierDashboardNew: React.FC = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-           
+
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(payload),
@@ -1031,7 +1103,7 @@ export const CashierDashboardNew: React.FC = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-           
+
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(payload),
@@ -1115,7 +1187,7 @@ export const CashierDashboardNew: React.FC = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-           
+
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(payload),
@@ -1209,7 +1281,7 @@ export const CashierDashboardNew: React.FC = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-           
+
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(payload),
@@ -3427,87 +3499,219 @@ export const CashierDashboardNew: React.FC = () => {
   return (
     <>
       <TestModeBanner />
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-        {/* Top Navigation Bar */}
-        <div className="bg-gradient-to-r from-slate-800 to-slate-900 text-white shadow-lg sticky top-0 z-40">
-          <div className="flex items-center justify-between px-6 py-4">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-              >
-                {sidebarOpen ? (
-                  <X className="w-6 h-6" />
-                ) : (
-                  <Menu className="w-6 h-6" />
-                )}
-              </button>
+      <div className="flex h-screen bg-gray-50 overflow-hidden">
+        {/* Enhanced Sidebar - Full Height */}
+        <aside
+          className={`${
+            sidebarOpen ? (sidebarCollapsed ? "w-20" : "w-72") : "w-0"
+          } bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white transition-all duration-300 ease-in-out flex flex-col fixed lg:relative h-full z-50 shadow-2xl border-r border-white/10 overflow-hidden`}
+        >
+          {/* Sidebar Header / Logo */}
+          <div
+            className={`p-6 flex items-center ${
+              sidebarCollapsed ? "justify-center" : "space-x-3"
+            } border-b border-white/10 relative overflow-hidden`}
+          >
+            <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shrink-0 shadow-lg shadow-green-500/20">
+              <ShoppingCart className="w-6 h-6 text-white" />
+            </div>
+            {!sidebarCollapsed && (
+              <div className="min-w-0 pr-6">
+                <h1 className="text-white font-bold text-lg truncate tracking-tight">
+                  Cashier POS
+                </h1>
+                <p className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">
+                  Serve Spares
+                </p>
+              </div>
+            )}
+
+            {/* Close Button (Mobile and Tablet) */}
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden absolute top-6 right-2 p-1.5 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Collapse Button (Desktop) */}
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="hidden lg:flex absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full items-center justify-center shadow-lg hover:shadow-xl transition-all hover:scale-110 border-2 border-gray-900 z-10"
+            >
+              {sidebarCollapsed ? (
+                <ChevronRight size={12} className="text-white" />
+              ) : (
+                <ChevronLeft size={12} className="text-white" />
+              )}
+            </button>
+          </div>
+
+          {/* Navigation Menu Area */}
+          <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activePanel === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    handleNavigate(item.id);
+                    if (window.innerWidth < 1024) setSidebarOpen(false);
+                  }}
+                  className={`group w-full flex items-center ${
+                    sidebarCollapsed ? "justify-center" : "space-x-4 px-4"
+                  } py-3.5 rounded-xl transition-all relative overflow-hidden ${
+                    isActive
+                      ? "bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/20"
+                      : "text-gray-400 hover:text-white hover:bg-white/5 hover:translate-x-1"
+                  }`}
+                  title={sidebarCollapsed ? item.label : ""}
+                >
+                  <Icon
+                    className={`w-5 h-5 transition-transform duration-300 ${
+                      isActive
+                        ? "scale-110 drop-shadow-glow"
+                        : "group-hover:scale-110"
+                    }`}
+                  />
+                  {!sidebarCollapsed && (
+                    <span className="font-bold text-sm tracking-wide">
+                      {item.label}
+                    </span>
+                  )}
+                  {isActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Bottom Section: User & Logout */}
+          <div className="p-4 mt-auto border-t border-white/10 bg-white/5">
+            <div
+              className={`flex items-center ${
+                sidebarCollapsed ? "justify-center" : "justify-between"
+              }`}
+            >
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-green-600 rounded-lg">
-                  <ShoppingCart className="w-6 h-6" />
+                <div className="relative">
+                  <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center text-sm font-bold shadow-lg">
+                    {currentUser?.name?.charAt(0)}
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-gray-900 shadow-sm"></div>
                 </div>
-                <div>
-                  <h1 className="text-xl font-bold">Serve Spares</h1>
-                  <p className="text-xs text-gray-300">Point of Sale</p>
-                </div>
+                {!sidebarCollapsed && (
+                  <div className="min-w-0">
+                    <p className="text-white text-xs font-bold truncate">
+                      {currentUser?.name}
+                    </p>
+                    <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">
+                      Cashier
+                    </p>
+                  </div>
+                )}
               </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <div className="hidden md:block text-right">
-                <p className="text-sm text-gray-300">{currentUser?.name}</p>
-                <p className="text-xs text-gray-400">Cashier</p>
-              </div>
-              <button
-                onClick={logout}
-                className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
-              >
-                <LogOut className="w-5 h-5" />
-                <span>Logout</span>
-              </button>
+              {!sidebarCollapsed && (
+                <button
+                  onClick={logout}
+                  className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                  title="Logout"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
-        </div>
+        </aside>
 
-        <div className="flex">
-          {/* Sidebar */}
-          {sidebarOpen && (
-            <div className="w-72 bg-white border-r-2 border-gray-200 min-h-screen sticky top-[73px] shadow-lg">
-              <div className="p-4 space-y-2">
-                {menuItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activePanel === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => handleNavigate(item.id)}
-                      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${
-                        isActive
-                          ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      <Icon className="w-5 h-5" />
-                      <span className="font-semibold">{item.label}</span>
-                    </button>
-                  );
-                })}
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {/* Top Panel Header (No Logo) */}
+          <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+            <div className="flex items-center justify-between px-6 py-4">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all shadow-sm"
+                >
+                  {sidebarOpen ? (
+                    <X className="w-5 h-5" />
+                  ) : (
+                    <Menu className="w-5 h-5" />
+                  )}
+                </button>
+
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-emerald-700 rounded-xl flex items-center justify-center shadow-lg">
+                    <ShoppingCart className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="hidden sm:block">
+                    <h2 className="text-gray-900 text-lg font-bold capitalize leading-none">
+                      {activePanel.replace(/-/g, " ")}
+                    </h2>
+                    <p className="text-gray-500 text-[10px] mt-1 uppercase font-bold tracking-widest">
+                      Point of Sale
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-4">
+                <div className="hidden md:flex flex-col items-end mr-2">
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                    Shift Status
+                  </span>
+                  {currentShift ? (
+                    <span className="flex items-center space-x-1.5 text-green-600 text-[10px] font-bold">
+                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                      <span>Active</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center space-x-1.5 text-red-500 text-[10px] font-bold">
+                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                      <span>Inactive</span>
+                    </span>
+                  )}
+                </div>
+
+                <div className="w-px h-8 bg-gray-200 mx-2 hidden sm:block" />
+
+                <button
+                  onClick={() => setActivePanel("bill-creation")}
+                  className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg flex items-center justify-center group"
+                  title="New Bill"
+                >
+                  <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+                </button>
               </div>
             </div>
-          )}
+          </header>
 
-          {/* Main Content */}
-          <div className="flex-1 p-6">
-            {activePanel === "dashboard" && renderDashboard()}
-            {activePanel === "bill-creation" && <BillCreationPanel />}
-            {activePanel === "cash-drawer" && renderCashDrawer()}
-            {activePanel === "sales" && renderSalesHistory()}
-            {activePanel === "returns" && renderReturns()}
-            {activePanel === "ledger" && renderAccountLedger()}
-          </div>
+          {/* Main Content Body */}
+          <main className="flex-1 overflow-y-auto bg-gray-50/50 p-6 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+            <div className="max-w-[1600px] mx-auto">
+              {activePanel === "dashboard" && renderDashboard()}
+              {activePanel === "bill-creation" && <BillCreationPanel />}
+              {activePanel === "cash-drawer" && renderCashDrawer()}
+              {activePanel === "sales" && renderSalesHistory()}
+              {activePanel === "returns" && renderReturns()}
+              {activePanel === "ledger" && renderAccountLedger()}
+            </div>
+          </main>
         </div>
 
-        {/* Start Shift Modal */}
+        {/* Mobile Overlay */}
+        {sidebarOpen && (
+          <div
+            className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+      </div>
+
+      {/* Start Shift Modal */}
         {showStartShift && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
@@ -4413,6 +4617,7 @@ export const CashierDashboardNew: React.FC = () => {
         />
 
         {/* Error Popup */}
+       {/* Error Popup */}
         <ErrorPopup
           isOpen={showErrorPopup}
           onClose={() => setShowErrorPopup(false)}
@@ -4420,7 +4625,6 @@ export const CashierDashboardNew: React.FC = () => {
           message={errorMessage}
           type={errorType}
         />
-      </div>
     </>
   );
 };

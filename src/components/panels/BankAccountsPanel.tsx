@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { getFromStorage, saveToStorage } from "../../utils/mockData";
 import { useAuth } from "../../contexts/AuthContext";
+import { useBranch } from "../../contexts/BranchContext";
 import { Pagination } from "../common/Pagination";
 import { TransactionDetailsModal } from "../modals/TransactionDetailsModal";
 import { PopupContainer } from "../PopupContainer";
@@ -33,11 +34,11 @@ export interface BankAccount {
   id: string;
   accountType: "bank" | "esewa" | "fonepay" | "cash";
   accountName: string;
-  bankName?: string; // For bank accounts
-  accountNumber?: string; // For bank accounts
-  accountHolder?: string; // For bank accounts
-  esewaId?: string; // For eSewa
-  fonepayId?: string; // For FonePay
+  bankName?: string; 
+  accountNumber?: string; 
+  accountHolder?: string; 
+  esewaId?: string; 
+  fonepayId?: string; 
   currentBalance: number;
   totalReceived: number;
   totalPaid: number;
@@ -45,16 +46,19 @@ export interface BankAccount {
   workspaceId?: string;
   createdAt: string;
   createdBy?: string;
+  branchId?: number;
+  branchName?: string;
 }
 
 export const BankAccountsPanel: React.FC = () => {
   const { currentUser } = useAuth();
+  const { selectedBranchId } = useBranch();
   const popup = useCustomPopup();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(
-    null
+    null,
   );
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -82,11 +86,22 @@ export const BankAccountsPanel: React.FC = () => {
   useEffect(() => {
     if (!currentUser) return;
     loadAccounts();
-  }, [currentUser]);
+  }, [currentUser, selectedBranchId]);
 
   const loadAccounts = async () => {
     const storedAccounts = getFromStorage("bankAccounts", []).filter(
-      (a: BankAccount) => a.workspaceId === currentUser?.workspaceId
+      (a: BankAccount) => {
+        if (a.workspaceId !== currentUser?.workspaceId) return false;
+        if (selectedBranchId) {
+          // If branch is stored on account object, filter by it. otherwise proceed
+          // Assuming local storage might not have branchId always set or structure mismatch
+          // If branchId exists on stored object, check it
+          return (a as any).branchId
+            ? String((a as any).branchId) === String(selectedBranchId)
+            : true;
+        }
+        return true;
+      },
     );
     setAccounts(storedAccounts);
 
@@ -98,14 +113,15 @@ export const BankAccountsPanel: React.FC = () => {
 
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
-       
       };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const res = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/cash-and-bank/bank-accounts/`,
-        { headers }
-      );
+      let url = `${import.meta.env.VITE_API_BASE_URL}/cash-and-bank/bank-accounts/`;
+      if (selectedBranchId) {
+        url += `?branch=${selectedBranchId}`;
+      }
+
+      const res = await fetch(url, { headers });
 
       if (!res.ok) throw new Error(`API responded with ${res.status}`);
 
@@ -138,14 +154,18 @@ export const BankAccountsPanel: React.FC = () => {
             currentUser?.workspaceId,
           createdAt: it.created || it.createdAt || new Date().toISOString(),
           createdBy: it.created_by || it.createdBy,
+          branchId: it.branch,
+          branchName: it.branch_name,
         };
       });
 
       const filteredByWorkspace = mapped.filter(
-        (a) => String(a.workspaceId) === String(currentUser?.workspaceId)
+        (a) => String(a.workspaceId) === String(currentUser?.workspaceId),
       );
 
       if (mapped.length > 0) {
+        // If filtering by branch, we should perhaps merge or be careful not to wipe other branches from cache
+        // But for now, let's just update state and save what we have as "current valid cache"
         saveToStorage("bankAccounts", mapped);
         setAccounts(mapped);
       } else {
@@ -153,6 +173,7 @@ export const BankAccountsPanel: React.FC = () => {
       }
     } catch (err) {
       // API failed, already showing local storage data
+      console.error("Error loading accounts:", err);
     }
   };
 
@@ -181,7 +202,7 @@ export const BankAccountsPanel: React.FC = () => {
     ) {
       popup.showError(
         "Please enter bank name and account number",
-        "Validation Error"
+        "Validation Error",
       );
       return;
     }
@@ -214,7 +235,7 @@ export const BankAccountsPanel: React.FC = () => {
                 esewaId: formData.esewaId || undefined,
                 fonepayId: formData.fonepayId || undefined,
               }
-            : a
+            : a,
         );
         saveToStorage("bankAccounts", updatedAccounts);
         popup.showSuccess("Account updated successfully!");
@@ -227,14 +248,24 @@ export const BankAccountsPanel: React.FC = () => {
 
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
-         
         };
         if (token) headers["Authorization"] = `Bearer ${token}`;
 
-        // Get branch from current user or local storage
-        const userBranch =
-          currentUser?.branch || localStorage.getItem("user_branch");
-        const branchId = userBranch ? Number(userBranch) : 1; // Default to 1 if not found
+        // Get branch logic
+        let branchId: number;
+
+        const isAdmin =
+          currentUser?.role === "admin" || currentUser?.role === "super_admin";
+
+        // If admin has selected a specific branch, use it.
+        if (isAdmin && selectedBranchId) {
+          branchId = parseInt(selectedBranchId);
+        } else {
+          // Otherwise fall back to user's assigned branch
+          const userBranch =
+            currentUser?.branch || localStorage.getItem("user_branch");
+          branchId = userBranch ? Number(userBranch) : 1;
+        }
 
         const payload = {
           branch: branchId,
@@ -259,7 +290,7 @@ export const BankAccountsPanel: React.FC = () => {
             method: "POST",
             headers,
             body: JSON.stringify(payload),
-          }
+          },
         );
 
         if (!res.ok) {
@@ -300,7 +331,7 @@ export const BankAccountsPanel: React.FC = () => {
       () => {
         const allAccounts = getFromStorage("bankAccounts", []);
         const updatedAccounts = allAccounts.filter(
-          (a: BankAccount) => a.id !== id
+          (a: BankAccount) => a.id !== id,
         );
         saveToStorage("bankAccounts", updatedAccounts);
         setSelectedAccounts([]);
@@ -310,7 +341,7 @@ export const BankAccountsPanel: React.FC = () => {
       {
         type: "danger",
         details: ["This action cannot be undone"],
-      }
+      },
     );
   };
 
@@ -326,19 +357,19 @@ export const BankAccountsPanel: React.FC = () => {
       () => {
         const allAccounts = getFromStorage("bankAccounts", []);
         const updatedAccounts = allAccounts.filter(
-          (a: BankAccount) => !selectedAccounts.includes(a.id)
+          (a: BankAccount) => !selectedAccounts.includes(a.id),
         );
         saveToStorage("bankAccounts", updatedAccounts);
         setSelectedAccounts([]);
         loadAccounts();
         popup.showSuccess(
-          `${selectedAccounts.length} account(s) deleted successfully!`
+          `${selectedAccounts.length} account(s) deleted successfully!`,
         );
       },
       {
         type: "danger",
         details: ["This action cannot be undone"],
-      }
+      },
     );
   };
 
@@ -352,14 +383,14 @@ export const BankAccountsPanel: React.FC = () => {
 
   const toggleSelectAccount = (id: string) => {
     setSelectedAccounts((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
   };
 
   const toggleStatus = (id: string) => {
     const allAccounts = getFromStorage("bankAccounts", []);
     const updatedAccounts = allAccounts.map((a: BankAccount) =>
-      a.id === id ? { ...a, isActive: !a.isActive } : a
+      a.id === id ? { ...a, isActive: !a.isActive } : a,
     );
     saveToStorage("bankAccounts", updatedAccounts);
     loadAccounts();
@@ -369,7 +400,7 @@ export const BankAccountsPanel: React.FC = () => {
     (a) =>
       a.accountName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       a.bankName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.accountNumber?.toLowerCase().includes(searchQuery.toLowerCase())
+      a.accountNumber?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const totalStats = {
@@ -407,7 +438,7 @@ export const BankAccountsPanel: React.FC = () => {
 
   const paginatedAccounts = filteredAccounts.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
   return (
@@ -554,7 +585,7 @@ export const BankAccountsPanel: React.FC = () => {
                           <Icon className="w-5 h-5 text-gray-600" />
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-semibold ${getAccountTypeColor(
-                              account.accountType
+                              account.accountType,
                             )}`}
                           >
                             {account.accountType?.toUpperCase() || "N/A"}

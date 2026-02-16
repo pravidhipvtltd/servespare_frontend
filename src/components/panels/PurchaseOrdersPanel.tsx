@@ -364,7 +364,10 @@ export const PurchaseOrdersPanel: React.FC = () => {
   };
 
   const handleOpenSidebar = (po?: PurchaseOrder) => {
-    if (!po && !selectedBranchId) {
+    const isAdmin =
+      currentUser?.role === "admin" || currentUser?.role === "super_admin";
+
+    if (!po && !selectedBranchId && isAdmin) {
       popup.showError(
         "Branch Selection Required",
         "Please select a specific branch from the top selection menu before creating a new Purchase Order.",
@@ -584,13 +587,34 @@ export const PurchaseOrdersPanel: React.FC = () => {
         localStorage.getItem("auth_token");
 
       if (token) {
-        const branchForRequest = selectedBranchId || currentBranchId;
+        const isAdmin =
+          currentUser?.role === "admin" || currentUser?.role === "super_admin";
+
+        // Determine branch for request
+        let branchForRequest: number | null = null;
+
+        if (selectedBranchId) {
+          branchForRequest = parseInt(selectedBranchId);
+        }
+        // DO NOT automatically assume currentBranchId for non-admins if it risks being invalid (e.g. "10").
+        // The backend handles branch assignment for non-admins automatically based on the token.
+        // We only want to send 'branch' if the user (Admin) explicitly selected one.
+
+        // Final check - if admin and no branch selected (though handleOpenSidebar catches this, double check)
+        if (isAdmin && !branchForRequest && !editingPO) {
+          popup.showError(
+            "Branch Selection Required",
+            "Please select a branch to create a purchase order.",
+          );
+          return;
+        }
 
         const url = editingPO
           ? `${import.meta.env.VITE_API_BASE_URL}/stock-management/purchase-orders/${editingPO.id}/`
           : `${import.meta.env.VITE_API_BASE_URL}/stock-management/purchase-orders/`; // Create without items
 
-        const jsonPayload = {
+        // Construct payload without branch if not necessary/available
+        const jsonPayload: any = {
           po_number: formData.poNumber,
           status: formData.status,
           supplier: parseInt(formData.supplierId),
@@ -598,10 +622,25 @@ export const PurchaseOrdersPanel: React.FC = () => {
           expected_delivery_date: formData.expectedDeliveryDate,
           notes: formData.notes,
           terms_and_condition: formData.terms,
-          branch: branchForRequest
-            ? parseInt(branchForRequest.toString())
-            : null,
         };
+
+        // Only include branch if we have a valid one to send.
+        // For non-admins, if branchForRequest is just a default assumption that might be wrong,
+        // it's often safer to let the backend infer from user context if possible,
+        // OR ensure we only send what we know is valid.
+        // Based on previous fix: if !isAdmin and we derived it from 'currentBranchId',
+        // we might be sending a bad ID if the user context isn't fully loaded or is "10" by default.
+        // However, if the variable logic above sets it, we'll use it, but let's be careful.
+
+        if (branchForRequest) {
+          jsonPayload.branch = branchForRequest;
+        } else if (!isAdmin) {
+          // If we are not admin and don't have a specific branch request,
+          // we omit it so backend uses user's branch
+          console.log(
+            "Non-admin user: letting backend handle branch assignment.",
+          );
+        }
 
         const response = await fetch(url, {
           method: editingPO ? "PUT" : "POST",

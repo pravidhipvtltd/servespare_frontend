@@ -98,7 +98,7 @@ export const CreateAdminUserModal: React.FC<{
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/40 bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 flex items-center justify-between rounded-t-2xl">
           <div className="flex items-center space-x-3">
@@ -286,7 +286,7 @@ export const AddAdminModal: React.FC<{
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/40 bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-gradient-to-r from-orange-500 to-red-600 text-white p-6 flex items-center justify-between rounded-t-2xl">
           <div className="flex items-center space-x-3">
@@ -462,7 +462,7 @@ export const ViewAdminModal: React.FC<{
   if (!isOpen || !admin) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/40 bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 flex items-center justify-between rounded-t-2xl">
           <div className="flex items-center space-x-3">
@@ -724,7 +724,7 @@ export const EditAdminModal: React.FC<{
   if (!isOpen || !admin) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/40 bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-gradient-to-r from-purple-500 to-pink-600 text-white p-6 flex items-center justify-between rounded-t-2xl">
           <div className="flex items-center space-x-3">
@@ -905,7 +905,7 @@ export const DeleteAdminModal: React.FC<{
   if (!isOpen || !admin) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  <div className="fixed inset-0 bg-black/40 bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
         <div className="bg-gradient-to-r from-red-500 to-red-600 text-white p-6 flex items-center space-x-3 rounded-t-2xl">
           <div className="bg-white/20 p-2 rounded-lg">

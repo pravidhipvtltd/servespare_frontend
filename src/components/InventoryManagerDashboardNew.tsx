@@ -8,6 +8,7 @@ import {
   Plus,
   AlertTriangle,
   AlertCircle,
+  ChevronLeft,
   TrendingDown,
   BarChart3,
   Box,
@@ -91,6 +92,7 @@ export const InventoryManagerDashboardNew: React.FC = () => {
 
   const [activePanel, setActivePanel] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [stats, setStats] = useState<DashboardStats>({
     totalProducts: 0,
@@ -696,100 +698,220 @@ export const InventoryManagerDashboardNew: React.FC = () => {
   return (
     <>
       <TestModeBanner />
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-        {/* Top Navigation Bar */}
-        <div className="bg-gradient-to-r from-slate-800 to-slate-900 text-white shadow-lg sticky top-0 z-40">
-          <div className="flex items-center justify-between px-6 py-4">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-              >
-                {sidebarOpen ? (
-                  <X className="w-6 h-6" />
-                ) : (
-                  <Menu className="w-6 h-6" />
-                )}
-              </button>
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-blue-600 rounded-lg">
-                  <Package className="w-6 h-6" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold">Serve Spares</h1>
-                  <p className="text-xs text-gray-300">Inventory Management</p>
-                </div>
-              </div>
+      <div className="flex h-screen bg-gray-50 overflow-hidden">
+        {/* Enhanced Sidebar - Full Height Like Admin */}
+        <aside
+          className={`${
+            sidebarOpen ? (sidebarCollapsed ? "w-20" : "w-72") : "w-0"
+          } bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white transition-all duration-300 ease-in-out flex flex-col fixed lg:relative h-full z-50 shadow-2xl border-r border-white/10 overflow-hidden`}
+        >
+          {/* Sidebar Header / Logo */}
+          <div
+            className={`p-6 flex items-center ${
+              sidebarCollapsed ? "justify-center" : "space-x-3"
+            } border-b border-white/10 relative overflow-hidden`}
+          >
+            <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shrink-0 shadow-lg shadow-blue-500/20">
+              <Package className="w-6 h-6 text-white" />
             </div>
+            {!sidebarCollapsed && (
+              <div className="min-w-0 pr-6">
+                <h1 className="text-white font-bold text-lg truncate tracking-tight">
+                  Serve Spare
+                </h1>
+                <p className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">
+                  Inventory Management
+                </p>
+              </div>
+            )}
 
-            <div className="flex items-center space-x-4">
-              <div className="hidden md:block text-right">
-                <p className="text-sm text-gray-300">{currentUser?.name}</p>
-                <p className="text-xs text-gray-400">Inventory Manager</p>
-              </div>
-              <button
-                onClick={logout}
-                className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
-              >
-                <LogOut className="w-5 h-5" />
-                <span>Logout</span>
-              </button>
-            </div>
+            {/* Close Button (Mobile and Tablet) */}
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden absolute top-6 right-2 p-1.5 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Collapse Button (Desktop) */}
           </div>
-        </div>
 
-        <div className="flex">
-          {/* Sidebar */}
-          {sidebarOpen && (
-            <div className="w-72 bg-white border-r-2 border-gray-200 min-h-screen sticky top-[73px] shadow-lg">
-              <div className="p-4 space-y-2">
-                {menuItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activePanel === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => setActivePanel(item.id)}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+          {/* Navigation Menu Area */}
+          <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activePanel === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActivePanel(item.id);
+                    if (window.innerWidth < 1024) setSidebarOpen(false);
+                  }}
+                  className={`group w-full flex items-center justify-between ${
+                    sidebarCollapsed ? "px-2" : "px-4"
+                  } py-3.5 rounded-xl transition-all relative overflow-hidden ${
+                    isActive
+                      ? "bg-gradient-to-r from-indigo-600 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20"
+                      : "text-gray-400 hover:text-white hover:bg-white/5 hover:translate-x-1"
+                  }`}
+                  title={sidebarCollapsed ? item.label : ""}
+                >
+                  <div
+                    className={`flex items-center ${
+                      sidebarCollapsed ? "justify-center w-full" : "space-x-4"
+                    } min-w-0`}
+                  >
+                    <Icon
+                      className={`w-5 h-5 transition-transform duration-300 ${
                         isActive
-                          ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <Icon className="w-5 h-5" />
-                        <span className="font-semibold">{item.label}</span>
-                      </div>
-                      {item.badge !== undefined && item.badge > 0 && (
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-bold ${
-                            isActive
-                              ? "bg-white text-blue-600"
-                              : "bg-red-500 text-white"
-                          }`}
-                        >
-                          {item.badge}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+                          ? "scale-110 drop-shadow-glow"
+                          : "group-hover:scale-110"
+                      } shrink-0`}
+                    />
+                    {!sidebarCollapsed && (
+                      <span className="font-bold text-sm tracking-wide truncate">
+                        {item.label}
+                      </span>
+                    )}
+                  </div>
+                  {!sidebarCollapsed &&
+                    item.badge !== undefined &&
+                    item.badge > 0 && (
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm ${
+                          isActive
+                            ? "bg-white text-indigo-600"
+                            : "bg-red-500 text-white"
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  {isActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Bottom Section: User & Logout */}
+          <div className="p-4 mt-auto border-t border-white/10 bg-white/5">
+            <div
+              className={`flex items-center ${
+                sidebarCollapsed ? "justify-center" : "justify-between"
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-sm font-bold shadow-lg">
+                    {currentUser?.name?.charAt(0)}
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-gray-900 shadow-sm"></div>
+                </div>
+                {!sidebarCollapsed && (
+                  <div className="min-w-0">
+                    <p className="text-white text-xs font-bold truncate">
+                      {currentUser?.name}
+                    </p>
+                    <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">
+                      Inv. Manager
+                    </p>
+                  </div>
+                )}
+              </div>
+              {!sidebarCollapsed && (
+                <button
+                  onClick={logout}
+                  className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                  title="Logout"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        </aside>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {/* Top Panel Header (No Duplicate Logo) */}
+          <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+            <div className="flex items-center justify-between px-6 py-4">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all shadow-sm"
+                >
+                  {sidebarOpen ? (
+                    <X className="w-5 h-5" />
+                  ) : (
+                    <Menu className="w-5 h-5" />
+                  )}
+                </button>
+
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg">
+                    <Package className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="hidden sm:block">
+                    <h2 className="text-gray-900 text-lg font-bold capitalize leading-none">
+                      {activePanel.replace(/-/g, " ")}
+                    </h2>
+                    <p className="text-gray-500 text-[10px] mt-1 uppercase font-bold tracking-widest">
+                      Inventory System
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-4">
+                <div className="hidden lg:flex h-10 px-4 items-center bg-blue-50 text-blue-700 rounded-xl border border-blue-100 space-x-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                  <span className="text-[10px] font-bold tracking-tight uppercase">
+                    System Online
+                  </span>
+                </div>
+
+                <div className="w-px h-8 bg-gray-200 mx-2 hidden sm:block" />
+
+                <button
+                  onClick={() => setActivePanel("overview")}
+                  className={`p-2.5 rounded-xl transition-all ${
+                    activePanel === "overview"
+                      ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                      : "text-gray-400 hover:bg-gray-100"
+                  }`}
+                >
+                  <BarChart3 className="w-5 h-5" />
+                </button>
               </div>
             </div>
-          )}
+          </header>
 
-          {/* Main Content */}
-          <div className="flex-1 p-6 min-w-0 overflow-hidden">
-            {activePanel === "overview" && renderOverview()}
-            {activePanel === "products" && <TotalInventoryPanel />}
-            {activePanel === "categories" && <EnhancedCategoriesPanel />}
-            {activePanel === "automotive" && <AutomotiveInventory />}
-            {activePanel === "bulk-import" && <BulkImportPanel />}
-            {activePanel === "purchase-orders" && <PurchaseOrdersPanel />}
-            {activePanel === "low-stock" && <EnhancedLowStockPanel />}
-            {activePanel === "reports" && <EnhancedStockReports />}
-          </div>
+          {/* Main Content Body */}
+          <main className="flex-1 overflow-y-auto bg-gray-50/50 p-6 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent min-w-0">
+            <div className="max-w-[1600px] mx-auto">
+              {activePanel === "overview" && renderOverview()}
+              {activePanel === "products" && <TotalInventoryPanel />}
+              {activePanel === "categories" && <EnhancedCategoriesPanel />}
+              {activePanel === "automotive" && <AutomotiveInventory />}
+              {activePanel === "bulk-import" && <BulkImportPanel />}
+              {activePanel === "purchase-orders" && <PurchaseOrdersPanel />}
+              {activePanel === "low-stock" && <EnhancedLowStockPanel />}
+              {activePanel === "reports" && <EnhancedStockReports />}
+            </div>
+          </main>
         </div>
+
+        {/* Mobile Overlay */}
+        {sidebarOpen && (
+          <div
+            className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
       </div>
     </>
   );

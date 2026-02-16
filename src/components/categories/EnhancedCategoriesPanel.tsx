@@ -50,7 +50,7 @@ export const EnhancedCategoriesPanel: React.FC = () => {
     "two_wheeler" | "four_wheeler"
   >("two_wheeler");
   const [typeFilter, setTypeFilter] = useState<"local" | "original" | "all">(
-    "all"
+    "all",
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
@@ -58,7 +58,7 @@ export const EnhancedCategoriesPanel: React.FC = () => {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [viewingCategory, setViewingCategory] = useState<Category | null>(null);
   const [sortBy, setSortBy] = useState<"name" | "parts" | "value" | "updated">(
-    "name"
+    "name",
   );
   const [formData, setFormData] = useState({
     name: "",
@@ -66,6 +66,8 @@ export const EnhancedCategoriesPanel: React.FC = () => {
     type: "local" as "local" | "original",
     vehicleType: "two_wheeler" as "two_wheeler" | "four_wheeler",
   });
+
+  const addCategoryRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadCategories();
@@ -83,21 +85,21 @@ export const EnhancedCategoriesPanel: React.FC = () => {
           (p: any) =>
             p.category === category.name &&
             p.workspaceId === currentUser?.workspaceId &&
-            p.vehicleType === category.vehicleType
+            p.vehicleType === category.vehicleType,
         );
 
         const totalParts = categoryProducts.length;
         const totalStockValue = categoryProducts.reduce(
           (sum: number, p: any) =>
             sum + (p.currentStock || 0) * (p.purchasePrice || 0),
-          0
+          0,
         );
         const lowStockParts = categoryProducts.filter(
           (p: any) =>
-            p.currentStock <= (p.minimumStock || 10) && p.currentStock > 0
+            p.currentStock <= (p.minimumStock || 10) && p.currentStock > 0,
         ).length;
         const outOfStockParts = categoryProducts.filter(
-          (p: any) => p.currentStock === 0
+          (p: any) => p.currentStock === 0,
         ).length;
 
         return {
@@ -123,14 +125,14 @@ export const EnhancedCategoriesPanel: React.FC = () => {
         c.vehicleType === formData.vehicleType &&
         c.type === formData.type &&
         c.workspaceId === currentUser?.workspaceId &&
-        (!editingCategory || c.id !== editingCategory.id)
+        (!editingCategory || c.id !== editingCategory.id),
     );
 
     if (duplicate) {
       popup.showError(
         "A category with this name already exists for this vehicle type and part type!",
         "Duplicate Category",
-        "warning"
+        "warning",
       );
       return;
     }
@@ -140,7 +142,7 @@ export const EnhancedCategoriesPanel: React.FC = () => {
       const updatedCategories = allCategories.map((c: Category) =>
         c.id === editingCategory.id
           ? { ...c, ...formData, updatedAt: new Date().toISOString() }
-          : c
+          : c,
       );
       saveToStorage("categories", updatedCategories);
     } else {
@@ -183,7 +185,7 @@ export const EnhancedCategoriesPanel: React.FC = () => {
     const productsInCategory = products.filter(
       (p: any) =>
         p.category === categoryName &&
-        p.workspaceId === currentUser?.workspaceId
+        p.workspaceId === currentUser?.workspaceId,
     );
 
     if (productsInCategory.length > 0) {
@@ -193,15 +195,15 @@ export const EnhancedCategoriesPanel: React.FC = () => {
         () => {
           const allCategories = getFromStorage("categories", []);
           const filtered = allCategories.filter(
-            (c: Category) => c.id !== categoryId
+            (c: Category) => c.id !== categoryId,
           );
           saveToStorage("categories", filtered);
           loadCategories();
           popup.showSuccess(
             "Category Deleted",
-            "The category has been successfully deleted."
+            "The category has been successfully deleted.",
           );
-        }
+        },
       );
       return;
     }
@@ -213,15 +215,15 @@ export const EnhancedCategoriesPanel: React.FC = () => {
         const allCategories = getFromStorage("categories", []);
         saveToStorage(
           "categories",
-          allCategories.filter((c: Category) => c.id !== categoryId)
+          allCategories.filter((c: Category) => c.id !== categoryId),
         );
         setViewingCategory(null);
         loadCategories();
         popup.showSuccess(
           "Category Deleted",
-          "The category has been successfully deleted."
+          "The category has been successfully deleted.",
         );
-      }
+      },
     );
   };
 
@@ -323,14 +325,14 @@ export const EnhancedCategoriesPanel: React.FC = () => {
         c.name === categoryName &&
         c.type === (typeFilter === "all" ? "local" : typeFilter) &&
         c.vehicleType === vehicleTypeFilter &&
-        c.workspaceId === currentUser?.workspaceId
+        c.workspaceId === currentUser?.workspaceId,
     );
 
     if (exists) {
       popup.showError(
         "This category already exists!",
         "Duplicate Category",
-        "warning"
+        "warning",
       );
       return;
     }
@@ -356,7 +358,7 @@ export const EnhancedCategoriesPanel: React.FC = () => {
       popup.showError(
         "No categories to export. Please add categories first.",
         "No Data",
-        "warning"
+        "warning",
       );
       return;
     }
@@ -381,7 +383,7 @@ export const EnhancedCategoriesPanel: React.FC = () => {
       ...csvData.map((row) =>
         Object.values(row)
           .map((v) => `"${v}"`)
-          .join(",")
+          .join(","),
       ),
     ].join("\n");
 
@@ -398,38 +400,38 @@ export const EnhancedCategoriesPanel: React.FC = () => {
   // Statistics
   const stats = {
     total2WLocal: categories.filter(
-      (c) => c.vehicleType === "two_wheeler" && c.type === "local"
+      (c) => c.vehicleType === "two_wheeler" && c.type === "local",
     ).length,
     total2WOriginal: categories.filter(
-      (c) => c.vehicleType === "two_wheeler" && c.type === "original"
+      (c) => c.vehicleType === "two_wheeler" && c.type === "original",
     ).length,
     total4WLocal: categories.filter(
-      (c) => c.vehicleType === "four_wheeler" && c.type === "local"
+      (c) => c.vehicleType === "four_wheeler" && c.type === "local",
     ).length,
     total4WOriginal: categories.filter(
-      (c) => c.vehicleType === "four_wheeler" && c.type === "original"
+      (c) => c.vehicleType === "four_wheeler" && c.type === "original",
     ).length,
     totalProducts: categories.reduce((sum, c) => sum + (c.totalParts || 0), 0),
     totalValue: categories.reduce(
       (sum, c) => sum + (c.totalStockValue || 0),
-      0
+      0,
     ),
   };
 
   const currentStats = {
     totalLocal: categories.filter(
-      (c) => c.vehicleType === vehicleTypeFilter && c.type === "local"
+      (c) => c.vehicleType === vehicleTypeFilter && c.type === "local",
     ).length,
     totalOriginal: categories.filter(
-      (c) => c.vehicleType === vehicleTypeFilter && c.type === "original"
+      (c) => c.vehicleType === vehicleTypeFilter && c.type === "original",
     ).length,
     totalProducts: filteredCategories.reduce(
       (sum, c) => sum + (c.totalParts || 0),
-      0
+      0,
     ),
     totalValue: filteredCategories.reduce(
       (sum, c) => sum + (c.totalStockValue || 0),
-      0
+      0,
     ),
   };
 
@@ -437,13 +439,13 @@ export const EnhancedCategoriesPanel: React.FC = () => {
     <div className="space-y-6">
       {/* Simple Header with Key Stats */}
       <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-6 text-white shadow-xl">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-3xl font-bold flex items-center space-x-3 mb-2">
-              <Grid className="w-10 h-10" />
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
+          <div className="mb-4 md:mb-0">
+            <h3 className="text-2xl md:text-3xl font-bold flex items-center space-x-3 mb-2">
+              <Grid className="w-8 h-8 md:w-10 md:h-10" />
               <span>Product Categories</span>
             </h3>
-            <p className="text-purple-100 text-lg">
+            <p className="text-purple-100 text-sm md:text-lg">
               Organize your inventory by vehicle type and part category
             </p>
           </div>
@@ -456,16 +458,22 @@ export const EnhancedCategoriesPanel: React.FC = () => {
               });
               setIsAdding(true);
               setViewingCategory(null);
+              setTimeout(() => {
+                addCategoryRef.current?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "center",
+                });
+              }, 100);
             }}
-            className="flex items-center space-x-2 px-8 py-4 bg-white text-purple-600 rounded-xl hover:bg-purple-50 transition-all shadow-lg transform hover:scale-105 font-bold"
+            className="w-full md:w-auto flex items-center justify-center space-x-2 px-6 py-3 md:px-8 md:py-4 bg-white text-purple-600 rounded-xl hover:bg-purple-50 transition-all shadow-lg transform hover:scale-105 font-bold text-sm md:text-base"
           >
-            <Plus className="w-6 h-6" />
+            <Plus className="w-5 h-5 md:w-6 md:h-6" />
             <span>Add Category</span>
           </button>
         </div>
 
         {/* Simple Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
             <div className="flex items-center space-x-2 mb-2">
               <Grid className="w-5 h-5" />
@@ -511,7 +519,7 @@ export const EnhancedCategoriesPanel: React.FC = () => {
             <Car className="inline w-5 h-5 mr-2" />
             Step 1: Select Vehicle Type
           </label>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button
               onClick={() => setVehicleTypeFilter("two_wheeler")}
               className={`p-6 rounded-xl font-bold transition-all flex flex-col items-center space-y-3 ${
@@ -565,7 +573,7 @@ export const EnhancedCategoriesPanel: React.FC = () => {
             <Package className="inline w-5 h-5 mr-2" />
             Step 2: Select Part Type
           </label>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <button
               onClick={() => setTypeFilter("local")}
               className={`p-4 rounded-xl font-bold transition-all flex flex-col items-center space-y-2 ${
@@ -644,7 +652,7 @@ export const EnhancedCategoriesPanel: React.FC = () => {
               className="w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg"
             />
           </div>
-          <div className="flex space-x-2">
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
@@ -655,45 +663,53 @@ export const EnhancedCategoriesPanel: React.FC = () => {
               <option value="value">Sort by Value</option>
               <option value="updated">Sort by Updated</option>
             </select>
-            <button
-              onClick={exportCategories}
-              className="px-4 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors"
-              title="Export"
-            >
-              <Download className="w-5 h-5" />
-            </button>
-            <button
-              onClick={loadCategories}
-              className="px-4 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-colors"
-              title="Refresh"
-            >
-              <RefreshCw className="w-5 h-5" />
-            </button>
+            <div className="flex space-x-2">
+              <button
+                onClick={exportCategories}
+                className="flex-1 sm:flex-none px-4 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors flex items-center justify-center"
+                title="Export"
+              >
+                <Download className="w-5 h-5" />
+              </button>
+              <button
+                onClick={loadCategories}
+                className="flex-1 sm:flex-none px-4 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-colors flex items-center justify-center"
+                title="Refresh"
+              >
+                <RefreshCw className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Current Selection Summary */}
         <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border-2 border-purple-200 p-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Info className="w-6 h-6 text-purple-600" />
+            <div className="flex flex-col sm:flex-row sm:items-center space-x-0 sm:space-x-3 space-y-2 sm:space-y-0">
+              <Info className="w-6 h-6 text-purple-600 hidden sm:block" />
               <div>
                 <p className="text-gray-900 font-bold text-lg">
                   Showing {filteredCategories.length} categories
                 </p>
-                <p className="text-gray-600 text-sm">
-                  {vehicleTypeFilter === "two_wheeler"
-                    ? "🏍️ 2-Wheeler"
-                    : "🚗 4-Wheeler"}
-                  {" • "}
-                  {typeFilter === "local" && "📦 Local/Aftermarket"}
-                  {typeFilter === "original" && "✨ Original/Genuine"}
-                  {typeFilter === "all" && "🔄 All Types"}
-                  {" • "}
-                  {currentStats.totalProducts} products
-                  {" • "}
-                  Rs{(currentStats.totalValue / 1000).toFixed(0)}K value
-                </p>
+                <div className="flex flex-col sm:flex-row text-gray-600 text-sm gap-1 sm:gap-2">
+                  <span>
+                    {vehicleTypeFilter === "two_wheeler"
+                      ? "🏍️ 2-Wheeler"
+                      : "🚗 4-Wheeler"}
+                  </span>
+                  <span className="hidden sm:inline">{" • "}</span>
+                  <span>
+                    {typeFilter === "local" && "📦 Local/Aftermarket"}
+                    {typeFilter === "original" && "✨ Original/Genuine"}
+                    {typeFilter === "all" && "🔄 All Types"}
+                  </span>
+                  <span className="hidden sm:inline">{" • "}</span>
+                  <span>{currentStats.totalProducts} products</span>
+                  <span className="hidden sm:inline">{" • "}</span>
+                  <span>
+                    Rs{(currentStats.totalValue / 1000).toFixed(0)}K value
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -702,7 +718,10 @@ export const EnhancedCategoriesPanel: React.FC = () => {
 
       {/* Add/Edit Form */}
       {isAdding && (
-        <div className="bg-white rounded-2xl border-2 border-purple-300 p-8 shadow-2xl">
+        <div
+          ref={addCategoryRef}
+          className="scroll-mt-24 bg-white rounded-2xl border-2 border-purple-300 p-8 shadow-2xl"
+        >
           <h4 className="font-bold text-gray-900 text-2xl mb-6 flex items-center space-x-2">
             {editingCategory ? (
               <Edit2 className="w-7 h-7 text-purple-600" />
@@ -719,7 +738,7 @@ export const EnhancedCategoriesPanel: React.FC = () => {
               <label className="block text-gray-700 font-bold mb-3 text-lg">
                 Vehicle Type <span className="text-red-500">*</span>
               </label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
                   type="button"
                   onClick={() =>
@@ -756,7 +775,7 @@ export const EnhancedCategoriesPanel: React.FC = () => {
               <label className="block text-gray-700 font-bold mb-3 text-lg">
                 Part Type <span className="text-red-500">*</span>
               </label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, type: "local" })}
@@ -817,7 +836,7 @@ export const EnhancedCategoriesPanel: React.FC = () => {
               />
             </div>
 
-            <div className="flex space-x-4 pt-4">
+            <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 pt-4">
               <button
                 type="submit"
                 className="flex-1 px-8 py-5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg font-bold text-xl"
@@ -863,14 +882,14 @@ export const EnhancedCategoriesPanel: React.FC = () => {
                 Categories
               </span>
             </h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
               {(vehicleTypeFilter === "two_wheeler"
                 ? typeFilter === "local"
                   ? popular2WLocal
                   : popular2WOriginal
                 : typeFilter === "local"
-                ? popular4WLocal
-                : popular4WOriginal
+                  ? popular4WLocal
+                  : popular4WOriginal
               ).map((categoryName) => (
                 <button
                   key={categoryName}

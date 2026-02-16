@@ -16,6 +16,7 @@ import {
   Archive,
   Scan,
   Upload,
+  Image,
 } from "lucide-react";
 import { getFromStorage, saveToStorage } from "../../utils/mockData";
 import { useAuth } from "../../contexts/AuthContext";
@@ -226,16 +227,8 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
           hsnCode: it.hsn_code || it.hsnCode || undefined,
           location: it.storage_location || it.location || undefined,
           warrantyPeriod: it.warranty_period || it.warrantyPeriod || undefined,
-          image: (() => {
-            if (Array.isArray(it.images) && it.images.length > 0) {
-              const primary = it.images.find((img: any) => img.is_primary);
-              if (primary) return primary.image;
-              return typeof it.images[0] === "string"
-                ? it.images[0]
-                : it.images[0].image;
-            }
-            return it.image || undefined;
-          })(),
+          image: it.image || undefined,
+          images: Array.isArray(it.images) ? it.images : undefined,
           // Prefer workspace ID from API if present, otherwise fallback to current user
           workspaceId:
             it.workspaceId ||
@@ -417,7 +410,10 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
   };
 
   const handleOpenSidebar = (item?: InventoryItem) => {
-    if (!item && !selectedBranchId) {
+    const isAdmin =
+      currentUser?.role === "admin" || currentUser?.role === "super_admin";
+
+    if (!item && !selectedBranchId && isAdmin) {
       popup.showError(
         "Branch Selection Required",
         "Please select a specific branch from the top selection menu before adding new items to the inventory.",
@@ -561,6 +557,9 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
       // Strict branch assignment logic
       let branchId: number | undefined;
 
+      const isAdmin =
+        currentUser?.role === "admin" || currentUser?.role === "super_admin";
+
       if (editingItem) {
         // For editing, preserve the existing branch ID
         branchId = editingItem.branchId
@@ -571,43 +570,52 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
           branchId = parseInt(selectedBranchId);
         }
       } else {
-        // For adding, STRICTLY require selectedBranchId
-        if (!selectedBranchId) {
-          popup.showError(
-            "Branch Selection Required",
-            "Please select a specific branch from the top menu to add items.",
-          );
-          return;
+        // For adding:
+        // Admins STRICTLY require selectedBranchId
+        // Other users use their assigned branch automatically
+
+        if (isAdmin) {
+          if (!selectedBranchId) {
+            popup.showError(
+              "Branch Selection Required",
+              "Please select a specific branch from the top menu to add items.",
+            );
+            return;
+          }
+          branchId = parseInt(selectedBranchId);
+        } else {
+          // Non-admin users: Use selected branch if available, otherwise use their assigned branch
+          // Non-admin users:
+          // If a branch is explicitly selected (rare/unlikely for non-admins), use it.
+          // Otherwise, rely on the backend to assign the branch based on the authenticated user.
+          // Sending an explicit branch ID that might be stale/invalid (like "10") can cause "Invalid pk" errors.
+          if (selectedBranchId) {
+            branchId = parseInt(selectedBranchId);
+          } else {
+            console.log(
+              "Non-admin user: Relying on backend for branch assignment.",
+            );
+            // branchId remains undefined to let backend handle assignment
+          }
         }
-        branchId = parseInt(selectedBranchId);
       }
 
-      if (branchId) formDataPayload.append("branch", branchId.toString());
+      // Only append branch if we have a valid explicit ID
+      if (branchId && !isNaN(branchId)) {
+        formDataPayload.append("branch", branchId.toString());
+      }
 
       formDataPayload.append("is_active", "true");
       formDataPayload.append("is_primary", "true");
 
+      // Append Thumbnail Image (Single)
       if (formData.imageFiles && formData.imageFiles.length > 0) {
-        formData.imageFiles.forEach((file) => {
-          formDataPayload.append("images", file);
-        });
+        // The current API expects the main image in the "image" field or "images" depending on backend implementation.
+        // Based on user request "current api should use that thumbnail image" and previous code used "images",
+        // but typically a primary image is "image".
+        // Existing code used "images" and iterated. Since we forced single file in UI, we take the 0th index.
+        formDataPayload.append("image", formData.imageFiles[0]);
       }
-
-      // TODO: Multiple images upload - API not available yet
-      // When the multiple image upload API becomes available, uncomment and implement:
-      // if (formData.multipleImageFiles && formData.multipleImageFiles.length > 0) {
-      //   const multipleImageFormData = new FormData();
-      //   formData.multipleImageFiles.forEach((file) => {
-      //     multipleImageFormData.append("images", file);
-      //   });
-      //   // Call the multiple image upload API endpoint here
-      //   // Example:
-      //   // await fetch(`${import.meta.env.VITE_API_BASE_URL}/stock-management/inventory/${itemId}/upload-multiple-images/`, {
-      //   //   method: "POST",
-      //   //   headers,
-      //   //   body: multipleImageFormData,
-      //   // });
-      // }
 
       let response;
       if (editingItem) {
@@ -662,6 +670,40 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
       }
 
       const savedId = responseData.id;
+
+      // Upload Multiple Images (Additional Images)
+      if (
+        formData.multipleImageFiles &&
+        formData.multipleImageFiles.length > 0
+      ) {
+        console.log("Uploading additional images for item:", savedId);
+
+        // Upload each file sequentially
+        for (const file of formData.multipleImageFiles) {
+          const imageFormData = new FormData();
+          imageFormData.append("inventory", savedId); // Link to the inventory item
+          imageFormData.append("image", file); // The image file
+
+          try {
+            const imgResponse = await apiFetch(
+              `${import.meta.env.VITE_API_BASE_URL}/stock-management/inventory-images/`,
+              {
+                method: "POST",
+                body: imageFormData,
+              },
+            );
+
+            if (!imgResponse.ok) {
+              console.error(
+                "Failed to upload additional image",
+                await imgResponse.text(),
+              );
+            }
+          } catch (imgErr) {
+            console.error("Error uploading additional image:", imgErr);
+          }
+        }
+      }
 
       loadInventory();
       handleCloseSidebar();
@@ -1062,24 +1104,26 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
       </div>
 
       {/* Actions Bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-gray-900 text-xl">Inventory Management</h3>
+          <h3 className="text-gray-900 text-xl font-semibold">
+            Inventory Management
+          </h3>
           <p className="text-gray-500 text-sm mt-1">
             Manage all your auto parts inventory
           </p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex w-full sm:w-auto items-center space-x-3">
           <button
             onClick={handleExport}
-            className="flex items-center space-x-2 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 hover:shadow-md"
+            className="flex-1 sm:flex-none justify-center items-center space-x-2 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 hover:shadow-md"
           >
             <Download className="w-4 h-4" />
             <span>Export</span>
           </button>
           <button
             onClick={() => handleOpenSidebar()}
-            className="flex items-center space-x-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 hover:shadow-lg transform hover:scale-105"
+            className="flex-1 sm:flex-none justify-center items-center space-x-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 hover:shadow-lg transform hover:scale-105"
           >
             <Plus className="w-4 h-4" />
             <span>Add Item</span>
@@ -1095,72 +1139,82 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         {/* Filters Section */}
-        <div className="p-6 border-b border-gray-200 bg-gray-50">
-          <div className="flex flex-col md:flex-row md:items-center gap-4">
+        <div className="p-4 sm:p-6 border-b border-gray-200 bg-gray-50">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             {/* Search Bar */}
-            <div className="relative flex-1">
+            <div className="relative flex-1 w-full">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name, part number, or HSN code..."
+                placeholder="Search inventory..."
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
               />
             </div>
 
-            {/* Bulk Delete Button */}
-            {selectedItems.length > 0 && (
-              <button
-                onClick={handleBulkDelete}
-                className="flex items-center space-x-2 px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
-              >
-                <Trash2 className="w-5 h-5" />
-                <span>Delete Selected ({selectedItems.length})</span>
-              </button>
-            )}
+            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+              {/* Bulk Delete Button */}
+              {selectedItems.length > 0 && (
+                <button
+                  onClick={handleBulkDelete}
+                  className="flex justify-center items-center space-x-2 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all w-full sm:w-auto"
+                >
+                  <Trash2 className="w-5 h-5" />
+                  <span>Delete ({selectedItems.length})</span>
+                </button>
+              )}
 
-            {/* Category Filter */}
-            <div className="flex items-center space-x-2">
-              <Filter className="w-4 h-4 text-gray-500" />
-              <select
-                value={filterCategory}
-                onChange={(e) =>
-                  setFilterCategory(e.target.value as ItemCategory | "all")
-                }
-                className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-              >
-                <option value="all">All Categories</option>
-                <option value="local">Local</option>
-                <option value="original">Original</option>
-              </select>
-            </div>
+              {/* Category Filter */}
+              <div className="flex items-center space-x-2 w-full sm:w-auto">
+                <div className="relative w-full sm:w-48">
+                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 z-10" />
+                  <select
+                    value={filterCategory}
+                    onChange={(e) =>
+                      setFilterCategory(e.target.value as ItemCategory | "all")
+                    }
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white transition-all duration-200"
+                  >
+                    <option value="all">All Categories</option>
+                    <option value="local">Local</option>
+                    <option value="original">Original</option>
+                  </select>
+                </div>
+              </div>
 
-            {/* Vehicle Type Filter */}
-            <div>
-              <select
-                value={filterVehicleType}
-                onChange={(e) =>
-                  setFilterVehicleType(e.target.value as VehicleType | "all")
-                }
-                className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-              >
-                <option value="all">All Vehicles</option>
-                <option value="two_wheeler">2-Wheeler</option>
-                <option value="four_wheeler">4-Wheeler</option>
-              </select>
+              {/* Vehicle Type Filter */}
+              <div className="w-full sm:w-auto">
+                <div className="relative w-full sm:w-48">
+                  <select
+                    value={filterVehicleType}
+                    onChange={(e) =>
+                      setFilterVehicleType(
+                        e.target.value as VehicleType | "all",
+                      )
+                    }
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white transition-all duration-200"
+                  >
+                    <option value="all">All Vehicles</option>
+                    <option value="two_wheeler">2-Wheeler</option>
+                    <option value="four_wheeler">4-Wheeler</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 mt-4">
-            <div className="text-sm text-gray-600">Quick Filters:</div>
+          <div className="flex flex-wrap gap-2 mt-4 overflow-x-auto pb-2 sm:pb-0">
+            <div className="text-sm text-gray-600 whitespace-nowrap pt-1">
+              Quick Filters:
+            </div>
             {(["local", "original"] as ItemCategory[]).map((cat) => (
               <button
                 key={cat}
                 onClick={() =>
                   setFilterCategory(filterCategory === cat ? "all" : cat)
                 }
-                className={`px-3 py-1 rounded-full text-sm transition-all duration-200 ${
+                className={`px-3 py-1 rounded-full text-sm transition-all duration-200 whitespace-nowrap ${
                   filterCategory === cat
                     ? "bg-blue-600 text-white shadow-md"
                     : "bg-white text-gray-700 border border-gray-300 hover:border-blue-400"
@@ -1177,7 +1231,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                     filterVehicleType === type ? "all" : type,
                   )
                 }
-                className={`px-3 py-1 rounded-full text-sm transition-all duration-200 ${
+                className={`px-3 py-1 rounded-full text-sm transition-all duration-200 whitespace-nowrap ${
                   filterVehicleType === type
                     ? "bg-purple-600 text-white shadow-md"
                     : "bg-white text-gray-700 border border-gray-300 hover:border-purple-400"
@@ -1407,12 +1461,12 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
 
         {/* Summary Footer */}
         {finalFilteredInventory.length > 0 && (
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+          <div className="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div className="text-sm text-gray-600">
               Total {finalFilteredInventory.length} items ({inventory.length} in
               workspace)
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-gray-500 font-medium">
               Total Value: Rs
               {finalFilteredInventory
                 .reduce((sum, i) => sum + i.quantity * i.price, 0)
@@ -1476,7 +1530,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                 </div>
 
                 {/* Category & Vehicle Type Row */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="transform transition-all duration-200 hover:translate-x-1">
                     <label className="block text-gray-700 mb-2">
                       Category <span className="text-red-500">*</span>
@@ -1540,7 +1594,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                 </div>
 
                 {/* Part Number & HSN Code Row */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="transform transition-all duration-200 hover:translate-x-1">
                     <label className="block text-gray-700 mb-2">
                       Part Number
@@ -1571,7 +1625,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                 </div>
 
                 {/* Quantity & Min Stock Level Row */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="transform transition-all duration-200 hover:translate-x-1">
                     <label className="block text-gray-700 mb-2">
                       Quantity <span className="text-red-500">*</span>
@@ -1620,7 +1674,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                 </div>
 
                 {/* Price & MRP Row */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="transform transition-all duration-200 hover:translate-x-1">
                     <label className="block text-gray-700 mb-2">
                       Price (Rs) <span className="text-red-500">*</span>
@@ -1715,69 +1769,172 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                 {/* Barcode Scanner Field - Removed as per request */}
 
                 {/* Part Image Upload */}
-                <div className="transform transition-all duration-200 hover:translate-x-1">
-                  <label className="block text-gray-700 mb-2 flex items-center">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Part Image(s)
-                  </label>
-                  <div className="flex flex-col space-y-2">
-                    {/* Preview Images */}
-                    <div className="flex flex-wrap gap-2">
-                      {formData.imageFiles &&
-                        formData.imageFiles.map((file, index) => (
-                          <div key={index} className="relative w-20 h-20">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Thumbnail Image (Single) */}
+                  <div className="transform transition-all duration-200 hover:translate-x-1">
+                    <label className="block text-gray-700 mb-2 flex items-center font-medium">
+                      <Image className="w-4 h-4 mr-2 text-blue-600" />
+                      Thumbnail Image (Single)
+                    </label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-500 transition-colors">
+                      <div className="flex justify-center mb-2">
+                        {formData.imageFiles &&
+                        formData.imageFiles.length > 0 ? (
+                          <div className="relative">
                             <img
-                              src={URL.createObjectURL(file)}
-                              alt={`Preview ${index}`}
-                              className="w-full h-full rounded-lg object-cover border border-gray-300"
+                              src={URL.createObjectURL(formData.imageFiles[0])}
+                              alt="Thumbnail Preview"
+                              className="w-24 h-24 object-cover rounded-lg border border-gray-200 shadow-sm"
                             />
                             <button
                               type="button"
-                              onClick={() => {
-                                const newFiles = [
-                                  ...(formData.imageFiles || []),
-                                ];
-                                newFiles.splice(index, 1);
-                                setFormData({
-                                  ...formData,
-                                  imageFiles: newFiles,
-                                });
-                              }}
-                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 w-5 h-5 flex items-center justify-center text-xs"
+                              onClick={() =>
+                                setFormData({ ...formData, imageFiles: [] })
+                              }
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
                             >
-                              X
+                              <X className="w-3 h-3" />
                             </button>
                           </div>
-                        ))}
-                      {(!formData.imageFiles ||
-                        formData.imageFiles.length === 0) &&
-                        formData.image && (
-                          <img
-                            src={formData.image}
-                            alt="Existing"
-                            className="w-20 h-20 rounded-lg object-cover border border-gray-300"
-                          />
+                        ) : formData.image ? (
+                          <div className="relative">
+                            <img
+                              src={formData.image}
+                              alt="Existing Thumbnail"
+                              className="w-24 h-24 object-cover rounded-lg border border-gray-200 shadow-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setFormData({ ...formData, image: "" })
+                              }
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
+                            <Image className="w-8 h-8" />
+                          </div>
                         )}
-                    </div>
+                      </div>
 
-                    <div className="flex-1">
                       <input
                         type="file"
                         accept="image/*"
-                        multiple
+                        id="thumbnail-upload"
                         onChange={(e) => {
                           const files = e.target.files;
                           if (files && files.length > 0) {
                             setFormData({
                               ...formData,
-                              imageFiles: Array.from(files),
+                              imageFiles: [files[0]], // Only take first file
                             });
                           }
                         }}
-                        className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 file:cursor-pointer"
+                        className="hidden"
                       />
+                      <label
+                        htmlFor="thumbnail-upload"
+                        className="cursor-pointer text-sm font-medium text-blue-600 hover:text-blue-800"
+                      >
+                        {formData.imageFiles && formData.imageFiles.length > 0
+                          ? "Change Thumbnail"
+                          : "Upload Thumbnail"}
+                      </label>
                       <p className="text-xs text-gray-500 mt-1">
-                        Select multiple images (PNG, JPG up to 2MB)
+                        PNG, JPG up to 2MB
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Multiple Images Upload */}
+                  <div className="transform transition-all duration-200 hover:translate-x-1">
+                    <label className="block text-gray-700 mb-2 font-medium flex items-center">
+                      <Image className="w-4 h-4 mr-2 text-purple-600" />
+                      Additional Images (Multiple)
+                    </label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-purple-500 transition-colors">
+                      <div className="flex flex-wrap justify-center gap-2 mb-2 min-h-[96px]">
+                        {/* Preview New Multiple Files */}
+                        {formData.multipleImageFiles &&
+                          formData.multipleImageFiles.length > 0 &&
+                          formData.multipleImageFiles.map((file, index) => (
+                            <div
+                              key={`new-${index}`}
+                              className="relative group"
+                            >
+                              <img
+                                src={URL.createObjectURL(file)}
+                                alt={`preview-${index}`}
+                                className="w-16 h-16 object-cover rounded border border-gray-200"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newFiles = [
+                                    ...(formData.multipleImageFiles || []),
+                                  ];
+                                  newFiles.splice(index, 1);
+                                  setFormData({
+                                    ...formData,
+                                    multipleImageFiles: newFiles,
+                                  });
+                                }}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+
+                        {/* Existing Images (if any) */}
+                        {/* Note: We rely on a separate API call or prop to display existing multiple images if editing */}
+
+                        {(!formData.multipleImageFiles ||
+                          formData.multipleImageFiles.length === 0) && (
+                          <div className="flex flex-col items-center justify-center p-2 text-gray-400">
+                            <div className="bg-purple-50 rounded-full p-2 mb-1">
+                              <Image className="w-5 h-5 text-purple-400" />
+                            </div>
+                            <span className="text-xs">
+                              No extra images selected
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        id="multiple-upload"
+                        onChange={(e) => {
+                          const files = e.target.files;
+                          if (files && files.length > 0) {
+                            const currentFiles =
+                              formData.multipleImageFiles || [];
+                            // Append new files to existing selection
+                            setFormData({
+                              ...formData,
+                              multipleImageFiles: [
+                                ...currentFiles,
+                                ...Array.from(files),
+                              ],
+                            });
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="multiple-upload"
+                        className="cursor-pointer text-sm font-medium text-purple-600 hover:text-purple-800"
+                      >
+                        + Add More Images
+                      </label>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Upload gallery shots
                       </p>
                     </div>
                   </div>
@@ -1806,7 +1963,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-gray-700 text-sm mb-2">
                           Model
@@ -2031,7 +2188,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
               )}
 
               {/* Stock Status */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div
                   className={`rounded-xl p-4 ${
                     viewingItem.quantity <= viewingItem.minStockLevel
@@ -2068,7 +2225,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
 
               {/* Details Grid */}
               <div className="bg-gray-50 rounded-xl p-5 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <p className="text-gray-500 text-sm mb-1">Price</p>
                     <p className="text-gray-900 text-lg">
@@ -2142,7 +2299,7 @@ export const TotalInventoryPanel: React.FC<{ filter?: string }> = ({
                     <Package className="w-4 h-4 mr-2 text-purple-600" />
                     Vehicle/Bike Details
                   </h5>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {viewingItem.bikeName && (
                       <div className="col-span-2">
                         <p className="text-gray-500 text-sm mb-1">
