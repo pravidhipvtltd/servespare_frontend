@@ -135,7 +135,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         payment_method: paymentMethod,
         delivery_address: deliveryAddress,
         delivery_city: city,
-        delivery_state: deliveryState,
+        delivery_province: deliveryState,
         delivery_district: deliveryDistrict,
         delivery_pincode: zipCode,
         notes: notes,

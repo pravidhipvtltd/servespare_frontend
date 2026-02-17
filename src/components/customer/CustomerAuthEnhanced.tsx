@@ -476,9 +476,15 @@ export const CustomerAuthEnhanced: React.FC<CustomerAuthProps> = ({
         localStorage.setItem("refreshToken", data.tokens.refresh);
         localStorage.setItem("session_active", "true");
 
+        // Map avatar to profileImage if missing
+        const userToStore = {
+          ...data.user,
+          profileImage: data.user.profileImage || data.user.avatar || "",
+        };
+
         // Store user info
-        localStorage.setItem("user", JSON.stringify(data.user));
-        localStorage.setItem("customer_user", JSON.stringify(data.user));
+        localStorage.setItem("user", JSON.stringify(userToStore));
+        localStorage.setItem("customer_user", JSON.stringify(userToStore));
         localStorage.setItem("user_role", data.user.role);
 
         toast.success(data.message || "Login successful!");

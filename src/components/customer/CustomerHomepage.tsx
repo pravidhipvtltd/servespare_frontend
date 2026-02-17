@@ -242,6 +242,11 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
             image: displayImage,
             badge: item.is_low_stock ? "Low Stock" : "New",
             inStock: !item.is_low_stock,
+            description: item.description || "",
+            warranty: item.warranty_period,
+            partNumber: item.part_number,
+            model: item.model,
+            vehicleBikeDetails: item.vehicle_bike_details,
           };
         });
 
@@ -299,7 +304,6 @@ export const CustomerHomepage: React.FC<CustomerHomepageProps> = ({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-           
           },
           body: JSON.stringify({ email: subscriptionEmail }),
         },

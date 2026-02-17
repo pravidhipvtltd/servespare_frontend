@@ -612,7 +612,7 @@ export const PricingControlPanel: React.FC = () => {
       {modalOpen && selectedItem && (
         <>
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-[9998] backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-black/40 bg-opacity-50 z-[9998] backdrop-blur-sm transition-opacity"
             onClick={handleCloseModal}
           />
 

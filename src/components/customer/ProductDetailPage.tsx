@@ -21,6 +21,7 @@ import {
   ZoomIn,
 } from "lucide-react";
 import { toast } from "sonner";
+import { apiFetch } from "../../utils/apiClient";
 
 interface Product {
   id: string;
@@ -33,97 +34,146 @@ interface Product {
   image: string;
   description?: string;
   inStock: boolean;
+  warranty?: string;
+  partNumber?: string;
+  model?: string;
+  vehicleType?: string;
+  vehicleBikeDetails?: string;
 }
 
 interface ProductDetailPageProps {
   product: Product;
   onBack: () => void;
   onAddToCart: (product: Product, quantity: number) => void;
+  onViewProduct?: (product: Product) => void;
 }
 
-const relatedProducts = [
-  {
-    id: "r1",
-    name: "Brake Fluid DOT 4",
-    price: 800,
-    image:
-      "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=300&h=300&fit=crop",
-    rating: 4.7,
-  },
-  {
-    id: "r2",
-    name: "Brake Cleaner Spray",
-    price: 600,
-    image:
-      "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=300&h=300&fit=crop",
-    rating: 4.5,
-  },
-  {
-    id: "r3",
-    name: "Brake Pad Shims",
-    price: 400,
-    image:
-      "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=300&h=300&fit=crop",
-    rating: 4.6,
-  },
-  {
-    id: "r4",
-    name: "Caliper Grease",
-    price: 500,
-    image:
-      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=300&fit=crop",
-    rating: 4.8,
-  },
-];
-
-const reviews = [
-  {
-    id: 1,
-    author: "Rajesh Kumar",
-    rating: 5,
-    date: "2024-12-01",
-    comment:
-      "Excellent quality brake pads! Very smooth braking and no noise at all. Highly recommended!",
-    helpful: 24,
-    verified: true,
-  },
-  {
-    id: 2,
-    author: "Sita Sharma",
-    rating: 4,
-    date: "2024-11-28",
-    comment:
-      "Good product but took a bit longer to deliver. Quality is great though.",
-    helpful: 12,
-    verified: true,
-  },
-  {
-    id: 3,
-    author: "Amit Thapa",
-    rating: 5,
-    date: "2024-11-25",
-    comment:
-      "Perfect fit for my car. Installation was easy and performance is amazing!",
-    helpful: 18,
-    verified: false,
-  },
-];
+// Removed mock relatedProducts and reviews
 
 export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   product,
   onBack,
   onAddToCart,
+  onViewProduct,
 }) => {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [favoriteId, setFavoriteId] = useState<string | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
+
   const [activeTab, setActiveTab] = useState<
     "description" | "specifications" | "reviews"
   >("description");
 
-  // Check if product is in wishlist on mount
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [fetchedReviews, setFetchedReviews] = useState<any[]>([]);
+  const [productImages, setProductImages] = useState<string[]>([]);
+  const [isLoadingRelated, setIsLoadingRelated] = useState(false);
+
+  // Fetch product images
+  React.useEffect(() => {
+    // Reset images when product changes
+    setProductImages([product.image].filter(Boolean));
+    setSelectedImage(0);
+
+    const fetchImages = async () => {
+      try {
+        const response = await apiFetch(
+          `${import.meta.env.VITE_API_BASE_URL}/stock-management/inventory-images/?inventory=${product.id}`,
+        );
+        if (response.ok) {
+          const data = await response.json();
+          // The API returns a list of objects, each with an 'image' field
+          // It might be paginated (results) or just a list
+          const results = Array.isArray(data.results)
+            ? data.results
+            : Array.isArray(data)
+              ? data
+              : [];
+
+          if (results.length > 0) {
+            const newImages = results
+              .map((img: any) => img.image)
+              .filter(Boolean);
+            if (newImages.length > 0) {
+              setProductImages(newImages);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch product images:", error);
+      }
+    };
+
+    if (product.id) {
+      fetchImages();
+    }
+  }, [product.id, product.image]);
+
+  // Fetch related products
+  React.useEffect(() => {
+    const fetchRelated = async () => {
+      setIsLoadingRelated(true);
+      try {
+        const response = await apiFetch(
+          `${import.meta.env.VITE_API_BASE_URL}/stock-management/inventory/`,
+        );
+        if (response.ok) {
+          const data = await response.json();
+          const results = Array.isArray(data.results) ? data.results : [];
+
+          const mappedProducts = results
+            .filter(
+              (item: any) =>
+                item.item_category === product.category ||
+                item.category === product.category,
+            ) // Filter by category if possible
+            .filter((item: any) => String(item.id) !== product.id) // Exclude current product
+            .slice(0, 4) // Limit to 4
+            .map((item: any) => {
+              const images = Array.isArray(item.images) ? item.images : [];
+              const primaryImage = images.find(
+                (img: any) => img.is_primary,
+              )?.image;
+              const displayImage = primaryImage || images[0]?.image;
+
+              return {
+                id: String(item.id),
+                name: item.item_name,
+                category: item.category || item.item_category,
+                price: parseFloat(item.mrp) || 0,
+                originalPrice: parseFloat(item.price) || 0,
+                rating: 0, // No rating from backend
+                reviews: 0, // No reviews from backend
+                image: displayImage,
+                description: item.description,
+                inStock: !item.is_low_stock,
+                warranty: item.warranty_period,
+                partNumber: item.part_number,
+                model: item.model,
+                vehicleBikeDetails: item.vehicle_bike_details,
+              };
+            });
+
+          setRelatedProducts(mappedProducts);
+        }
+      } catch (error) {
+        console.error("Failed to fetch related products:", error);
+      } finally {
+        setIsLoadingRelated(false);
+      }
+    };
+
+    fetchRelated();
+  }, [product.id, product.category]);
+
+  // Fetch reviews (placeholder for now as no endpoint is known)
+  // If there is an endpoint, fetch here. Otherwise empty.
+  React.useEffect(() => {
+    setFetchedReviews([]);
+  }, [product.id]);
+
   React.useEffect(() => {
     const checkWishlistStatus = async () => {
       try {
@@ -135,7 +185,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           {
             headers: {
               Authorization: `Bearer ${token}`,
-             
             },
           },
         );
@@ -162,7 +211,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     checkWishlistStatus();
   }, [product.id]);
 
-  const images = [product.image];
+  const images =
+    productImages.length > 0 ? productImages : [product.image].filter(Boolean);
 
   const handleShare = () => {
     const fallbackCopyTextToClipboard = (text: string) => {
@@ -215,16 +265,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       }
 
       if (isWishlisted && favoriteId) {
-       
         const response = await fetch(
           `${import.meta.env.VITE_API_BASE_URL}/carts/favorites/${favoriteId}/`,
           {
             method: "DELETE",
             headers: {
               Authorization: `Bearer ${token}`,
-             
             },
-          }
+          },
         );
 
         if (response.ok) {
@@ -244,12 +292,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
-             
             },
             body: JSON.stringify({
               inventory_id: parseInt(product.id, 10),
             }),
-          }
+          },
         );
 
         if (response.ok) {
@@ -313,7 +360,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                       {Math.round(
                         ((product.originalPrice - product.price) /
                           product.originalPrice) *
-                          100
+                          100,
                       )}
                       % OFF
                     </span>
@@ -477,17 +524,26 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     <p className="text-xs text-gray-500">In Pokhara Valley</p>
                   </div>
                 </div>
+
+                {/* Warranty - Dynamic */}
                 <div className="flex items-center space-x-3">
                   <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
                     <Shield className="w-6 h-6 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-900">1 Year Warranty</p>
+                    <p className="text-sm text-gray-900">
+                      {product.warranty
+                        ? product.warranty
+                            .replace(/_/g, " ")
+                            .replace(/\b\w/g, (l) => l.toUpperCase())
+                        : "No Warranty"}
+                    </p>
                     <p className="text-xs text-gray-500">
                       Manufacturer warranty
                     </p>
                   </div>
                 </div>
+
                 <div className="flex items-center space-x-3">
                   <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
                     <RotateCcw className="w-6 h-6 text-purple-600" />
@@ -531,7 +587,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   >
                     {tab}
                   </button>
-                )
+                ),
               )}
             </div>
           </div>
@@ -547,32 +603,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <h3 className="text-2xl text-gray-900 mb-4">
                   Product Description
                 </h3>
-                <p className="text-gray-600 mb-4">
-                  {product.description || "No description available."}
+                <p className="text-gray-600 mb-4 whitespace-pre-wrap">
+                  {product.description ||
+                    "No description available for this product."}
                 </p>
-                <h4 className="text-xl text-gray-900 mb-3 mt-6">Features:</h4>
-                <ul className="space-y-2 text-gray-600">
-                  <li className="flex items-start space-x-2">
-                    <Check className="w-5 h-5 text-green-600 mt-0.5" />
-                    <span>Premium ceramic compound for superior braking</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <Check className="w-5 h-5 text-green-600 mt-0.5" />
-                    <span>Low dust formula keeps wheels cleaner</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <Check className="w-5 h-5 text-green-600 mt-0.5" />
-                    <span>Quiet operation with minimal noise</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <Check className="w-5 h-5 text-green-600 mt-0.5" />
-                    <span>Extended pad life for better value</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <Check className="w-5 h-5 text-green-600 mt-0.5" />
-                    <span>Compatible with most vehicle models</span>
-                  </li>
-                </ul>
               </motion.div>
             )}
 
@@ -585,31 +619,62 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   Technical Specifications
                 </h3>
                 <div className="grid md:grid-cols-2 gap-4">
+                  {product.partNumber && (
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <p className="text-sm text-gray-500">Part Number</p>
+                      <p className="text-gray-900">{product.partNumber}</p>
+                    </div>
+                  )}
+                  {product.model && (
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <p className="text-sm text-gray-500">Model</p>
+                      <p className="text-gray-900">{product.model}</p>
+                    </div>
+                  )}
+                  {product.vehicleType && (
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <p className="text-sm text-gray-500">Vehicle Type</p>
+                      <p className="text-gray-900">
+                        {product.vehicleType
+                          .replace("_", " ")
+                          .replace(/\b\w/g, (l) => l.toUpperCase())}
+                      </p>
+                    </div>
+                  )}
+                  {product.vehicleBikeDetails && (
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <p className="text-sm text-gray-500">Compatibility</p>
+                      <p className="text-gray-900">
+                        {product.vehicleBikeDetails}
+                      </p>
+                    </div>
+                  )}
+                  {product.warranty && (
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <p className="text-sm text-gray-500">Warranty</p>
+                      <p className="text-gray-900">
+                        {product.warranty
+                          .replace("_", " ")
+                          .replace(/\b\w/g, (l) => l.toUpperCase())}
+                      </p>
+                    </div>
+                  )}
                   <div className="border border-gray-200 rounded-lg p-4">
-                    <p className="text-sm text-gray-500">Material</p>
-                    <p className="text-gray-900">Ceramic Compound</p>
-                  </div>
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <p className="text-sm text-gray-500">Part Number</p>
-                    <p className="text-gray-900">BP-{product.id}-2024</p>
-                  </div>
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <p className="text-sm text-gray-500">Fitment Type</p>
-                    <p className="text-gray-900">Direct Fit</p>
-                  </div>
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <p className="text-sm text-gray-500">Warranty</p>
-                    <p className="text-gray-900">1 Year</p>
-                  </div>
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <p className="text-sm text-gray-500">Country of Origin</p>
-                    <p className="text-gray-900">Japan</p>
-                  </div>
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <p className="text-sm text-gray-500">Package Contents</p>
-                    <p className="text-gray-900">Set of 4 Pads</p>
+                    <p className="text-sm text-gray-500">Category</p>
+                    <p className="text-gray-900 capitalize">
+                      {product.category}
+                    </p>
                   </div>
                 </div>
+                {/* Fallback if no specs available */}
+                {!product.partNumber &&
+                  !product.model &&
+                  !product.warranty &&
+                  !product.vehicleBikeDetails && (
+                    <div className="text-gray-500 italic mt-4">
+                      No additional technical specifications available.
+                    </div>
+                  )}
               </motion.div>
             )}
 
@@ -676,47 +741,57 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
                 {/* Reviews List */}
                 <div className="space-y-6">
-                  {reviews.map((review) => (
-                    <div
-                      key={review.id}
-                      className="border-b border-gray-200 pb-6"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <div className="flex items-center space-x-2 mb-1">
-                            <p className="text-gray-900">{review.author}</p>
-                            {review.verified && (
-                              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                                Verified Purchase
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <div className="flex">
-                              {[...Array(5)].map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className={`w-4 h-4 ${
-                                    i < review.rating
-                                      ? "text-amber-400 fill-amber-400"
-                                      : "text-gray-300"
-                                  }`}
-                                />
-                              ))}
+                  {fetchedReviews.length > 0 ? (
+                    fetchedReviews.map((review) => (
+                      <div
+                        key={review.id}
+                        className="border-b border-gray-200 pb-6"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <div className="flex items-center space-x-2 mb-1">
+                              <p className="text-gray-900">{review.author}</p>
+                              {review.verified && (
+                                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                                  Verified Purchase
+                                </span>
+                              )}
                             </div>
-                            <span className="text-sm text-gray-500">
-                              {review.date}
-                            </span>
+                            <div className="flex items-center space-x-2">
+                              <div className="flex">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    className={`w-4 h-4 ${
+                                      i < review.rating
+                                        ? "text-amber-400 fill-amber-400"
+                                        : "text-gray-300"
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                              <span className="text-sm text-gray-500">
+                                {review.date}
+                              </span>
+                            </div>
                           </div>
                         </div>
+                        <p className="text-gray-600 mb-3">{review.comment}</p>
+                        <button className="flex items-center space-x-2 text-gray-600 hover:text-amber-600 transition-colors text-sm">
+                          <ThumbsUp className="w-4 h-4" />
+                          <span>Helpful ({review.helpful})</span>
+                        </button>
                       </div>
-                      <p className="text-gray-600 mb-3">{review.comment}</p>
-                      <button className="flex items-center space-x-2 text-gray-600 hover:text-amber-600 transition-colors text-sm">
-                        <ThumbsUp className="w-4 h-4" />
-                        <span>Helpful ({review.helpful})</span>
-                      </button>
+                    ))
+                  ) : (
+                    <div className="text-center py-12 bg-white rounded-lg border border-gray-100">
+                      <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-500">No reviews yet</p>
+                      <p className="text-sm text-gray-400">
+                        Be the first to share your thoughts!
+                      </p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </motion.div>
             )}
@@ -724,45 +799,48 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
         </div>
 
         {/* Related Products */}
-        <div>
-          <h2 className="text-3xl text-gray-900 mb-6">Related Products</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {relatedProducts.map((relProduct) => (
-              <div
-                key={relProduct.id}
-                className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all overflow-hidden border border-gray-100 hover:border-amber-200 cursor-pointer"
-              >
-                <div className="aspect-square bg-gray-100">
-                  <img
-                    src={relProduct.image}
-                    alt={relProduct.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="p-4">
-                  <h3 className="text-gray-900 mb-2 line-clamp-2">
-                    {relProduct.name}
-                  </h3>
-                  <div className="flex items-center space-x-1 mb-2">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`w-3 h-3 ${
-                          i < Math.floor(relProduct.rating)
-                            ? "text-amber-400 fill-amber-400"
-                            : "text-gray-300"
-                        }`}
-                      />
-                    ))}
+        {relatedProducts.length > 0 && (
+          <div>
+            <h2 className="text-3xl text-gray-900 mb-6">Related Products</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {relatedProducts.map((relProduct) => (
+                <div
+                  key={relProduct.id}
+                  onClick={() => onViewProduct && onViewProduct(relProduct)}
+                  className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all overflow-hidden border border-gray-100 hover:border-amber-200 cursor-pointer"
+                >
+                  <div className="aspect-square bg-gray-100">
+                    <img
+                      src={relProduct.image}
+                      alt={relProduct.name}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
-                  <p className="text-lg text-gray-900">
-                    NPR {relProduct.price.toLocaleString()}
-                  </p>
+                  <div className="p-4">
+                    <h3 className="text-gray-900 mb-2 line-clamp-2">
+                      {relProduct.name}
+                    </h3>
+                    <div className="flex items-center space-x-1 mb-2">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-3 h-3 ${
+                            i < Math.floor(relProduct.rating)
+                              ? "text-amber-400 fill-amber-400"
+                              : "text-gray-300"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-lg text-gray-900">
+                      NPR {relProduct.price.toLocaleString()}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Image Modal */}

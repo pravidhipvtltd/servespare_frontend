@@ -720,32 +720,32 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
               >
                 {/* Branch Header */}
                 <div className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-start flex-1">
-                      <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mr-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4 sm:gap-0">
+                    <div className="flex items-start flex-1 w-full">
+                      <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
                         <MapPin className="text-indigo-600" size={24} />
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <h3 className="font-bold text-gray-900 text-lg">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <h3 className="font-bold text-gray-900 text-lg break-words">
                             {branch.name}
                           </h3>
-                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded whitespace-nowrap">
                             {branch.code}
                           </span>
                         </div>
                         <div className="space-y-1 text-sm text-gray-600">
-                          <div className="flex items-center">
-                            <MapPin size={14} className="mr-2" />
+                          <div className="flex items-center break-all">
+                            <MapPin size={14} className="mr-2 flex-shrink-0" />
                             {branch.address}, {branch.city}
                           </div>
-                          <div className="flex items-center">
-                            <Phone size={14} className="mr-2" />
+                          <div className="flex items-center break-all">
+                            <Phone size={14} className="mr-2 flex-shrink-0" />
                             {branch.phone}
                           </div>
                           {branch.email && (
-                            <div className="flex items-center">
-                              <Mail size={14} className="mr-2" />
+                            <div className="flex items-center break-all">
+                              <Mail size={14} className="mr-2 flex-shrink-0" />
                               {branch.email}
                             </div>
                           )}
@@ -754,7 +754,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
                     </div>
 
                     {/* Branch Actions */}
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 self-end sm:self-auto mt-2 sm:mt-0">
                       <button
                         onClick={() => handleEditBranch(branch)}
                         className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -1298,7 +1298,7 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
   const [formData, setFormData] = useState({
     username: user?.username || user?.name || "",
     email: user?.email || "",
-    phone: user?.phone || "",
+    phone: formatPhoneWithCode(user?.phone),
     password: "",
     confirmPassword: "",
     role: (user?.role || "inventory_manager") as UserRole,
@@ -1307,6 +1307,15 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState("");
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handlePhoneInput(
+      e.target.value,
+      (phone) => setFormData({ ...formData, phone }),
+      setPhoneError,
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1520,32 +1529,40 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex justify-end">
-      <div className="w-full max-w-lg bg-slate-800 shadow-2xl overflow-y-auto">
-        <div className="p-6 border-b border-slate-700 flex items-center justify-between">
-          <div>
-            <h3 className="text-xl text-white">
-              {user ? "Edit User" : "Add New User"}
-            </h3>
-            <p className="text-sm text-slate-400 mt-1">Branch: {branch.name}</p>
+    <div className="fixed inset-0 bg-black/40 z-50 flex justify-end transition-opacity duration-300">
+      <div
+        className="w-full max-w-lg bg-white shadow-2xl overflow-y-auto transform transition-transform duration-300 ease-in-out border-l border-gray-100 h-full"
+        style={{ animation: "slideInRight 0.3s ease-out" }}
+      >
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-bold">
+                {user ? "Edit User" : "Add New User"}
+              </h3>
+              <p className="text-blue-100 text-sm mt-1">
+                Branch: {branch.name}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors text-white"
+            >
+              <X className="h-6 w-6" />
+            </button>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white">
-            <X className="h-6 w-6" />
-          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {error && (
-            <div className="bg-red-500/10 border border-red-500 rounded-lg p-3">
-              <p className="text-red-400 text-sm whitespace-pre-line">
-                {error}
-              </p>
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3">
+              <p className="text-sm whitespace-pre-line">{error}</p>
             </div>
           )}
 
-          <div>
-            <label className="block text-sm text-slate-400 mb-2">
-              Username *
+          <div className="transform transition-all duration-200 hover:translate-x-1">
+            <label className="block text-gray-700 mb-2 font-medium">
+              Username <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -1554,13 +1571,15 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
               onChange={(e) =>
                 setFormData({ ...formData, username: e.target.value })
               }
-              className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
               placeholder="Enter username"
             />
           </div>
 
-          <div>
-            <label className="block text-sm text-slate-400 mb-2">Email *</label>
+          <div className="transform transition-all duration-200 hover:translate-x-1">
+            <label className="block text-gray-700 mb-2 font-medium">
+              Email <span className="text-red-500">*</span>
+            </label>
             <input
               type="email"
               required
@@ -1569,27 +1588,41 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value })
               }
-              className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-100 disabled:text-gray-500"
               placeholder="Enter email"
             />
           </div>
 
-          <div>
-            <label className="block text-sm text-slate-400 mb-2">Phone</label>
+          <div className="transform transition-all duration-200 hover:translate-x-1">
+            <label className="block text-gray-700 mb-2 font-medium">
+              Phone
+            </label>
             <input
               type="tel"
+              required
               value={formData.phone}
-              onChange={(e) =>
-                setFormData({ ...formData, phone: e.target.value })
-              }
-              className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-              placeholder="+977"
+              onChange={handlePhoneChange}
+              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
+                phoneError ? "border-red-500" : "border-gray-300"
+              }`}
+              placeholder="+977 98XXXXXXXX"
             />
+            {phoneError && (
+              <p className="text-red-500 text-xs mt-1">{phoneError}</p>
+            )}
+            <p className="text-gray-500 text-xs mt-1">
+              Enter 10 digit number after +977
+            </p>
           </div>
 
-          <div>
-            <label className="block text-sm text-slate-400 mb-2">
-              Password {user ? "(leave blank to keep current)" : "*"}
+          <div className="transform transition-all duration-200 hover:translate-x-1">
+            <label className="block text-gray-700 mb-2 font-medium">
+              Password{" "}
+              {user ? (
+                "(leave blank to keep current)"
+              ) : (
+                <span className="text-red-500">*</span>
+              )}
             </label>
             <div className="relative">
               <input
@@ -1599,13 +1632,13 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
                 onChange={(e) =>
                   setFormData({ ...formData, password: e.target.value })
                 }
-                className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 placeholder={user ? "Enter new password" : "Enter password"}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
                 {showPassword ? (
                   <EyeOff className="h-4 w-4" />
@@ -1616,9 +1649,14 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm text-slate-400 mb-2">
-              Confirm Password {user ? "(leave blank to keep current)" : "*"}
+          <div className="transform transition-all duration-200 hover:translate-x-1">
+            <label className="block text-gray-700 mb-2 font-medium">
+              Confirm Password{" "}
+              {user ? (
+                "(leave blank to keep current)"
+              ) : (
+                <span className="text-red-500">*</span>
+              )}
             </label>
             <div className="relative">
               <input
@@ -1628,7 +1666,7 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
                 onChange={(e) =>
                   setFormData({ ...formData, confirmPassword: e.target.value })
                 }
-                className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 placeholder={
                   user ? "Re-enter new password" : "Confirm password"
                 }
@@ -1636,7 +1674,7 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
                 {showConfirmPassword ? (
                   <EyeOff className="h-4 w-4" />
@@ -1647,33 +1685,35 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm text-slate-400 mb-2">Role *</label>
+          <div className="transform transition-all duration-200 hover:translate-x-1">
+            <label className="block text-gray-700 mb-2 font-medium">
+              Role <span className="text-red-500">*</span>
+            </label>
             <select
               required
               value={formData.role}
               onChange={(e) =>
                 setFormData({ ...formData, role: e.target.value as UserRole })
               }
-              className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
             >
               <option value="inventory_manager">Inventory Manager</option>
               <option value="cashier">Cashier</option>
             </select>
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-6 sticky bottom-0 bg-white pb-4">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600"
+              className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200 transform hover:scale-105"
               disabled={isLoading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-lg hover:from-blue-600 hover:to-cyan-700 disabled:opacity-50"
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 transform hover:scale-105 shadow-lg disabled:opacity-50"
               disabled={isLoading}
             >
               {isLoading ? "Saving..." : user ? "Update" : "Create"}

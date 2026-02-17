@@ -270,10 +270,9 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
 
         requestBody = formDataToSend;
 
-        // Don't set Content-Type header when using FormData
-        // Browser will set it automatically with boundary
+  
       } else {
-        // Use JSON for text-only updates
+   
         requestHeaders["Content-Type"] = "application/json";
         requestBody = JSON.stringify(updatePayload);
         console.log("📡 [handleSave] Sending as JSON");

@@ -113,13 +113,13 @@ export const InventoryManagerDashboardNew: React.FC = () => {
 
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-      loadDashboardData(); // Refresh data every second for real-time sync
     }, 1000);
 
     return () => clearInterval(timer);
   }, []);
 
-  const loadDashboardData = () => {
+  const loadDashboardData = async () => {
+    // Keep local fetching for list items and fallback stats
     const products = getFromStorage("products", []).filter(
       (p: any) => p.workspaceId === currentUser?.workspaceId,
     );
@@ -136,18 +136,10 @@ export const InventoryManagerDashboardNew: React.FC = () => {
       (po: any) => po.workspaceId === currentUser?.workspaceId,
     );
 
-    // Calculate stats
+    // Calculate fallback/supplementary stats
     const lowStock = products.filter(
       (p: any) =>
         p.currentStock <= (p.minimumStock || 10) && p.currentStock > 0,
-    );
-
-    const outOfStock = products.filter((p: any) => p.currentStock === 0);
-
-    const totalStockValue = products.reduce(
-      (sum: number, p: any) =>
-        sum + (p.currentStock || 0) * (p.purchasePrice || 0),
-      0,
     );
 
     const today = new Date().toISOString().split("T")[0];
@@ -159,16 +151,57 @@ export const InventoryManagerDashboardNew: React.FC = () => {
       (po: any) => po.status === "pending" || po.status === "approved",
     ).length;
 
-    setStats({
+    // Default stats from local calculation
+    let newStats = {
       totalProducts: products.length,
       lowStockItems: lowStock.length,
-      outOfStock: outOfStock.length,
+      outOfStock: products.filter((p: any) => p.currentStock === 0).length,
       totalCategories: categories.length,
       totalBrands: brands.length,
-      totalStockValue,
+      totalStockValue: products.reduce(
+        (sum: number, p: any) =>
+          sum + (p.currentStock || 0) * (p.purchasePrice || 0),
+        0,
+      ),
       todayPurchases,
       pendingOrders,
-    });
+    };
+
+    try {
+      const token =
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("auth_token");
+
+      if (token) {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/dashboard/inventory-manager-stats/`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        if (response.ok) {
+          const apiData = await response.json();
+          // Merge API stats
+          if (apiData.stats) {
+            newStats = {
+              ...newStats,
+              totalProducts: apiData.stats.total_products,
+              lowStockItems: apiData.stats.low_stock_items,
+              outOfStock: apiData.stats.out_of_stock_items,
+              totalStockValue: apiData.stats.total_stock_value,
+            };
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching inventory dashboard stats:", error);
+    }
+
+    setStats(newStats);
 
     setLowStockItems(lowStock.slice(0, 10));
 

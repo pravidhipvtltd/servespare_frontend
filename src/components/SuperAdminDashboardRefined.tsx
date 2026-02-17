@@ -443,6 +443,12 @@ export const SuperAdminDashboardRefined: React.FC = () => {
             </h1>
             <p className="text-gray-400 text-xs">Super Admin Panel</p>
           </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden ml-auto p-2 text-gray-400 hover:text-white transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
         </div>
 
         {/* Navigation Menu */}

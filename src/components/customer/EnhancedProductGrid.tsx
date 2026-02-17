@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { Star, ShoppingCart, Heart, Eye, TrendingUp } from 'lucide-react';
-import { toast } from 'sonner';
+import React, { useState, useEffect } from "react";
+import { motion } from "motion/react";
+import { Star, ShoppingCart, Heart, Eye, TrendingUp } from "lucide-react";
+import { toast } from "sonner";
 
 interface Product {
   id: string;
@@ -14,6 +14,12 @@ interface Product {
   image: string;
   sold?: number;
   badge?: string;
+  description?: string;
+  warranty?: string;
+  partNumber?: string;
+  model?: string;
+  vehicleBikeDetails?: string;
+  inStock?: boolean;
 }
 
 interface EnhancedProductGridProps {
@@ -31,17 +37,19 @@ export const EnhancedProductGrid: React.FC<EnhancedProductGridProps> = ({
   products,
   onAddToCart,
   onViewProduct,
-  showViewAll = true
+  showViewAll = true,
 }) => {
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
-  const [wishlistedItems, setWishlistedItems] = useState<Record<string, string>>({});
+  const [wishlistedItems, setWishlistedItems] = useState<
+    Record<string, string>
+  >({});
   const [loadingWishlist, setLoadingWishlist] = useState<string | null>(null);
 
   // Fetch user's wishlist on mount
   useEffect(() => {
     const fetchWishlist = async () => {
       try {
-        const token = localStorage.getItem('accessToken');
+        const token = localStorage.getItem("accessToken");
         if (!token) return;
 
         const response = await fetch(
@@ -49,25 +57,24 @@ export const EnhancedProductGrid: React.FC<EnhancedProductGridProps> = ({
           {
             headers: {
               Authorization: `Bearer ${token}`,
-              
             },
-          }
+          },
         );
 
         if (response.ok) {
           const data = await response.json();
           const favorites = data.results || data;
           const wishlistMap: Record<string, string> = {};
-          
+
           favorites.forEach((fav: any) => {
             const inventoryId = String(fav.inventory?.id || fav.inventory_id);
             wishlistMap[inventoryId] = String(fav.id);
           });
-          
+
           setWishlistedItems(wishlistMap);
         }
       } catch (error) {
-        console.error('Error fetching wishlist:', error);
+        console.error("Error fetching wishlist:", error);
       }
     };
 
@@ -78,12 +85,15 @@ export const EnhancedProductGrid: React.FC<EnhancedProductGridProps> = ({
     return Math.round(((original - current) / original) * 100);
   };
 
-  const handleWishlistToggle = async (product: Product, e: React.MouseEvent) => {
+  const handleWishlistToggle = async (
+    product: Product,
+    e: React.MouseEvent,
+  ) => {
     e.stopPropagation();
-    
-    const token = localStorage.getItem('accessToken');
+
+    const token = localStorage.getItem("accessToken");
     if (!token) {
-      toast.error('Please login to add items to wishlist');
+      toast.error("Please login to add items to wishlist");
       return;
     }
 
@@ -97,53 +107,51 @@ export const EnhancedProductGrid: React.FC<EnhancedProductGridProps> = ({
         const response = await fetch(
           `${import.meta.env.VITE_API_BASE_URL}/carts/favorites/${isWishlisted}/`,
           {
-            method: 'DELETE',
+            method: "DELETE",
             headers: {
               Authorization: `Bearer ${token}`,
-              
             },
-          }
+          },
         );
 
         if (response.ok) {
           const newWishlist = { ...wishlistedItems };
           delete newWishlist[product.id];
           setWishlistedItems(newWishlist);
-          toast.success('Removed from wishlist');
+          toast.success("Removed from wishlist");
         } else {
           const error = await response.json().catch(() => ({}));
-          toast.error(error.detail || 'Failed to remove from wishlist');
+          toast.error(error.detail || "Failed to remove from wishlist");
         }
       } else {
         // Add to wishlist
         const response = await fetch(
           `${import.meta.env.VITE_API_BASE_URL}/carts/favorites/add/`,
           {
-            method: 'POST',
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
-              
             },
             body: JSON.stringify({
               inventory_id: parseInt(product.id, 10),
             }),
-          }
+          },
         );
 
         if (response.ok) {
           const data = await response.json();
           const favoriteId = String(data.data?.id || data.id);
           setWishlistedItems({ ...wishlistedItems, [product.id]: favoriteId });
-          toast.success(data.message || 'Added to wishlist');
+          toast.success(data.message || "Added to wishlist");
         } else {
           const error = await response.json().catch(() => ({}));
-          toast.error(error.detail || 'Failed to add to wishlist');
+          toast.error(error.detail || "Failed to add to wishlist");
         }
       }
     } catch (error) {
-      console.error('Error toggling wishlist:', error);
-      toast.error('Failed to update wishlist');
+      console.error("Error toggling wishlist:", error);
+      toast.error("Failed to update wishlist");
     } finally {
       setLoadingWishlist(null);
     }
@@ -158,9 +166,7 @@ export const EnhancedProductGrid: React.FC<EnhancedProductGridProps> = ({
             <TrendingUp className="w-6 h-6 text-orange-500" />
             <span>{title}</span>
           </h2>
-          {subtitle && (
-            <p className="text-gray-600 mt-1">{subtitle}</p>
-          )}
+          {subtitle && <p className="text-gray-600 mt-1">{subtitle}</p>}
         </div>
         {showViewAll && (
           <button className="text-orange-500 font-semibold hover:text-orange-600 transition-colors">
@@ -184,17 +190,18 @@ export const EnhancedProductGrid: React.FC<EnhancedProductGridProps> = ({
           >
             {/* Product Image */}
             <div className="relative aspect-square overflow-hidden bg-gray-50 rounded-t-lg">
-              <div 
+              <div
                 className="absolute inset-0 bg-cover bg-center group-hover:scale-110 transition-transform duration-500"
                 style={{ backgroundImage: `url(${product.image})` }}
               />
-              
+
               {/* Discount Badge */}
-              {product.originalPrice && product.originalPrice > product.price && (
-                <div className="absolute top-2 left-2 bg-orange-500 text-white px-2 py-1 rounded text-xs font-bold shadow-lg">
-                  -{calculateDiscount(product.originalPrice, product.price)}%
-                </div>
-              )}
+              {product.originalPrice &&
+                product.originalPrice > product.price && (
+                  <div className="absolute top-2 left-2 bg-orange-500 text-white px-2 py-1 rounded text-xs font-bold shadow-lg">
+                    -{calculateDiscount(product.originalPrice, product.price)}%
+                  </div>
+                )}
 
               {/* Badge */}
               {product.badge && (
@@ -204,9 +211,13 @@ export const EnhancedProductGrid: React.FC<EnhancedProductGridProps> = ({
               )}
 
               {/* Quick Action Buttons */}
-              <div className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-3 transform transition-transform duration-300 ${
-                hoveredProduct === product.id ? 'translate-y-0' : 'translate-y-full'
-              }`}>
+              <div
+                className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-3 transform transition-transform duration-300 ${
+                  hoveredProduct === product.id
+                    ? "translate-y-0"
+                    : "translate-y-full"
+                }`}
+              >
                 <div className="flex items-center justify-center space-x-2">
                   <motion.button
                     whileHover={{ scale: 1.1 }}
@@ -215,12 +226,18 @@ export const EnhancedProductGrid: React.FC<EnhancedProductGridProps> = ({
                     disabled={loadingWishlist === product.id}
                     className={`p-2 rounded-full transition-colors ${
                       wishlistedItems[product.id]
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-white text-gray-900 hover:bg-orange-500 hover:text-white'
-                    } ${loadingWishlist === product.id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    title={wishlistedItems[product.id] ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                        ? "bg-orange-500 text-white"
+                        : "bg-white text-gray-900 hover:bg-orange-500 hover:text-white"
+                    } ${loadingWishlist === product.id ? "opacity-50 cursor-not-allowed" : ""}`}
+                    title={
+                      wishlistedItems[product.id]
+                        ? "Remove from Wishlist"
+                        : "Add to Wishlist"
+                    }
                   >
-                    <Heart className={`w-4 h-4 ${wishlistedItems[product.id] ? 'fill-current' : ''}`} />
+                    <Heart
+                      className={`w-4 h-4 ${wishlistedItems[product.id] ? "fill-current" : ""}`}
+                    />
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.1 }}
@@ -253,13 +270,15 @@ export const EnhancedProductGrid: React.FC<EnhancedProductGridProps> = ({
                       key={i}
                       className={`w-3 h-3 ${
                         i < Math.floor(product.rating)
-                          ? 'text-yellow-400 fill-yellow-400'
-                          : 'text-gray-300'
+                          ? "text-yellow-400 fill-yellow-400"
+                          : "text-gray-300"
                       }`}
                     />
                   ))}
                 </div>
-                <span className="text-xs text-gray-500">({product.reviews})</span>
+                <span className="text-xs text-gray-500">
+                  ({product.reviews})
+                </span>
               </div>
 
               {/* Price */}
@@ -269,11 +288,12 @@ export const EnhancedProductGrid: React.FC<EnhancedProductGridProps> = ({
                     NPR {product.price.toLocaleString()}
                   </span>
                 </div>
-                {product.originalPrice && product.originalPrice > product.price && (
-                  <span className="text-xs text-gray-400 line-through">
-                    NPR {product.originalPrice.toLocaleString()}
-                  </span>
-                )}
+                {product.originalPrice &&
+                  product.originalPrice > product.price && (
+                    <span className="text-xs text-gray-400 line-through">
+                      NPR {product.originalPrice.toLocaleString()}
+                    </span>
+                  )}
               </div>
 
               {/* Sold Count */}

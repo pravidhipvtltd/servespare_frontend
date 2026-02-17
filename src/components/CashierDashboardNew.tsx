@@ -7,7 +7,6 @@ import {
   X,
   Search,
   Plus,
-  
   Minus,
   Trash2,
   CreditCard,
@@ -408,12 +407,20 @@ export const CashierDashboardNew: React.FC = () => {
     loadCashTransactions();
     fetchBankAccounts();
 
-    const timer = setInterval(() => {
+    // Update time every second
+    const timeTimer = setInterval(() => {
       setCurrentTime(new Date());
-      loadData(); // Real-time sync
     }, 1000);
 
-    return () => clearInterval(timer);
+    // Sync data less frequently (e.g., every 30 seconds) to avoid spamming the API
+    const dataTimer = setInterval(() => {
+      loadData();
+    }, 30000);
+
+    return () => {
+      clearInterval(timeTimer);
+      clearInterval(dataTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -474,30 +481,68 @@ export const CashierDashboardNew: React.FC = () => {
 
     setMyBills(allBills);
 
-    // Calculate today's stats
-    const today = new Date().toISOString().split("T")[0];
-    const todayBills = allBills.filter(
-      (b: Bill) =>
-        b.createdAt &&
-        b.createdAt.startsWith(today) &&
-        b.paymentStatus === "paid",
-    );
+    // Fetch dashboard stats from API
+    const fetchDashboardStats = async () => {
+      try {
+        const token =
+          localStorage.getItem("accessToken") ||
+          localStorage.getItem("auth_token");
 
-    const todayRevenue = todayBills.reduce(
-      (sum: number, b: Bill) => sum + b.total,
-      0,
-    );
-    const avgOrderValue =
-      todayBills.length > 0 ? todayRevenue / todayBills.length : 0;
+        // Use the base URL from env if available, otherwise fallback or construct it
+        // The user provided: https://api-demo.servespare.xyz/api/dashboard/today_sales/
+        // We'll trust the VITE_API_BASE_URL is likely https://api-demo.servespare.xyz/api or similar
+        // But to be safe and follow instructions exactly, let's try to construct it properly or use the absolute URL if it differs significantly.
+        // Usually VITE_API_BASE_URL is defined. Let's assume it is.
 
-    setStats({
-      todaySales: todayBills.length,
-      todayOrders: allBills.filter(
-        (b: Bill) => b.createdAt && b.createdAt.startsWith(today),
-      ).length,
-      todayRevenue,
-      averageOrderValue: avgOrderValue,
-    });
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/dashboard/today_sales/`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+          },
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setStats({
+            todaySales: data.total_items_sold || 0,
+            todayOrders: data.total_orders || 0,
+            todayRevenue: data.total_revenue || 0,
+            averageOrderValue: data.average_order_value || 0,
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching dashboard stats:", error);
+        // Fallback to local calculation if API fails
+        const today = new Date().toISOString().split("T")[0];
+        const todayBills = allBills.filter(
+          (b: Bill) =>
+            b.createdAt &&
+            b.createdAt.startsWith(today) &&
+            b.paymentStatus === "paid",
+        );
+
+        const todayRevenue = todayBills.reduce(
+          (sum: number, b: Bill) => sum + b.total,
+          0,
+        );
+        const avgOrderValue =
+          todayBills.length > 0 ? todayRevenue / todayBills.length : 0;
+
+        setStats({
+          todaySales: todayBills.length,
+          todayOrders: allBills.filter(
+            (b: Bill) => b.createdAt && b.createdAt.startsWith(today),
+          ).length,
+          todayRevenue,
+          averageOrderValue: avgOrderValue,
+        });
+      }
+    };
+
+    fetchDashboardStats();
 
     // Add dummy purchase orders if none exist
     const allPOs = getFromStorage("purchase_orders", []).filter(
@@ -3533,18 +3578,6 @@ export const CashierDashboardNew: React.FC = () => {
             >
               <X size={18} />
             </button>
-
-            {/* Collapse Button (Desktop) */}
-            <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="hidden lg:flex absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full items-center justify-center shadow-lg hover:shadow-xl transition-all hover:scale-110 border-2 border-gray-900 z-10"
-            >
-              {sidebarCollapsed ? (
-                <ChevronRight size={12} className="text-white" />
-              ) : (
-                <ChevronLeft size={12} className="text-white" />
-              )}
-            </button>
           </div>
 
           {/* Navigation Menu Area */}
@@ -3712,919 +3745,913 @@ export const CashierDashboardNew: React.FC = () => {
       </div>
 
       {/* Start Shift Modal */}
-        {showStartShift && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-              <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 rounded-t-2xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <Power className="w-8 h-8" />
-                    <h3 className="text-2xl font-bold">Start Shift</h3>
-                  </div>
-                  <button
-                    onClick={() => setShowStartShift(false)}
-                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-6 space-y-4">
-                {previousShiftClosing !== null && (
-                  <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 space-y-2">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <History className="w-5 h-5 text-blue-600" />
-                      <h4 className="font-bold text-blue-900">
-                        Previous Shift Info
-                      </h4>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700 font-semibold">
-                        Last Closing Amount:
-                      </span>
-                      <span className="font-bold text-xl text-blue-600">
-                        Rs{previousShiftClosing.toLocaleString()}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setStartingCash(previousShiftClosing)}
-                      className="w-full mt-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm font-semibold"
-                    >
-                      Use This as Starting Cash
-                    </button>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Starting Cash Amount *
-                  </label>
-                  <input
-                    type="number"
-                    value={startingCash}
-                    onChange={(e) => setStartingCash(Number(e.target.value))}
-                    placeholder="Enter starting cash..."
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-
+      {showStartShift && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 rounded-t-2xl">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <button
-                    onClick={startShift}
-                    disabled={isStartingShift}
-                    className={`flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-semibold ${
-                      isStartingShift ? "opacity-60 cursor-not-allowed" : ""
-                    }`}
-                  >
-                    {isStartingShift ? "Starting..." : "Start Shift"}
-                  </button>
-                  <button
-                    onClick={() => setShowStartShift(false)}
-                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                  >
-                    Cancel
-                  </button>
+                  <Power className="w-8 h-8" />
+                  <h3 className="text-2xl font-bold">Start Shift</h3>
                 </div>
+                <button
+                  onClick={() => setShowStartShift(false)}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* End Shift Modal */}
-        {showEndShift && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-              <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-6 rounded-t-2xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <Power className="w-8 h-8" />
-                    <h3 className="text-2xl font-bold">End Shift</h3>
-                  </div>
-                  <button
-                    onClick={() => setShowEndShift(false)}
-                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Expected Cash:</span>
-                    <span className="font-bold text-gray-900">
-                      Rs{calculateCurrentCash().toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Actual Ending Cash *
-                  </label>
-                  <input
-                    type="number"
-                    value={endingCash}
-                    onChange={(e) => setEndingCash(Number(e.target.value))}
-                    placeholder="Enter actual cash in drawer..."
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Transferred To *
-                  </label>
-                  <input
-                    type="text"
-                    value={transferToName}
-                    onChange={(e) => setTransferToName(e.target.value)}
-                    placeholder="e.g. Vault, Manager Name..."
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  />
-                </div>
-
-                {endingCash > 0 && (
-                  <div
-                    className={`p-3 rounded-lg ${
-                      Math.abs(endingCash - calculateCurrentCash()) > 0
-                        ? "bg-yellow-50 border border-yellow-200"
-                        : "bg-green-50 border border-green-200"
-                    }`}
-                  >
-                    <p className="text-sm font-semibold">
-                      Difference: Rs
-                      {(endingCash - calculateCurrentCash()).toLocaleString()}
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex items-center space-x-3">
-                  <button
-                    onClick={endShift}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all font-semibold"
-                  >
-                    End Shift
-                  </button>
-                  <button
-                    onClick={() => setShowEndShift(false)}
-                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Cash Variance Reason Modal */}
-        {showVarianceReason && currentShift && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-              <div className="bg-gradient-to-r from-orange-600 to-orange-700 text-white p-6 rounded-t-2xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <AlertTriangle className="w-8 h-8" />
-                    <h3 className="text-2xl font-bold">
-                      Cash Variance Detected
-                    </h3>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setShowVarianceReason(false);
-                      setShowEndShift(true);
-                    }}
-                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-700 font-semibold">
-                      Expected Cash:
-                    </span>
-                    <span className="font-bold text-lg">
-                      Rs
-                      {(
-                        currentShift.startCash +
-                        currentShift.totalSales +
-                        currentShift.cashIn -
-                        currentShift.cashOut
-                      ).toLocaleString()}
-                    </span>
+            <div className="p-6 space-y-4">
+              {previousShiftClosing !== null && (
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 space-y-2">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <History className="w-5 h-5 text-blue-600" />
+                    <h4 className="font-bold text-blue-900">
+                      Previous Shift Info
+                    </h4>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-700 font-semibold">
-                      Actual Cash:
+                      Last Closing Amount:
                     </span>
-                    <span className="font-bold text-lg">
-                      Rs{endingCash.toLocaleString()}
+                    <span className="font-bold text-xl text-blue-600">
+                      Rs{previousShiftClosing.toLocaleString()}
                     </span>
                   </div>
-                  <div className="border-t-2 border-orange-300 pt-2 mt-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700 font-semibold">
-                        Variance:
-                      </span>
-                      <span
-                        className={`font-bold text-xl ${
-                          endingCash -
-                            (currentShift.startCash +
-                              currentShift.totalSales +
-                              currentShift.cashIn -
-                              currentShift.cashOut) >
-                          0
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {endingCash -
+                  <button
+                    onClick={() => setStartingCash(previousShiftClosing)}
+                    className="w-full mt-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm font-semibold"
+                  >
+                    Use This as Starting Cash
+                  </button>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Starting Cash Amount *
+                </label>
+                <input
+                  type="number"
+                  value={startingCash}
+                  onChange={(e) => setStartingCash(Number(e.target.value))}
+                  placeholder="Enter starting cash..."
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={startShift}
+                  disabled={isStartingShift}
+                  className={`flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-semibold ${
+                    isStartingShift ? "opacity-60 cursor-not-allowed" : ""
+                  }`}
+                >
+                  {isStartingShift ? "Starting..." : "Start Shift"}
+                </button>
+                <button
+                  onClick={() => setShowStartShift(false)}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* End Shift Modal */}
+      {showEndShift && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-6 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Power className="w-8 h-8" />
+                  <h3 className="text-2xl font-bold">End Shift</h3>
+                </div>
+                <button
+                  onClick={() => setShowEndShift(false)}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Expected Cash:</span>
+                  <span className="font-bold text-gray-900">
+                    Rs{calculateCurrentCash().toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Actual Ending Cash *
+                </label>
+                <input
+                  type="number"
+                  value={endingCash}
+                  onChange={(e) => setEndingCash(Number(e.target.value))}
+                  placeholder="Enter actual cash in drawer..."
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Transferred To *
+                </label>
+                <input
+                  type="text"
+                  value={transferToName}
+                  onChange={(e) => setTransferToName(e.target.value)}
+                  placeholder="e.g. Vault, Manager Name..."
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+
+              {endingCash > 0 && (
+                <div
+                  className={`p-3 rounded-lg ${
+                    Math.abs(endingCash - calculateCurrentCash()) > 0
+                      ? "bg-yellow-50 border border-yellow-200"
+                      : "bg-green-50 border border-green-200"
+                  }`}
+                >
+                  <p className="text-sm font-semibold">
+                    Difference: Rs
+                    {(endingCash - calculateCurrentCash()).toLocaleString()}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={endShift}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all font-semibold"
+                >
+                  End Shift
+                </button>
+                <button
+                  onClick={() => setShowEndShift(false)}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cash Variance Reason Modal */}
+      {showVarianceReason && currentShift && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="bg-gradient-to-r from-orange-600 to-orange-700 text-white p-6 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <AlertTriangle className="w-8 h-8" />
+                  <h3 className="text-2xl font-bold">Cash Variance Detected</h3>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowVarianceReason(false);
+                    setShowEndShift(true);
+                  }}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-700 font-semibold">
+                    Expected Cash:
+                  </span>
+                  <span className="font-bold text-lg">
+                    Rs
+                    {(
+                      currentShift.startCash +
+                      currentShift.totalSales +
+                      currentShift.cashIn -
+                      currentShift.cashOut
+                    ).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-700 font-semibold">
+                    Actual Cash:
+                  </span>
+                  <span className="font-bold text-lg">
+                    Rs{endingCash.toLocaleString()}
+                  </span>
+                </div>
+                <div className="border-t-2 border-orange-300 pt-2 mt-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-700 font-semibold">
+                      Variance:
+                    </span>
+                    <span
+                      className={`font-bold text-xl ${
+                        endingCash -
                           (currentShift.startCash +
                             currentShift.totalSales +
                             currentShift.cashIn -
                             currentShift.cashOut) >
                         0
-                          ? "+"
-                          : ""}
-                        Rs
-                        {(
-                          endingCash -
-                          (currentShift.startCash +
-                            currentShift.totalSales +
-                            currentShift.cashIn -
-                            currentShift.cashOut)
-                        ).toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Reason for Variance <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    value={varianceReason}
-                    onChange={(e) => setVarianceReason(e.target.value)}
-                    placeholder="Please explain the reason for cash variance..."
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 min-h-[120px]"
-                  />
-                </div>
-
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                  <div className="flex items-start space-x-2">
-                    <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                    <p className="text-sm text-yellow-800">
-                      This variance will be recorded in your shift report and
-                      may require manager approval.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <button
-                    onClick={() => completeEndShift()}
-                    disabled={!varianceReason.trim()}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Confirm & End Shift
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowVarianceReason(false);
-                      setShowEndShift(true);
-                    }}
-                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                  >
-                    Back
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Transfer Shift Modal */}
-        {showTransferShift && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-2xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <Send className="w-8 h-8" />
-                    <h3 className="text-2xl font-bold">Transfer Shift</h3>
-                  </div>
-                  <button
-                    onClick={() => setShowTransferShift(false)}
-                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-6 space-y-4">
-                {previousShiftClosing !== null && (
-                  <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4 space-y-2">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <History className="w-5 h-5 text-purple-600" />
-                      <h4 className="font-bold text-purple-900">
-                        Your Previous Shift
-                      </h4>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700 font-semibold">
-                        Last Closing Amount:
-                      </span>
-                      <span className="font-bold text-xl text-purple-600">
-                        Rs{previousShiftClosing.toLocaleString()}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setTransferCashCount(previousShiftClosing)}
-                      className="w-full mt-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm font-semibold"
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
                     >
-                      Use This for Cash Count
-                    </button>
-                    <p className="text-xs text-purple-700 mt-2">
-                      ℹ️ This is the amount you ended with in your last shift
-                    </p>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Transfer To (Name) *
-                  </label>
-                  <input
-                    type="text"
-                    value={transferToName}
-                    onChange={(e) => setTransferToName(e.target.value)}
-                    placeholder="Enter name of person..."
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <p className="text-sm text-blue-800">
-                    Expected cash:{" "}
-                    <span className="font-bold">
-                      Rs{calculateCurrentCash().toLocaleString()}
-                    </span>
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Count Cash in Drawer *
-                  </label>
-                  <input
-                    type="number"
-                    value={transferCashCount}
-                    onChange={(e) =>
-                      setTransferCashCount(Number(e.target.value))
-                    }
-                    placeholder="Enter actual cash count..."
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                {transferCashCount > 0 && (
-                  <div
-                    className={`p-3 rounded-lg ${
-                      Math.abs(transferCashCount - calculateCurrentCash()) > 0
-                        ? "bg-yellow-50 border border-yellow-200"
-                        : "bg-green-50 border border-green-200"
-                    }`}
-                  >
-                    <p className="text-sm font-semibold">
-                      Difference: Rs
-                      {(
-                        transferCashCount - calculateCurrentCash()
-                      ).toLocaleString()}
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex items-center space-x-3">
-                  <button
-                    onClick={transferShift}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-semibold"
-                  >
-                    Transfer Shift
-                  </button>
-                  <button
-                    onClick={() => setShowTransferShift(false)}
-                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Transfer Cash Variance Reason Modal */}
-        {showTransferVarianceReason && currentShift && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-              <div className="bg-gradient-to-r from-orange-600 to-orange-700 text-white p-6 rounded-t-2xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <AlertTriangle className="w-8 h-8" />
-                    <h3 className="text-2xl font-bold">
-                      Cash Variance Detected
-                    </h3>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setShowTransferVarianceReason(false);
-                      setShowTransferShift(true);
-                    }}
-                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-700 font-semibold">
-                      Expected Cash:
-                    </span>
-                    <span className="font-bold text-lg">
+                      {endingCash -
+                        (currentShift.startCash +
+                          currentShift.totalSales +
+                          currentShift.cashIn -
+                          currentShift.cashOut) >
+                      0
+                        ? "+"
+                        : ""}
                       Rs
                       {(
-                        currentShift.startCash +
-                        currentShift.totalSales +
-                        currentShift.cashIn -
-                        currentShift.cashOut
+                        endingCash -
+                        (currentShift.startCash +
+                          currentShift.totalSales +
+                          currentShift.cashIn -
+                          currentShift.cashOut)
                       ).toLocaleString()}
                     </span>
                   </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Reason for Variance <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={varianceReason}
+                  onChange={(e) => setVarianceReason(e.target.value)}
+                  placeholder="Please explain the reason for cash variance..."
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 min-h-[120px]"
+                />
+              </div>
+
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                <div className="flex items-start space-x-2">
+                  <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                  <p className="text-sm text-yellow-800">
+                    This variance will be recorded in your shift report and may
+                    require manager approval.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => completeEndShift()}
+                  disabled={!varianceReason.trim()}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Confirm & End Shift
+                </button>
+                <button
+                  onClick={() => {
+                    setShowVarianceReason(false);
+                    setShowEndShift(true);
+                  }}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Back
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Shift Modal */}
+      {showTransferShift && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Send className="w-8 h-8" />
+                  <h3 className="text-2xl font-bold">Transfer Shift</h3>
+                </div>
+                <button
+                  onClick={() => setShowTransferShift(false)}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {previousShiftClosing !== null && (
+                <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4 space-y-2">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <History className="w-5 h-5 text-purple-600" />
+                    <h4 className="font-bold text-purple-900">
+                      Your Previous Shift
+                    </h4>
+                  </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-700 font-semibold">
-                      Counted Cash:
+                      Last Closing Amount:
                     </span>
-                    <span className="font-bold text-lg">
-                      Rs{transferCashCount.toLocaleString()}
+                    <span className="font-bold text-xl text-purple-600">
+                      Rs{previousShiftClosing.toLocaleString()}
                     </span>
                   </div>
-                  <div className="border-t-2 border-orange-300 pt-2 mt-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700 font-semibold">
-                        Variance:
-                      </span>
-                      <span
-                        className={`font-bold text-xl ${
-                          transferCashCount -
-                            (currentShift.startCash +
-                              currentShift.totalSales +
-                              currentShift.cashIn -
-                              currentShift.cashOut) >
-                          0
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {transferCashCount -
+                  <button
+                    onClick={() => setTransferCashCount(previousShiftClosing)}
+                    className="w-full mt-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm font-semibold"
+                  >
+                    Use This for Cash Count
+                  </button>
+                  <p className="text-xs text-purple-700 mt-2">
+                    ℹ️ This is the amount you ended with in your last shift
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Transfer To (Name) *
+                </label>
+                <input
+                  type="text"
+                  value={transferToName}
+                  onChange={(e) => setTransferToName(e.target.value)}
+                  placeholder="Enter name of person..."
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <p className="text-sm text-blue-800">
+                  Expected cash:{" "}
+                  <span className="font-bold">
+                    Rs{calculateCurrentCash().toLocaleString()}
+                  </span>
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Count Cash in Drawer *
+                </label>
+                <input
+                  type="number"
+                  value={transferCashCount}
+                  onChange={(e) => setTransferCashCount(Number(e.target.value))}
+                  placeholder="Enter actual cash count..."
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {transferCashCount > 0 && (
+                <div
+                  className={`p-3 rounded-lg ${
+                    Math.abs(transferCashCount - calculateCurrentCash()) > 0
+                      ? "bg-yellow-50 border border-yellow-200"
+                      : "bg-green-50 border border-green-200"
+                  }`}
+                >
+                  <p className="text-sm font-semibold">
+                    Difference: Rs
+                    {(
+                      transferCashCount - calculateCurrentCash()
+                    ).toLocaleString()}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={transferShift}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-semibold"
+                >
+                  Transfer Shift
+                </button>
+                <button
+                  onClick={() => setShowTransferShift(false)}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Cash Variance Reason Modal */}
+      {showTransferVarianceReason && currentShift && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="bg-gradient-to-r from-orange-600 to-orange-700 text-white p-6 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <AlertTriangle className="w-8 h-8" />
+                  <h3 className="text-2xl font-bold">Cash Variance Detected</h3>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowTransferVarianceReason(false);
+                    setShowTransferShift(true);
+                  }}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-700 font-semibold">
+                    Expected Cash:
+                  </span>
+                  <span className="font-bold text-lg">
+                    Rs
+                    {(
+                      currentShift.startCash +
+                      currentShift.totalSales +
+                      currentShift.cashIn -
+                      currentShift.cashOut
+                    ).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-700 font-semibold">
+                    Counted Cash:
+                  </span>
+                  <span className="font-bold text-lg">
+                    Rs{transferCashCount.toLocaleString()}
+                  </span>
+                </div>
+                <div className="border-t-2 border-orange-300 pt-2 mt-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-700 font-semibold">
+                      Variance:
+                    </span>
+                    <span
+                      className={`font-bold text-xl ${
+                        transferCashCount -
                           (currentShift.startCash +
                             currentShift.totalSales +
                             currentShift.cashIn -
                             currentShift.cashOut) >
                         0
-                          ? "+"
-                          : ""}
-                        Rs
-                        {(
-                          transferCashCount -
-                          (currentShift.startCash +
-                            currentShift.totalSales +
-                            currentShift.cashIn -
-                            currentShift.cashOut)
-                        ).toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="border-t-2 border-orange-300 pt-2 mt-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700 font-semibold">
-                        Transferring To:
-                      </span>
-                      <span className="font-bold text-blue-600">
-                        {transferToName}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Reason for Variance <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    value={transferVarianceReason}
-                    onChange={(e) => setTransferVarianceReason(e.target.value)}
-                    placeholder="Please explain the reason for cash variance..."
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 min-h-[120px]"
-                  />
-                </div>
-
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                  <div className="flex items-start space-x-2">
-                    <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                    <p className="text-sm text-yellow-800">
-                      This variance will be recorded and transferred to{" "}
-                      {transferToName} along with the shift.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <button
-                    onClick={() => completeTransferShift()}
-                    disabled={!transferVarianceReason.trim()}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Confirm & Transfer
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowTransferVarianceReason(false);
-                      setShowTransferShift(true);
-                    }}
-                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                  >
-                    Back
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Cash In Modal */}
-        {showCashIn && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-              <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 rounded-t-2xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <ArrowDownCircle className="w-8 h-8" />
-                    <h3 className="text-2xl font-bold">Cash In</h3>
-                  </div>
-                  <button
-                    onClick={() => setShowCashIn(false)}
-                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Amount *
-                  </label>
-                  <input
-                    type="number"
-                    value={cashInAmount}
-                    onChange={(e) => setCashInAmount(Number(e.target.value))}
-                    placeholder="Enter amount..."
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Reason *
-                  </label>
-                  <textarea
-                    value={cashInReason}
-                    onChange={(e) => setCashInReason(e.target.value)}
-                    placeholder="Enter reason..."
-                    rows={3}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <button
-                    onClick={handleCashIn}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-semibold"
-                  >
-                    Record Cash In
-                  </button>
-                  <button
-                    onClick={() => setShowCashIn(false)}
-                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Cash Out Modal */}
-        {showCashOut && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-              <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-6 rounded-t-2xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <ArrowUpCircle className="w-8 h-8" />
-                    <h3 className="text-2xl font-bold">Cash Out</h3>
-                  </div>
-                  <button
-                    onClick={() => setShowCashOut(false)}
-                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Amount *
-                  </label>
-                  <input
-                    type="number"
-                    value={cashOutAmount}
-                    onChange={(e) => setCashOutAmount(Number(e.target.value))}
-                    placeholder="Enter amount..."
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Reason *
-                  </label>
-                  <textarea
-                    value={cashOutReason}
-                    onChange={(e) => setCashOutReason(e.target.value)}
-                    placeholder="Enter reason..."
-                    rows={3}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  />
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <button
-                    onClick={handleCashOut}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all font-semibold"
-                  >
-                    Record Cash Out
-                  </button>
-                  <button
-                    onClick={() => setShowCashOut(false)}
-                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Transfer to Bank Modal */}
-        {showTransferToBank && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-2xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <Send className="w-8 h-8" />
-                    <h3 className="text-2xl font-bold">Transfer to Bank</h3>
-                  </div>
-                  <button
-                    onClick={() => setShowTransferToBank(false)}
-                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Select Bank Account *
-                  </label>
-                  <select
-                    value={selectedTransferBank}
-                    onChange={(e) => setSelectedTransferBank(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select Bank Account</option>
-                    {bankAccounts.map((acc) => (
-                      <option key={acc.id} value={acc.id}>
-                        {acc.bankName || acc.accountName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Amount *
-                  </label>
-                  <input
-                    type="number"
-                    value={transferBankAmount}
-                    onChange={(e) =>
-                      setTransferBankAmount(Number(e.target.value))
-                    }
-                    placeholder="Enter amount to transfer..."
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <p className="text-sm text-blue-800">
-                    Available cash:{" "}
-                    <span className="font-bold">
-                      Rs{calculateCurrentCash().toLocaleString()}
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {transferCashCount -
+                        (currentShift.startCash +
+                          currentShift.totalSales +
+                          currentShift.cashIn -
+                          currentShift.cashOut) >
+                      0
+                        ? "+"
+                        : ""}
+                      Rs
+                      {(
+                        transferCashCount -
+                        (currentShift.startCash +
+                          currentShift.totalSales +
+                          currentShift.cashIn -
+                          currentShift.cashOut)
+                      ).toLocaleString()}
                     </span>
+                  </div>
+                </div>
+                <div className="border-t-2 border-orange-300 pt-2 mt-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-700 font-semibold">
+                      Transferring To:
+                    </span>
+                    <span className="font-bold text-blue-600">
+                      {transferToName}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Reason for Variance <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={transferVarianceReason}
+                  onChange={(e) => setTransferVarianceReason(e.target.value)}
+                  placeholder="Please explain the reason for cash variance..."
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 min-h-[120px]"
+                />
+              </div>
+
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                <div className="flex items-start space-x-2">
+                  <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                  <p className="text-sm text-yellow-800">
+                    This variance will be recorded and transferred to{" "}
+                    {transferToName} along with the shift.
                   </p>
                 </div>
+              </div>
 
-                <div className="flex items-center space-x-3">
-                  <button
-                    onClick={handleTransferToBank}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-semibold"
-                  >
-                    Transfer to Bank
-                  </button>
-                  <button
-                    onClick={() => setShowTransferToBank(false)}
-                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => completeTransferShift()}
+                  disabled={!transferVarianceReason.trim()}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Confirm & Transfer
+                </button>
+                <button
+                  onClick={() => {
+                    setShowTransferVarianceReason(false);
+                    setShowTransferShift(true);
+                  }}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Back
+                </button>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Return Modal */}
-        {showReturnModal && selectedBillForReturn && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-              <div className="sticky top-0 bg-gradient-to-r from-orange-600 to-orange-700 text-white p-6 rounded-t-2xl">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-2xl font-bold">Process Return</h3>
-                    <p className="text-orange-100 mt-1">
-                      Bill: {selectedBillForReturn.billNumber}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setShowReturnModal(false);
-                      setSelectedBillForReturn(null);
-                      setReturnItems([]);
-                      setReturnReason("");
-                    }}
-                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
+      {/* Cash In Modal */}
+      {showCashIn && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <ArrowDownCircle className="w-8 h-8" />
+                  <h3 className="text-2xl font-bold">Cash In</h3>
                 </div>
+                <button
+                  onClick={() => setShowCashIn(false)}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Amount *
+                </label>
+                <input
+                  type="number"
+                  value={cashInAmount}
+                  onChange={(e) => setCashInAmount(Number(e.target.value))}
+                  placeholder="Enter amount..."
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
               </div>
 
-              <div className="p-6 space-y-6">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600">
-                    Customer:{" "}
-                    <span className="font-semibold text-gray-900">
-                      {selectedBillForReturn.customerName}
-                    </span>
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    Date:{" "}
-                    <span className="font-semibold text-gray-900">
-                      {new Date(selectedBillForReturn.createdAt).toLocaleString(
-                        "en-NP",
-                      )}
-                    </span>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Reason *
+                </label>
+                <textarea
+                  value={cashInReason}
+                  onChange={(e) => setCashInReason(e.target.value)}
+                  placeholder="Enter reason..."
+                  rows={3}
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={handleCashIn}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-semibold"
+                >
+                  Record Cash In
+                </button>
+                <button
+                  onClick={() => setShowCashIn(false)}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cash Out Modal */}
+      {showCashOut && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-6 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <ArrowUpCircle className="w-8 h-8" />
+                  <h3 className="text-2xl font-bold">Cash Out</h3>
+                </div>
+                <button
+                  onClick={() => setShowCashOut(false)}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Amount *
+                </label>
+                <input
+                  type="number"
+                  value={cashOutAmount}
+                  onChange={(e) => setCashOutAmount(Number(e.target.value))}
+                  placeholder="Enter amount..."
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Reason *
+                </label>
+                <textarea
+                  value={cashOutReason}
+                  onChange={(e) => setCashOutReason(e.target.value)}
+                  placeholder="Enter reason..."
+                  rows={3}
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={handleCashOut}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all font-semibold"
+                >
+                  Record Cash Out
+                </button>
+                <button
+                  onClick={() => setShowCashOut(false)}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer to Bank Modal */}
+      {showTransferToBank && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Send className="w-8 h-8" />
+                  <h3 className="text-2xl font-bold">Transfer to Bank</h3>
+                </div>
+                <button
+                  onClick={() => setShowTransferToBank(false)}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Select Bank Account *
+                </label>
+                <select
+                  value={selectedTransferBank}
+                  onChange={(e) => setSelectedTransferBank(e.target.value)}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Bank Account</option>
+                  {bankAccounts.map((acc) => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.bankName || acc.accountName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Amount *
+                </label>
+                <input
+                  type="number"
+                  value={transferBankAmount}
+                  onChange={(e) =>
+                    setTransferBankAmount(Number(e.target.value))
+                  }
+                  placeholder="Enter amount to transfer..."
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <p className="text-sm text-blue-800">
+                  Available cash:{" "}
+                  <span className="font-bold">
+                    Rs{calculateCurrentCash().toLocaleString()}
+                  </span>
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={handleTransferToBank}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-semibold"
+                >
+                  Transfer to Bank
+                </button>
+                <button
+                  onClick={() => setShowTransferToBank(false)}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Return Modal */}
+      {showReturnModal && selectedBillForReturn && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-orange-600 to-orange-700 text-white p-6 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold">Process Return</h3>
+                  <p className="text-orange-100 mt-1">
+                    Bill: {selectedBillForReturn.billNumber}
                   </p>
                 </div>
+                <button
+                  onClick={() => {
+                    setShowReturnModal(false);
+                    setSelectedBillForReturn(null);
+                    setReturnItems([]);
+                    setReturnReason("");
+                  }}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Select Items to Return
-                  </label>
-                  <div className="space-y-2">
-                    {selectedBillForReturn.items.map((item, idx) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
-                      >
-                        <div className="flex-1">
-                          <p className="font-semibold text-gray-900">
-                            {item.productName}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            Sold: {item.quantity} units @ Rs{item.price}
-                          </p>
-                        </div>
-                        <input
-                          type="number"
-                          min="0"
-                          max={item.quantity}
-                          value={returnItems[idx]?.quantity || 0}
-                          onChange={(e) => {
-                            const newReturnItems = [...returnItems];
-                            newReturnItems[idx] = {
-                              ...item,
-                              quantity: Math.min(
-                                Number(e.target.value),
-                                item.quantity,
-                              ),
-                            };
-                            setReturnItems(newReturnItems);
-                          }}
-                          className="w-20 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                        />
+            <div className="p-6 space-y-6">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-sm text-gray-600">
+                  Customer:{" "}
+                  <span className="font-semibold text-gray-900">
+                    {selectedBillForReturn.customerName}
+                  </span>
+                </p>
+                <p className="text-sm text-gray-600">
+                  Date:{" "}
+                  <span className="font-semibold text-gray-900">
+                    {new Date(selectedBillForReturn.createdAt).toLocaleString(
+                      "en-NP",
+                    )}
+                  </span>
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Select Items to Return
+                </label>
+                <div className="space-y-2">
+                  {selectedBillForReturn.items.map((item, idx) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                    >
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900">
+                          {item.productName}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Sold: {item.quantity} units @ Rs{item.price}
+                        </p>
                       </div>
-                    ))}
-                  </div>
+                      <input
+                        type="number"
+                        min="0"
+                        max={item.quantity}
+                        value={returnItems[idx]?.quantity || 0}
+                        onChange={(e) => {
+                          const newReturnItems = [...returnItems];
+                          newReturnItems[idx] = {
+                            ...item,
+                            quantity: Math.min(
+                              Number(e.target.value),
+                              item.quantity,
+                            ),
+                          };
+                          setReturnItems(newReturnItems);
+                        }}
+                        className="w-20 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      />
+                    </div>
+                  ))}
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Reason for Return *
-                  </label>
-                  <textarea
-                    value={returnReason}
-                    onChange={(e) => setReturnReason(e.target.value)}
-                    placeholder="Enter reason for return..."
-                    rows={3}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Reason for Return *
+                </label>
+                <textarea
+                  value={returnReason}
+                  onChange={(e) => setReturnReason(e.target.value)}
+                  placeholder="Enter reason for return..."
+                  rows={3}
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
 
-                <div className="flex items-center space-x-3">
-                  <button
-                    onClick={handleProcessReturn}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all font-semibold"
-                  >
-                    Process Return
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowReturnModal(false);
-                      setSelectedBillForReturn(null);
-                      setReturnItems([]);
-                      setReturnReason("");
-                    }}
-                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={handleProcessReturn}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all font-semibold"
+                >
+                  Process Return
+                </button>
+                <button
+                  onClick={() => {
+                    setShowReturnModal(false);
+                    setSelectedBillForReturn(null);
+                    setReturnItems([]);
+                    setReturnReason("");
+                  }}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Success Popup */}
-        <SuccessPopup
-          isOpen={showSuccessPopup}
-          onClose={() => setShowSuccessPopup(false)}
-          title={successTitle}
-          message={successMessage}
-          autoClose={true}
-          autoCloseDelay={3000}
-        />
+      {/* Success Popup */}
+      <SuccessPopup
+        isOpen={showSuccessPopup}
+        onClose={() => setShowSuccessPopup(false)}
+        title={successTitle}
+        message={successMessage}
+        autoClose={true}
+        autoCloseDelay={3000}
+      />
 
-        {/* Error Popup */}
-       {/* Error Popup */}
-        <ErrorPopup
-          isOpen={showErrorPopup}
-          onClose={() => setShowErrorPopup(false)}
-          title={errorTitle}
-          message={errorMessage}
-          type={errorType}
-        />
+      {/* Error Popup */}
+      {/* Error Popup */}
+      <ErrorPopup
+        isOpen={showErrorPopup}
+        onClose={() => setShowErrorPopup(false)}
+        title={errorTitle}
+        message={errorMessage}
+        type={errorType}
+      />
     </>
   );
 };

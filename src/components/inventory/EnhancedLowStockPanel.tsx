@@ -35,6 +35,9 @@ interface Product {
   vehicleType?: "two_wheeler" | "four_wheeler";
   partType?: "local" | "original";
   workspaceId?: string;
+  shortage?: number;
+  estimatedValue?: number;
+  status?: string;
 }
 
 export const EnhancedLowStockPanel: React.FC = () => {
@@ -54,19 +57,73 @@ export const EnhancedLowStockPanel: React.FC = () => {
     "all" | "critical" | "low" | "warning"
   >("all");
   const [sortBy, setSortBy] = useState<"stock" | "name" | "value" | "shortage">(
-    "stock"
+    "stock",
   );
+
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     loadLowStockProducts();
   }, []);
 
-  const loadLowStockProducts = () => {
+  const loadLowStockProducts = async () => {
+    setIsLoading(true);
+    try {
+      const token =
+        localStorage.getItem("accessToken") ||
+        localStorage.getItem("auth_token");
+
+      if (token) {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/dashboard/low_stock_alerts/`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const apiProducts: Product[] = data.alerts.map((alert: any) => ({
+            id: alert.id.toString(),
+            name: alert.item_name,
+            sku: alert.part_number,
+            currentStock: alert.current_quantity,
+            minimumStock: alert.minimum_required,
+            category: alert.category,
+            brand: alert.supplier || "Unknown",
+            purchasePrice: alert.estimated_value || 0, // Using estimated_value as a proxy for value
+            sellingPrice: 0,
+            vehicleType: "two_wheeler", // Placeholder
+            partType: alert.category === "local" ? "local" : "original", // Inferring from category if possible
+            shortage: alert.shortage,
+            estimatedValue: alert.estimated_value,
+            status: alert.status,
+          }));
+          setProducts(apiProducts);
+        } else {
+          // If API fails, fallback to local
+          fallbackToLocalData();
+        }
+      } else {
+        fallbackToLocalData();
+      }
+    } catch (error) {
+      console.error("Failed to fetch low stock alerts:", error);
+      fallbackToLocalData();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fallbackToLocalData = () => {
     const allProducts = getFromStorage("products", []);
     const lowStock = allProducts.filter(
       (p: Product) =>
         p.workspaceId === currentUser?.workspaceId &&
-        p.currentStock <= (p.minimumStock || 10)
+        p.currentStock <= (p.minimumStock || 10),
     );
     setProducts(lowStock);
   };
@@ -147,12 +204,12 @@ export const EnhancedLowStockPanel: React.FC = () => {
     low: products.filter((p) => getSeverity(p) === "low").length,
     warning: products.filter((p) => getSeverity(p) === "warning").length,
     totalValue: products.reduce(
-      (sum, p) => sum + p.currentStock * p.purchasePrice,
-      0
+      (sum, p) => sum + (p.estimatedValue || p.currentStock * p.purchasePrice),
+      0,
     ),
     totalShortage: products.reduce(
-      (sum, p) => sum + ((p.minimumStock || 10) - p.currentStock),
-      0
+      (sum, p) => sum + (p.shortage || (p.minimumStock || 10) - p.currentStock),
+      0,
     ),
   };
 
@@ -161,7 +218,7 @@ export const EnhancedLowStockPanel: React.FC = () => {
       popup.showError(
         "No low stock items to export. Please check your filters or add products to inventory.",
         "No Data to Export",
-        "warning"
+        "warning",
       );
       return;
     }
@@ -175,19 +232,20 @@ export const EnhancedLowStockPanel: React.FC = () => {
         product.vehicleType === "two_wheeler"
           ? "2-Wheeler"
           : product.vehicleType === "four_wheeler"
-          ? "4-Wheeler"
-          : "N/A",
+            ? "4-Wheeler"
+            : "N/A",
       "Part Type":
         product.partType === "local"
           ? "Local"
           : product.partType === "original"
-          ? "Original"
-          : "N/A",
+            ? "Original"
+            : "N/A",
       "Current Stock": product.currentStock,
       "Minimum Stock": product.minimumStock || 10,
-      Shortage: (product.minimumStock || 10) - product.currentStock,
+      Shortage:
+        product.shortage || (product.minimumStock || 10) - product.currentStock,
       "Stock Value": `Rs${(
-        product.currentStock * product.purchasePrice
+        product.estimatedValue || product.currentStock * product.purchasePrice
       ).toFixed(2)}`,
       Severity: getSeverity(product).toUpperCase(),
     }));
@@ -197,7 +255,7 @@ export const EnhancedLowStockPanel: React.FC = () => {
       ...csvData.map((row) =>
         Object.values(row)
           .map((v) => `"${v}"`)
-          .join(",")
+          .join(","),
       ),
     ].join("\n");
 
@@ -587,24 +645,24 @@ export const EnhancedLowStockPanel: React.FC = () => {
                   <th className="px-6 py-4 text-left font-bold">Shortage</th>
                   <th className="px-6 py-4 text-left font-bold">Stock Value</th>
                   <th className="px-6 py-4 text-left font-bold">Status</th>
-                  <th className="px-6 py-4 text-left font-bold">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredProducts.map((product) => {
-                  const severity = getSeverity(product);
+                  const severity = product.status || getSeverity(product);
                   const shortage =
+                    product.shortage ||
                     (product.minimumStock || 10) - product.currentStock;
 
                   return (
                     <tr
                       key={product.id}
                       className={`hover:bg-gray-50 transition-colors ${
-                        severity === "critical"
+                        severity === "critical" || severity === "out_of_stock"
                           ? "bg-red-50"
-                          : severity === "low"
-                          ? "bg-orange-50"
-                          : "bg-yellow-50"
+                          : severity === "low" || severity === "warning"
+                            ? "bg-orange-50"
+                            : "bg-yellow-50"
                       }`}
                     >
                       <td className="px-6 py-4">
@@ -670,8 +728,8 @@ export const EnhancedLowStockPanel: React.FC = () => {
                             severity === "critical"
                               ? "text-red-600"
                               : severity === "low"
-                              ? "text-orange-600"
-                              : "text-yellow-600"
+                                ? "text-orange-600"
+                                : "text-yellow-600"
                           }`}
                         >
                           {product.currentStock}
@@ -692,18 +750,13 @@ export const EnhancedLowStockPanel: React.FC = () => {
                         <p className="font-bold text-gray-900">
                           Rs
                           {(
+                            product.estimatedValue ||
                             product.currentStock * product.purchasePrice
                           ).toLocaleString()}
                         </p>
                       </td>
                       <td className="px-6 py-4">
                         {getSeverityBadge(severity)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <button className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md font-bold">
-                          <ShoppingBag className="w-4 h-4" />
-                          <span>Create PO</span>
-                        </button>
                       </td>
                     </tr>
                   );

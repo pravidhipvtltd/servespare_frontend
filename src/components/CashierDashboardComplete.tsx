@@ -1049,7 +1049,7 @@ export const CashierDashboardComplete: React.FC = () => {
 
       {/* All Modals */}
       {showStartShift && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-8 max-w-md w-full">
             <div className="flex items-center space-x-3 mb-6">
               <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
@@ -1080,7 +1080,7 @@ export const CashierDashboardComplete: React.FC = () => {
       )}
 
       {showEndShift && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black-40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-8 max-w-md w-full">
             <div className="flex items-center space-x-3 mb-6">
               <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
@@ -1133,7 +1133,7 @@ export const CashierDashboardComplete: React.FC = () => {
       )}
 
       {showTransferShift && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black-40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-8 max-w-md w-full">
             <div className="flex items-center space-x-3 mb-6">
               <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -1176,7 +1176,7 @@ export const CashierDashboardComplete: React.FC = () => {
 
       {/* Cash In Modal */}
       {showCashIn && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black-40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-8 max-w-md w-full">
             <div className="flex items-center space-x-3 mb-6">
               <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
@@ -1220,7 +1220,7 @@ export const CashierDashboardComplete: React.FC = () => {
 
       {/* Cash Out Modal */}
       {showCashOut && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black-40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-8 max-w-md w-full">
             <div className="flex items-center space-x-3 mb-6">
               <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
@@ -1264,7 +1264,7 @@ export const CashierDashboardComplete: React.FC = () => {
 
       {/* Sales Return Modal */}
       {showReturnModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black-40 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl p-8 max-w-2xl w-full my-8">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-3">
@@ -1403,7 +1403,7 @@ export const CashierDashboardComplete: React.FC = () => {
 
       {/* Change Calculator Modal */}
       {showChangeCalculator && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black-40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-8 max-w-md w-full">
             <div className="flex items-center space-x-3 mb-6">
               <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">

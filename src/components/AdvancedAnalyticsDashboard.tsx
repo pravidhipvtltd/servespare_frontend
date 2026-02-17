@@ -94,10 +94,6 @@ export const AdvancedAnalyticsDashboard: React.FC<
 
   const calculateAnalytics = () => {
     setLoading(true);
-    toast.error("apiii", {
-      description: "Live backend analytics data required",
-      duration: 10000,
-    });
 
     const bills: Bill[] = getFromStorage("bills", []).filter(
       (b: Bill) =>

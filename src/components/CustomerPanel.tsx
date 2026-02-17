@@ -916,6 +916,10 @@ export const CustomerPanel: React.FC<CustomerPanelProps> = ({
                 product={selectedProduct}
                 onAddToCart={handleAddToCart}
                 onBack={() => navigate("/shop")}
+                onViewProduct={(product) => {
+                  setSelectedProduct(product);
+                  window.scrollTo(0, 0);
+                }}
               />
             </motion.div>
           )}

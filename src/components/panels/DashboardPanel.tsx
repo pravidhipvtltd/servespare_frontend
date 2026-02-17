@@ -100,9 +100,46 @@ export const DashboardPanel: React.FC = () => {
   const [inventoryHeat, setInventoryHeat] = useState<InventoryHeatItem[]>([]);
   const [branchPerformance, setBranchPerformance] = useState<any[]>([]);
 
+  const fetchQuickStats = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const headers: any = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(
+        "https://api-demo.servespare.xyz/api/dashboard/quick_stats/",
+        {
+          headers,
+        },
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Quick Stats API response:", data);
+
+        setStats((prev) => ({
+          ...prev,
+          totalItems: data.total_inventory_items,
+          lowStock: data.low_stock_items,
+          pendingOrders: data.pending_orders,
+          monthlySales: data.this_month_revenue,
+          cashflow: data.total_revenue_all_time,
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching quick stats:", error);
+    }
+  };
+
   useEffect(() => {
-    migrateBillsData(); // Run migration first
+    migrateBillsData();
     loadDashboardData();
+    fetchQuickStats();
   }, [selectedBranchId]);
 
   // Migration function to fix existing bills without createdAt

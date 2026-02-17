@@ -38,6 +38,10 @@ interface Product {
   badge?: string;
   inStock: boolean;
   description?: string;
+  warranty?: string;
+  partNumber?: string;
+  model?: string;
+  vehicleBikeDetails?: string;
 }
 
 interface AllProductsPageProps {
@@ -86,9 +90,9 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
-  const [wishlistedItems, setWishlistedItems] = useState<Record<string, string>>(
-    {},
-  );
+  const [wishlistedItems, setWishlistedItems] = useState<
+    Record<string, string>
+  >({});
   const [loadingWishlist, setLoadingWishlist] = useState<string | null>(null);
 
   const handleAddToCart = async (product: Product, quantity: number) => {
@@ -105,9 +109,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
       try {
         setLoading(true);
         const token = localStorage.getItem("accessToken");
-        const headers: HeadersInit = {
- 
-        };
+        const headers: HeadersInit = {};
 
         if (token) {
           headers["Authorization"] = `Bearer ${token}`;
@@ -165,6 +167,10 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
             badge: item.is_low_stock ? "Low Stock" : "New",
             inStock: !item.is_low_stock,
             description: item.description || "",
+            warranty: item.warranty_period,
+            partNumber: item.part_number,
+            model: item.model,
+            vehicleBikeDetails: item.vehicle_bike_details,
           };
         });
 
@@ -192,7 +198,6 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
           {
             headers: {
               Authorization: `Bearer ${token}`,
-     
             },
           },
         );
@@ -217,7 +222,10 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
     fetchWishlist();
   }, []);
 
-  const handleWishlistToggle = async (product: Product, e: React.MouseEvent) => {
+  const handleWishlistToggle = async (
+    product: Product,
+    e: React.MouseEvent,
+  ) => {
     e.stopPropagation();
 
     const token = localStorage.getItem("accessToken");
@@ -239,7 +247,6 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
             method: "DELETE",
             headers: {
               Authorization: `Bearer ${token}`,
-     
             },
           },
         );
@@ -264,7 +271,6 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
-     
             },
             body: JSON.stringify({
               inventory_id: parseInt(product.id, 10),
