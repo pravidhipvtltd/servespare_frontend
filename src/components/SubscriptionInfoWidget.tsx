@@ -54,11 +54,11 @@ export const SubscriptionInfoWidget: React.FC<SubscriptionInfoWidgetProps> = ({
   };
 
   const updateSubscriptionInfo = (userSubscription: any) => {
-    // Extract plan name from subscription_plan_detail
+    
     const planName =
       userSubscription.subscription_plan_detail?.plan_name || "basic";
 
-    // Get expiry date from finish_date
+    
     const expiryDate = new Date(userSubscription.finish_date);
     const now = new Date();
     const daysLeft = Math.ceil(
